@@ -269,8 +269,6 @@ class HUIRoot extends LitElement {
                           )}
                         </ha-tabs>
                       `
-                    : /* IoB */ this._hideToolbar
-                    ? ""
                     : html`<div main-title>${this.config.title}</div>`}
                   ${/* IoB */ this._hideToolbar
                     ? this.renderNotificationButton(true)
