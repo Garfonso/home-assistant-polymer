@@ -2,9 +2,9 @@ import "@material/mwc-button";
 import deepFreeze from "deep-freeze";
 import {
   html,
+  internalProperty,
   LitElement,
   property,
-  internalProperty,
   TemplateResult,
 } from "lit-element";
 import { domainToName } from "../../data/integration";
@@ -109,6 +109,7 @@ class LovelacePanel extends LitElement {
     if (state === "error") {
       return html`
         <hass-error-screen
+          .hass=${this.hass}
           title="${domainToName(this.hass!.localize, "lovelace")}"
           .error="${this._errorMsg}"
         >
@@ -184,7 +185,7 @@ class LovelacePanel extends LitElement {
       message: this.hass!.localize("ui.panel.lovelace.changed_toast.message"),
       action: {
         action: () => this._fetchConfig(false),
-        text: this.hass!.localize("ui.panel.lovelace.changed_toast.refresh"),
+        text: this.hass!.localize("ui.common.refresh"),
       },
       duration: 0,
       dismissable: false,
@@ -256,7 +257,7 @@ class LovelacePanel extends LitElement {
       }
     }
 
-    this._state = "loaded";
+    this._state = this._state === "yaml-editor" ? this._state : "loaded";
     this._setLovelaceConfig(conf, confMode);
   }
 
@@ -288,7 +289,7 @@ class LovelacePanel extends LitElement {
       enableFullEditMode: () => {
         if (!editorLoaded) {
           editorLoaded = true;
-          import(/* webpackChunkName: "lovelace-yaml-editor" */ "./hui-editor");
+          import("./hui-editor");
         }
         this._state = "yaml-editor";
       },

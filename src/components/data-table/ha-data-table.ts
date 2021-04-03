@@ -98,6 +98,12 @@ export class HaDataTable extends LitElement {
 
   @property({ type: Boolean }) public hasFab = false;
 
+  /**
+   * Add an extra row at the bottom of the data table
+   * @type {TemplateResult}
+   */
+  @property({ attribute: false }) public appendRow?;
+
   @property({ type: Boolean, attribute: "auto-height" })
   public autoHeight = false;
 
@@ -125,6 +131,8 @@ export class HaDataTable extends LitElement {
   @internalProperty() private _headerHeight = 0;
 
   @query("slot[name='header']") private _header!: HTMLSlotElement;
+
+  private _items: DataTableRowData[] = [];
 
   private _checkableRowsCount?: number;
 
@@ -228,20 +236,19 @@ export class HaDataTable extends LitElement {
             "auto-height": this.autoHeight,
           })}"
           role="table"
-          aria-rowcount=${this._filteredData.length}
+          aria-rowcount=${this._filteredData.length + 1}
           style=${styleMap({
             height: this.autoHeight
               ? `${(this._filteredData.length || 1) * 53 + 57}px`
               : `calc(100% - ${this._headerHeight}px)`,
           })}
         >
-          <div class="mdc-data-table__header-row" role="row">
+          <div class="mdc-data-table__header-row" role="row" aria-rowindex="1">
             ${this.selectable
               ? html`
                   <div
                     class="mdc-data-table__header-cell mdc-data-table__header-cell--checkbox"
                     role="columnheader"
-                    scope="col"
                   >
                     <ha-checkbox
                       class="mdc-data-table__row-checkbox"
@@ -284,7 +291,13 @@ export class HaDataTable extends LitElement {
                       })
                     : ""}
                   role="columnheader"
-                  scope="col"
+                  aria-sort=${ifDefined(
+                    sorted
+                      ? this._sortDirection === "desc"
+                        ? "descending"
+                        : "ascending"
+                      : undefined
+                  )}
                   @click=${this._handleHeaderClick}
                   .columnId=${key}
                 >
@@ -318,16 +331,19 @@ export class HaDataTable extends LitElement {
                   @scroll=${this._saveScrollPos}
                 >
                   ${scroll({
-                    items: !this.hasFab
-                      ? this._filteredData
-                      : [...this._filteredData, ...[{ empty: true }]],
+                    items: this._items,
                     renderItem: (row: DataTableRowData, index) => {
+                      if (row.append) {
+                        return html`
+                          <div class="mdc-data-table__row">${row.content}</div>
+                        `;
+                      }
                       if (row.empty) {
                         return html` <div class="mdc-data-table__row"></div> `;
                       }
                       return html`
                         <div
-                          aria-rowindex=${index}
+                          aria-rowindex=${index! + 2}
                           role="row"
                           .rowId=${row[this.id]}
                           @click=${this._handleRowClick}
@@ -446,6 +462,20 @@ export class HaDataTable extends LitElement {
     }
     if (this.curRequest !== curRequest) {
       return;
+    }
+
+    if (this.appendRow || this.hasFab) {
+      this._items = [...data];
+
+      if (this.appendRow) {
+        this._items.push({ append: true, content: this.appendRow });
+      }
+
+      if (this.hasFab) {
+        this._items.push({ empty: true });
+      }
+    } else {
+      this._items = data;
     }
     this._filteredData = data;
   }

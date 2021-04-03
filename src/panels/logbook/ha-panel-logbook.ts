@@ -18,6 +18,10 @@ import type { DateRangePickerRanges } from "../../components/ha-date-range-picke
 import "../../components/ha-icon-button";
 import "../../components/ha-menu-button";
 import {
+  AutomationTraceContexts,
+  loadAutomationTraceContexts,
+} from "../../data/automation_debug";
+import {
   clearLogbookCache,
   getLogbookData,
   LogbookEntry,
@@ -35,9 +39,6 @@ export class HaPanelLogbook extends LitElement {
 
   @property({ reflect: true, type: Boolean }) narrow!: boolean;
 
-  @property({ attribute: false })
-  private _userIdToName = {};
-
   @property() _startDate: Date;
 
   @property() _endDate: Date;
@@ -53,6 +54,10 @@ export class HaPanelLogbook extends LitElement {
   @internalProperty() private _ranges?: DateRangePickerRanges;
 
   private _fetchUserDone?: Promise<unknown>;
+
+  @internalProperty() private _userIdToName = {};
+
+  @internalProperty() private _traceContexts: AutomationTraceContexts = {};
 
   public constructor() {
     super();
@@ -128,6 +133,7 @@ export class HaPanelLogbook extends LitElement {
                 .hass=${this.hass}
                 .entries=${this._entries}
                 .userIdToName=${this._userIdToName}
+                .traceContexts=${this._traceContexts}
                 virtualize
               ></ha-logbook>
             `}
@@ -147,27 +153,21 @@ export class HaPanelLogbook extends LitElement {
     todayEnd.setDate(todayEnd.getDate() + 1);
     todayEnd.setMilliseconds(todayEnd.getMilliseconds() - 1);
 
-    const todayCopy = new Date(today);
-
-    const yesterday = new Date(todayCopy.setDate(today.getDate() - 1));
-    const yesterdayEnd = new Date(yesterday);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() + 1);
+    const yesterday = new Date(today);
+    yesterday.setDate(today.getDate() - 1);
+    const yesterdayEnd = new Date(today);
     yesterdayEnd.setMilliseconds(yesterdayEnd.getMilliseconds() - 1);
 
-    const thisWeekStart = new Date(
-      todayCopy.setDate(today.getDate() - today.getDay())
-    );
-    const thisWeekEnd = new Date(
-      todayCopy.setDate(thisWeekStart.getDate() + 7)
-    );
+    const thisWeekStart = new Date(today);
+    thisWeekStart.setDate(today.getDate() - today.getDay());
+    const thisWeekEnd = new Date(thisWeekStart);
+    thisWeekEnd.setDate(thisWeekStart.getDate() + 7);
     thisWeekEnd.setMilliseconds(thisWeekEnd.getMilliseconds() - 1);
 
-    const lastWeekStart = new Date(
-      todayCopy.setDate(today.getDate() - today.getDay() - 7)
-    );
-    const lastWeekEnd = new Date(
-      todayCopy.setDate(lastWeekStart.getDate() + 7)
-    );
+    const lastWeekStart = new Date(today);
+    lastWeekStart.setDate(today.getDate() - today.getDay() - 7);
+    const lastWeekEnd = new Date(lastWeekStart);
+    lastWeekEnd.setDate(lastWeekStart.getDate() + 7);
     lastWeekEnd.setMilliseconds(lastWeekEnd.getMilliseconds() - 1);
 
     this._ranges = {
@@ -187,7 +187,7 @@ export class HaPanelLogbook extends LitElement {
     };
   }
 
-  protected updated(changedProps: PropertyValues) {
+  protected updated(changedProps: PropertyValues<this>) {
     if (
       changedProps.has("_startDate") ||
       changedProps.has("_endDate") ||
@@ -263,19 +263,19 @@ export class HaPanelLogbook extends LitElement {
 
   private async _getData() {
     this._isLoading = true;
-    const [entries] = await Promise.all([
+    const [entries, traceContexts] = await Promise.all([
       getLogbookData(
         this.hass,
         this._startDate.toISOString(),
         this._endDate.toISOString(),
         this._entityId
       ),
+      loadAutomationTraceContexts(this.hass),
       this._fetchUserDone,
     ]);
 
-    // Fixed in TS 3.9 but upgrade out of scope for this PR.
-    // @ts-ignore
     this._entries = entries;
+    this._traceContexts = traceContexts;
     this._isLoading = false;
   }
 

@@ -1,23 +1,3 @@
-import "../../../components/ha-svg-icon";
-import { HassEntity } from "home-assistant-js-websocket";
-import {
-  css,
-  CSSResult,
-  customElement,
-  LitElement,
-  property,
-  PropertyValues,
-} from "lit-element";
-import { html, TemplateResult } from "lit-html";
-import { HomeAssistant } from "../../../types";
-
-import {
-  getWind,
-  getWeatherUnit,
-  getWeatherStateIcon,
-  weatherStateIsImage,
-} from "../../../data/weather"; //IoB
-
 import {
   mdiAlertCircleOutline,
   mdiEye,
@@ -39,6 +19,27 @@ import {
   mdiWeatherWindy,
   mdiWeatherWindyVariant,
 } from "@mdi/js";
+import { HassEntity } from "home-assistant-js-websocket";
+import {
+  css,
+  CSSResult,
+  customElement,
+  LitElement,
+  property,
+  PropertyValues,
+} from "lit-element";
+import { html, TemplateResult } from "lit-html";
+import { formatDateWeekday } from "../../../common/datetime/format_date";
+import { formatTimeWeekday } from "../../../common/datetime/format_time";
+import { formatNumber } from "../../../common/string/format_number";
+import "../../../components/ha-svg-icon";
+import {
+  getWeatherUnit,
+  getWind,
+  getWeatherStateIcon,
+  weatherStateIsImage,
+} from "../../../data/weather"; //IoB adds last two
+import { HomeAssistant } from "../../../types";
 
 const weatherIcons = {
   "clear-night": mdiWeatherNight,
@@ -96,7 +97,10 @@ class MoreInfoWeather extends LitElement {
           ${this.hass.localize("ui.card.weather.attributes.temperature")}
         </div>
         <div>
-          ${this.stateObj.attributes.temperature}
+          ${formatNumber(
+            this.stateObj.attributes.temperature,
+            this.hass!.language
+          )}
           ${getWeatherUnit(this.hass, "temperature")}
         </div>
       </div>
@@ -108,7 +112,10 @@ class MoreInfoWeather extends LitElement {
                 ${this.hass.localize("ui.card.weather.attributes.air_pressure")}
               </div>
               <div>
-                ${this.stateObj.attributes.pressure}
+                ${formatNumber(
+                  this.stateObj.attributes.pressure,
+                  this.hass!.language
+                )}
                 ${getWeatherUnit(this.hass, "air_pressure")}
               </div>
             </div>
@@ -121,7 +128,13 @@ class MoreInfoWeather extends LitElement {
               <div class="main">
                 ${this.hass.localize("ui.card.weather.attributes.humidity")}
               </div>
-              <div>${this.stateObj.attributes.humidity} %</div>
+              <div>
+                ${formatNumber(
+                  this.stateObj.attributes.humidity,
+                  this.hass!.language
+                )}
+                %
+              </div>
             </div>
           `
         : ""}
@@ -150,7 +163,10 @@ class MoreInfoWeather extends LitElement {
                 ${this.hass.localize("ui.card.weather.attributes.visibility")}
               </div>
               <div>
-                ${this.stateObj.attributes.visibility}
+                ${formatNumber(
+                  this.stateObj.attributes.visibility,
+                  this.hass!.language
+                )}
                 ${getWeatherUnit(this.hass, "length")}
               </div>
             </div>
@@ -189,23 +205,29 @@ class MoreInfoWeather extends LitElement {
                   ${!this._showValue(item.templow)
                     ? html`
                         <div class="main">
-                          ${this.computeDateTime(item.datetime)}
+                          ${formatTimeWeekday(
+                            new Date(item.datetime),
+                            this.hass.language
+                          )}
                         </div>
                       `
                     : ""}
                   ${this._showValue(item.templow)
                     ? html`
                         <div class="main">
-                          ${this.computeDate(item.datetime)}
+                          ${formatDateWeekday(
+                            new Date(item.datetime),
+                            this.hass.language
+                          )}
                         </div>
                         <div class="templow">
-                          ${item.templow}
+                          ${formatNumber(item.templow, this.hass!.language)}
                           ${getWeatherUnit(this.hass, "temperature")}
                         </div>
                       `
                     : ""}
                   <div class="temp">
-                    ${item.temperature}
+                    ${formatNumber(item.temperature, this.hass!.language)}
                     ${getWeatherUnit(this.hass, "temperature")}
                   </div>
                 </div>
@@ -260,23 +282,6 @@ class MoreInfoWeather extends LitElement {
         text-align: center;
       }
     `;
-  }
-
-  private computeDate(data) {
-    const date = new Date(data);
-    return date.toLocaleDateString(this.hass.language, {
-      weekday: "long",
-      month: "short",
-      day: "numeric",
-    });
-  }
-
-  private computeDateTime(data) {
-    const date = new Date(data);
-    return date.toLocaleDateString(this.hass.language, {
-      weekday: "long",
-      hour: "numeric",
-    });
   }
 
   private _showValue(item: string): boolean {
