@@ -208,7 +208,7 @@
                 "cpu_usage": "Využití procesoru doplňkem",
                 "hostname": "Název hostitele",
                 "install": "nainstalovat",
-                "new_update_available": "{name} {verze} je k dispozici",
+                "new_update_available": "{name} {version} je k dispozici",
                 "not_available_arch": "Tento doplněk není kompatibilní s procesorem vašeho zařízení nebo operačním systémem, který jste do zařízení nainstalovali.",
                 "not_available_version": "Používáte Home Assistant {core_version_installed}, pro aktualizaci na tuto verzi doplňku potřebujete alespoň Home Assistant ve verzi {core_version_needed}",
                 "open_web_ui": "Otevřít webové rozhraní",
@@ -467,12 +467,14 @@
                     "docker": "Prostředí Docker nefunguje správně",
                     "privileged": "Supervisor není privilegovaný",
                     "setup": "Nastavení Supervisora se nezdařilo",
-                    "supervisor": "Supervisor se nepodařilo aktualizovat"
+                    "supervisor": "Supervisor se nepodařilo aktualizovat",
+                    "untrusted": "Zjištěn nedůvěryhodný obsah"
                 },
                 "unhealthy_title": "Instalace není v pořádku",
                 "unsupported_description": "Níže je uveden seznam problémů nalezených ve vaší instalaci. Kliknutím na odkazy se dozvíte, jak tyto problémy vyřešit.",
                 "unsupported_reason": {
                     "container": "Kontejnery, o nichž je známo, že způsobují problémy",
+                    "content-trust": "Ověřování důvěryhodnosti obsahu je zakázáno.",
                     "dbus": "DBUS",
                     "docker_configuration": "Konfigurace Dockeru",
                     "docker_version": "Verze Dockeru",
@@ -721,6 +723,9 @@
                 "today": "Dnes"
             },
             "data-table": {
+                "clear": "Vymazat",
+                "filtering_by": "Filtrované dle",
+                "hidden": "{number} skryté",
                 "no-data": "Žádná data",
                 "search": "Hledat"
             },
@@ -785,7 +790,8 @@
                     "was_unlocked": "bylo odemčeno",
                     "was_unplugged": "bylo odpojeno",
                     "was_unsafe": "bylo v nebezpečí"
-                }
+                },
+                "show_trace": "Zobrazit stopu"
             },
             "media-browser": {
                 "audio_not_supported": "Váš prohlížeč nepodporuje element \"audio\".",
@@ -833,6 +839,12 @@
             "picture-upload": {
                 "label": "Obrázek",
                 "unsupported_format": "Nepodporovaný formát, prosím vyberte obrázek typu JPEG, PNG nebo GIF."
+            },
+            "related-filter-menu": {
+                "filter_by_area": "Filtrovat dle oblasti",
+                "filter_by_device": "Filtrovat dle zařízení",
+                "filtered_by_area": "oblasti: {area_name}",
+                "filtered_by_device": "zařízení: {device_name}"
             },
             "related-items": {
                 "area": "Oblast",
@@ -1093,42 +1105,47 @@
                         "zone": "Zóny"
                     },
                     "reload": {
-                        "automation": "Nově načíst automatizace",
-                        "command_line": "Nově načíst entity integrace Command line",
-                        "core": "Nově načíst umístění a přizpůsobení",
-                        "filesize": "Nově načíst entity integrace File size",
-                        "filter": "Nově načíst entity integrace Filter",
-                        "generic": "Nově načíst entity integrace Generic IP camera",
-                        "generic_thermostat": "Nově načíst entity integrace Generic thermostat",
-                        "group": "Nově načíst skupiny, skupiny entit a notifikační služby",
-                        "history_stats": "Nově načíst entity integrace History stats",
-                        "homekit": "Nově načíst entity integrace HomeKit",
-                        "input_boolean": "Nově načíst pomocníky - přepínače",
-                        "input_datetime": "Nově načíst pomocníky - data/časy",
-                        "input_number": "Nově načíst pomocníky - čísla",
-                        "input_select": "Nově načíst pomocníky - výběry",
-                        "input_text": "Nově načíst pomocníky - texty",
-                        "min_max": "Nově načíst entity integrace Min/Max",
-                        "mqtt": "Nově načíst ručně nastavené entity integrace MQTT",
-                        "person": "Nově načíst osoby",
-                        "ping": "Nově načíst entity integrace Ping",
-                        "reload": "Nově načíst integraci {domain}",
-                        "rest": "Nově načíst entity a notifikační služby integrace Rest",
-                        "rpi_gpio": "Nově načíst entity integrace Raspberry Pi GPIO",
-                        "scene": "Nově načíst scény",
-                        "script": "Nově načíst skripty",
-                        "smtp": "Nově načíst notifikační služby integrace SMTP",
-                        "statistics": "Nově načíst entity integrace Statistics",
-                        "telegram": "Nově načíst notifikační služby integrace Telegram",
-                        "template": "Nově načíst entity integrace Template",
-                        "trend": "Nově načíst entity integrace Trend",
-                        "universal": "Nově načíst entity integrace Universal media player",
-                        "zone": "Nově načíst zóny"
+                        "automation": "Automatizace",
+                        "command_line": "Entity integrace Command line",
+                        "core": "Umístění a přizpůsobení",
+                        "filesize": "Entity integrace File size",
+                        "filter": "Entity integrace Filter",
+                        "generic": "Entity integrace Generic IP camera",
+                        "generic_thermostat": "Entity integrace Generic thermostat",
+                        "group": "Skupiny, skupiny entit a notifikační služby",
+                        "history_stats": "Entity integrace History stats",
+                        "homekit": "Integrace HomeKit",
+                        "input_boolean": "Pomocníci - přepínače",
+                        "input_datetime": "Pomocníci - data/časy",
+                        "input_number": "Pomocníci - čísla",
+                        "input_select": "Pomocníci - výběry",
+                        "input_text": "Pomocníci - texty",
+                        "min_max": "Entity integrace Min/Max",
+                        "mqtt": "Ručně nastavené entity integrace MQTT",
+                        "person": "Osoby",
+                        "ping": "Entity integrace Ping",
+                        "reload": "Integrace {domain}",
+                        "rest": "Entity a notifikační služby integrace Rest",
+                        "rpi_gpio": "Entity integrace Raspberry Pi GPIO",
+                        "scene": "Scény",
+                        "script": "Skripty",
+                        "smtp": "Notifikační služby integrace SMTP",
+                        "statistics": "Entity integrace Statistics",
+                        "telegram": "Notifikační služby integrace Telegram",
+                        "template": "Entity integrace Template",
+                        "trend": "Entity integrace Trend",
+                        "universal": "Entity integrace Universal media player",
+                        "zone": "Zóny"
                     },
                     "server_control": {
                         "perform_action": "{action} server",
                         "restart": "Restartovat",
                         "stop": "Zastavit"
+                    },
+                    "types": {
+                        "navigation": "Navigovat",
+                        "reload": "Znovu načíst",
+                        "server_control": "Server"
                     }
                 },
                 "filter_placeholder": "Filtr entit"
@@ -1171,6 +1188,9 @@
                 "zha_device_card": {
                     "device_name_placeholder": "Změnit název zařízení"
                 }
+            },
+            "zha_reconfigure_device": {
+                "heading": "Znovunastavení zařízení"
             }
         },
         "duration": {
@@ -1297,10 +1317,15 @@
                                 "device_id": {
                                     "action": "Akce",
                                     "extra_fields": {
+                                        "brightness_pct": "Jas",
                                         "code": "Kód",
+                                        "flash": "Blikat",
+                                        "humidity": "Vlhkost vzduchu",
                                         "message": "Zpráva",
+                                        "mode": "Režim",
                                         "position": "Pozice",
-                                        "title": "Název"
+                                        "title": "Název",
+                                        "value": "Hodnota"
                                     },
                                     "label": "Zařízení"
                                 },
@@ -1373,7 +1398,9 @@
                                     "extra_fields": {
                                         "above": "Větší než",
                                         "below": "Menší než",
-                                        "for": "Doba trvání"
+                                        "for": "Doba trvání",
+                                        "hvac_mode": "Režim HVAC",
+                                        "preset_mode": "Předvolba"
                                     },
                                     "label": "Zařízení"
                                 },
@@ -1458,6 +1485,7 @@
                         "move_down": "Posunout dolů",
                         "move_up": "Posunout nahoru",
                         "save": "Uložit",
+                        "show_trace": "Zobrazit trasování",
                         "triggers": {
                             "add": "Přidat spouštěč",
                             "delete": "Smazat",
@@ -1566,6 +1594,8 @@
                         "add_automation": "Přidat automatizaci",
                         "delete_automation": "Odstranit automatizaci",
                         "delete_confirm": "Opravdu chcete odstranit tuto automatizaci?",
+                        "dev_automation": "Debugování automatizace",
+                        "dev_only_editable": "Pouze automatizace definované v automations.yaml jsou debugovatelné",
                         "duplicate": "Duplikát",
                         "duplicate_automation": "Duplikovat automatizaci",
                         "edit_automation": "Upravit automatizaci",
@@ -1575,7 +1605,7 @@
                         },
                         "introduction": "Editor automatizací umožňuje vytvářet a upravovat automatizace. Přečtěte si prosím pokyny na odkazu níže, abyste se ujistili, že jste Home Assistant nastavili správně.",
                         "learn_more": "Další informace o automatizacích",
-                        "no_automations": "Nemohli jsme najít žádné upravitelné automatizace",
+                        "no_automations": "Nenašli jsme žádné automatizace",
                         "only_editable": "Upravitelné mohou být pouze automatizace definované v automations.yaml.",
                         "pick_automation": "Vyberte automatizaci, kterou chcete upravit",
                         "show_info_automation": "Zobrazit informace o automatizaci"
@@ -1656,14 +1686,16 @@
                         "google": {
                             "config_documentation": "Dokumentace pro nastavení",
                             "devices_pin": "PIN pro zabezpečovací zařízení",
-                            "enable_ha_skill": "Povolte Home Assistant skill pro Google Assistant",
+                            "enable_ha_skill": "Povolte Home Assistant Cloud pro Google Assistant",
                             "enable_state_reporting": "Povolit hlášení stavu",
-                            "enter_pin_error": "Nelze uložit pin:",
+                            "enter_pin_error": "Nelze uložit PIN:",
                             "enter_pin_hint": "Chcete-li používat zabezpečovací zařízení, zadejte kód PIN",
-                            "enter_pin_info": "Chcete-li komunikovat se zabezpečovacími zařízeními, zadejte kód PIN. Zabezpečovací zařízení jsou dveře, garážová vrata a zámky. Při interakci s takovými zařízeními budete požádáni o zadání / zadání tohoto kódu PIN pomocí Google Assistant.",
+                            "enter_pin_info": "Chcete-li komunikovat se zabezpečovacími zařízeními, zadejte kód PIN. Zabezpečovací zařízení jsou dveře, garážová vrata a zámky. Při interakci s takovými zařízeními budete požádáni o zadání tohoto PIN kódu pomocí Google Assistant.",
                             "info": "Díky integraci Google Assistant pro Home Assistant Cloud budete moci ovládat všechna zařízení v Home Assistant pomocí jakéhokoli zařízení podporujícího Google Assistant.",
                             "info_state_reporting": "Pokud povolíte hlášení stavu, Home Assistant bude posílat veškeré změny stavů všech exponovaných entit do Google. Toto vám umožní sledovat vždy aktuální stavy entit v aplikaci Google.",
                             "manage_entities": "Správa entit",
+                            "not_configured_text": "Než budete moci používat Google Assistant, musíte v aplikaci Google Home aktivovat dovednost Home Assistant Cloud pro Google Assistant.",
+                            "not_configured_title": "Google Asistent není aktivován",
                             "security_devices": "Zabezpečovací zařízení",
                             "sync_entities": "Synchronizovat entity s Google",
                             "sync_entities_404_message": "Nepodařilo se synchronizovat vaše entity s Googlem, řekněte Googlu 'Hey Google, sync my devices', aby vaše entity synchronizovala.",
@@ -1826,6 +1858,36 @@
                     "description": "Jednotkový systém, umístění, časové pásmo a další obecné parametry",
                     "section": {
                         "core": {
+                            "analytics": {
+                                "documentation": "Před povolením této možnosti se ujistěte, že jste navštívili stránku dokumentace analytiky {link}, abyste pochopili, co odesíláte za data a jak budou uložena.",
+                                "header": "Analytika",
+                                "instance_id": "ID instance: {huuid}",
+                                "introduction": "Sdílejte analytiku ze své instance. Tato data budou veřejně dostupná na {link}",
+                                "learn_more": "Zjistěte více, jak budou vaše údaje zpracovány.",
+                                "needs_base": "Aby byla tato možnost k dispozici, musíte povolit základní analytiku",
+                                "preference": {
+                                    "base": {
+                                        "description": "To zahrnuje ID instance, verzi a typ instalace",
+                                        "title": "Základní analytika"
+                                    },
+                                    "diagnostics": {
+                                        "description": "Sdílet zprávy o selhání a diagnostické informace",
+                                        "title": "Diagnostika"
+                                    },
+                                    "statistics": {
+                                        "description": "To zahrnuje počet prvků v instalaci, úplný seznam najdete v dokumentaci",
+                                        "title": "Statistiky používání"
+                                    },
+                                    "usage_supervisor": {
+                                        "description": "To zahrnuje názvy a možnosti vašich integrací a doplňků",
+                                        "title": "Použité integrace a doplňky"
+                                    },
+                                    "usage": {
+                                        "description": "To zahrnuje názvy vašich integrací",
+                                        "title": "Použité integrace"
+                                    }
+                                }
+                            },
                             "core_config": {
                                 "edit_requires_storage": "Editor je zakázán, protože nastavení je uloženo v configuration.yaml.",
                                 "elevation": "Nadmořská výška",
@@ -2013,6 +2075,9 @@
                     "filtering_by": "Filtrování podle",
                     "show": "Zobrazit"
                 },
+                "hassio": {
+                    "button": "Nastavit"
+                },
                 "header": "Nastavení Home Assistant",
                 "helpers": {
                     "caption": "Pomocníci",
@@ -2099,8 +2164,10 @@
                         "entity_unavailable": "Entita není dostupná",
                         "firmware": "Firmware: {version}",
                         "hub": "Připojeno přes",
+                        "logs": "logy",
                         "manuf": "od {manufacturer}",
                         "no_area": "Žádná oblast",
+                        "not_loaded": "Není načtena, zkontrolujte {logs_link}",
                         "options": "Možnosti",
                         "reload": "Nově načíst",
                         "reload_confirm": "Integrace byla nově načtena",
@@ -2126,6 +2193,7 @@
                         "finish": "Dokončit",
                         "loading_first_time": "Počkejte prosím, než bude integrace nainstalována.",
                         "not_all_required_fields": "Nejsou vyplněna všechna povinná pole.",
+                        "not_loaded": "Integraci se nepodařilo načíst, zkuste restartovat Home Assistant.",
                         "pick_flow_step": {
                             "new_flow": "Ne, nastavit další instanci integrace {integration}",
                             "title": "Objevili jsme tyto integrace, chcete je nastavit?"
@@ -2140,6 +2208,7 @@
                     "disable": {
                         "disabled_integrations": "{number} zakázáno",
                         "hide_disabled": "Skrýt zakázané integrace",
+                        "show": "Zobrazit",
                         "show_disabled": "Zobrazit zakázané integrace"
                     },
                     "discovered": "Objeveno",
@@ -2175,10 +2244,17 @@
                     "clear": "Zrušit",
                     "description": "Zobrazení logů Home Assistant",
                     "details": "Detaily protokolu ({level})",
+                    "level": {
+                        "critical": "KRITICKÉ",
+                        "debug": "LADĚNÍ",
+                        "error": "CHYBA",
+                        "info": "INFO",
+                        "warning": "VAROVÁNÍ"
+                    },
                     "load_full_log": "Načíst úplný protokol Home Assistanta",
                     "loading_log": "Načítání protokolu chyb...",
                     "multiple_messages": "zpráva se poprvé objevila v {time} a zobrazuje se {counter} krát",
-                    "no_errors": "Nebyly hlášeny žádné chyby.",
+                    "no_errors": "Nebyly hlášeny žádné chyby",
                     "no_issues": "Nejsou žádné nové problémy!",
                     "refresh": "Obnovit"
                 },
@@ -2459,7 +2535,7 @@
                         },
                         "introduction": "Editor scén vám umožňuje vytvářet a upravovat scény. Přečtěte si pokyny na odkazy níže, abyste se ujistili, že jste Home Assistant nastavili správně.",
                         "learn_more": "Další informace o scénách",
-                        "no_scenes": "Nemohli jsme najít žádné upravitelné scény",
+                        "no_scenes": "Nenašli jsme žádné scény",
                         "only_editable": "Lze upravovat pouze scény definované v souboru scenes.yaml.",
                         "pick_scene": "Vyberte scénu, kterou chcete upravit",
                         "show_info_scene": "Zobrazit informace o scéně"
@@ -2509,7 +2585,7 @@
                         },
                         "introduction": "Editor skriptů umožňuje vytvářet a upravovat skripty. Přečtěte si pokyny na odkazy níže, abyste se ujistili, že jste Home Assistant nastavili správně.",
                         "learn_more": "Další informace o skriptech",
-                        "no_scripts": "Nemohli jsme najít žádné upravitelné skripty",
+                        "no_scripts": "Nenašli jsme žádné skripty",
                         "run_script": "Spustit skript",
                         "show_info": "Zobrazit informace o skriptu"
                     }
@@ -2519,39 +2595,39 @@
                     "description": "Restartování a zastavení serveru Home Asistent",
                     "section": {
                         "reloading": {
-                            "automation": "Nově načíst automatizace",
-                            "command_line": "Nově načíst entity integrace Command line",
-                            "core": "Nově načíst umístění a přizpůsobení",
-                            "filesize": "Nově načíst entity integrace File size",
-                            "filter": "Nově načíst entity integrace Filter",
-                            "generic": "Nově načíst entity integrace Generic IP camera",
-                            "generic_thermostat": "Nově načíst entity integrace Generic thermostat",
-                            "group": "Nově načíst skupiny, skupiny entit a notifikační služby",
+                            "automation": "Automatizace",
+                            "command_line": "Entity integrace Command line",
+                            "core": "Umístění a přizpůsobení",
+                            "filesize": "Entity integrace File size",
+                            "filter": "Entity integrace Filter",
+                            "generic": "Entity integrace Generic IP camera",
+                            "generic_thermostat": "Entity integrace Generic thermostat",
+                            "group": "Skupiny, skupiny entit a notifikační služby",
                             "heading": "Nové načtení YAML konfigurace",
-                            "history_stats": "Nově načíst entity integrace History stats",
-                            "homekit": "Nově načíst entity integrace HomeKit",
-                            "input_boolean": "Nově načíst pomocníky - přepínače",
-                            "input_datetime": "Nově načíst pomocníky - data/časy",
-                            "input_number": "Nově načíst pomocníky - čísla",
-                            "input_select": "Nově načíst pomocníky - výběry",
-                            "input_text": "Nově načíst pomocníky - texty",
+                            "history_stats": "Entity integrace History stats",
+                            "homekit": "Integrace HomeKit",
+                            "input_boolean": "Pomocníci - přepínače",
+                            "input_datetime": "Pomocníci - data/časy",
+                            "input_number": "Pomocníci - čísla",
+                            "input_select": "Pomocníci - výběry",
+                            "input_text": "Pomocníci - texty",
                             "introduction": "Některé části Home Assistant lze nově načíst bez nutnosti restartování. Nové načtení zahodí jejich aktuální nastavení a načte nové.",
-                            "min_max": "Nově načíst entity integrace Min/Max",
-                            "mqtt": "Nově načíst ručně nastavené entity integrace MQTT",
-                            "person": "Nově načíst osoby",
-                            "ping": "Nově načíst entity integrace Ping",
-                            "reload": "Nově načíst integraci {domain}",
-                            "rest": "Nově načíst entity a notifikační služby integrace Rest",
-                            "rpi_gpio": "Nově načíst entity integrace Raspberry Pi GPIO",
-                            "scene": "Nově načíst scény",
-                            "script": "Nově načíst skripty",
-                            "smtp": "Nově načíst notifikační služby integrace SMTP",
-                            "statistics": "Nově načíst entity integrace Statistics",
-                            "telegram": "Nově načíst notifikační služby integrace Telegram",
-                            "template": "Nově načíst entity integrace Template",
-                            "trend": "Nově načíst entity integrace Trend",
-                            "universal": "Nově načíst entity integrace Universal media player",
-                            "zone": "Nově načíst zóny"
+                            "min_max": "Entity integrace Min/Max",
+                            "mqtt": "Ručně nastavené entity integrace MQTT",
+                            "person": "Osoby",
+                            "ping": "Entity integrace Ping",
+                            "reload": "Integrace {domain}",
+                            "rest": "Entity a notifikační služby integrace Rest",
+                            "rpi_gpio": "Entity integrace Raspberry Pi GPIO",
+                            "scene": "Scény",
+                            "script": "Skripty",
+                            "smtp": "Notifikační služby integrace SMTP",
+                            "statistics": "Entity integrace Statistics",
+                            "telegram": "Notifikační služby integrace Telegram",
+                            "template": "Entity integrace Template",
+                            "trend": "Entity integrace Trend",
+                            "universal": "Entity integrace Universal media player",
+                            "zone": "Zóny"
                         },
                         "server_management": {
                             "confirm_restart": "Opravdu chcete restartovat Home Assistant?",
@@ -2803,6 +2879,7 @@
                         "server_version": "Verze serveru"
                     },
                     "device_info": {
+                        "device_config": "Nakonfigurujte zařízení",
                         "node_ready": "Uzel připraven",
                         "node_status": "Stav uzlu",
                         "zwave_info": "Z-Wave Info"
@@ -2814,6 +2891,15 @@
                         "connected": "Připojeno",
                         "connecting": "Připojování",
                         "unknown": "Nezjištěno"
+                    },
+                    "node_config": {
+                        "attribution": "Konfigurační parametry a popis zařízení poskytuje {device_database}",
+                        "battery_device_notice": "Aby bylo možné aktualizovat konfiguraci, musí být bateriová zařízení vzhůru. Pokyny k probuzení zařízení naleznete v příručce k zařízení.",
+                        "error_device_not_found": "Zařízení nenalezeno",
+                        "header": "Konfigurace zařízení Z-Wave",
+                        "introduction": "Spravujte a upravujte specifické konfigurační parametry zařízení (uzlu) pro vybrané zařízení",
+                        "parameter_is_read_only": "Tento parametr je jen pro čtení.",
+                        "zwave_js_device_database": "Databáze zařízení Z-Wave JS"
                     },
                     "node_status": {
                         "alive": "Naživu",
@@ -2961,6 +3047,7 @@
                         "column_parameter": "Parametr",
                         "description": "Vývojářský nástroj pro služby umožňuje zavolat jakoukoli dostupnou službu v Home Assistant",
                         "fill_example_data": "Vyplnit ukázková data",
+                        "no_template_ui_support": "Uživatelské rozhraní nepodporuje šablony, stále můžete použít editor YAML.",
                         "title": "Služby",
                         "ui_mode": "Přejít do režimu uživatelského rozhraní",
                         "yaml_mode": "Přejít do režimu YAML",
@@ -3007,7 +3094,12 @@
             "error": {
                 "go_back": "Vrátit se",
                 "supervisor": {
-                    "ask": "Požádat o pomoc"
+                    "ask": "Požádat o pomoc",
+                    "observer": "Zkontrolujte pozorovatele",
+                    "reboot": "Zkuste restartovat hostitele",
+                    "system_health": "Kontrola stavu systému",
+                    "title": "Nelze načíst panel pro správu!",
+                    "wait": "Pokud jste právě začali, ujistěte se, že jste správci poskytli dostatek času k rozběhnutí."
                 }
             },
             "history": {
@@ -3655,6 +3747,10 @@
                 }
             },
             "page-onboarding": {
+                "analytics": {
+                    "finish": "Další",
+                    "intro": "Sdílejte analytiku ze své instance. Tato data budou veřejně dostupná na {link}"
+                },
                 "core-config": {
                     "button_detect": "Rozpoznat",
                     "finish": "Další",
@@ -3664,12 +3760,14 @@
                     "location_name": "Název vaší instalace Home Assistant",
                     "location_name_default": "Domov"
                 },
+                "finish": "Dokončit",
                 "integration": {
                     "finish": "Dokončit",
                     "intro": "Zařízení a služby jsou v Home Assistant reprezentovány jako integrace. Ty můžete nastavit nyní nebo později v nastavení.",
                     "more_integrations": "Více"
                 },
                 "intro": "Jste připraveni oživit svůj domov, zachovat si své soukromí a připojit se k celosvětové komunitě tvůrců?",
+                "next": "Další",
                 "restore": {
                     "description": "Případně můžete Home Assistant obnovit z poslední zálohy.",
                     "hide_log": "Skrýt celý log",
@@ -3763,6 +3861,19 @@
                     "disable": "Zakázat",
                     "enable": "Povolit",
                     "header": "Multifaktorové autentizační moduly"
+                },
+                "number_format": {
+                    "description": "Zvolte způsob formátování čísel.",
+                    "dropdown_label": "Formát čísel",
+                    "formats": {
+                        "comma_decimal": "1,234,567.89",
+                        "decimal_comma": "1.234.567,89",
+                        "language": "Automaticky (dle nastaveného jazyka)",
+                        "none": "Žádný",
+                        "space_comma": "1 234 567,89",
+                        "system": "Dle systému"
+                    },
+                    "header": "Formát čísel"
                 },
                 "push_notifications": {
                     "add_device_prompt": {

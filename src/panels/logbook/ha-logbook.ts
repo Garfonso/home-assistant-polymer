@@ -22,7 +22,7 @@ import { computeRTL, emitRTLDirection } from "../../common/util/compute_rtl";
 import "../../components/entity/state-badge";
 import "../../components/ha-circular-progress";
 import "../../components/ha-relative-time";
-import { AutomationTraceContexts } from "../../data/automation_debug";
+import { TraceContexts } from "../../data/trace";
 import { LogbookEntry } from "../../data/logbook";
 import { haStyle, haStyleScrollbar } from "../../resources/styles";
 import { HomeAssistant } from "../../types";
@@ -34,7 +34,7 @@ class HaLogbook extends LitElement {
   @property({ attribute: false }) public userIdToName = {};
 
   @property({ attribute: false })
-  public traceContexts: AutomationTraceContexts = {};
+  public traceContexts: TraceContexts = {};
 
   @property({ attribute: false }) public entries: LogbookEntry[] = [];
 
@@ -62,7 +62,7 @@ class HaLogbook extends LitElement {
   protected shouldUpdate(changedProps: PropertyValues<this>) {
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
     const languageChanged =
-      oldHass === undefined || oldHass.language !== this.hass.language;
+      oldHass === undefined || oldHass.locale !== this.hass.locale;
 
     return (
       changedProps.has("entries") ||
@@ -139,7 +139,7 @@ class HaLogbook extends LitElement {
             new Date(previous.when).toDateString())
           ? html`
               <h4 class="date">
-                ${formatDate(new Date(item.when), this.hass.language)}
+                ${formatDate(new Date(item.when), this.hass.locale)}
               </h4>
             `
           : html``}
@@ -204,7 +204,7 @@ class HaLogbook extends LitElement {
                 <span
                   >${formatTimeWithSeconds(
                     new Date(item.when),
-                    this.hass.language
+                    this.hass.locale
                   )}</span
                 >
                 -
@@ -218,7 +218,7 @@ class HaLogbook extends LitElement {
                       -
                       <a
                         href=${`/config/automation/trace/${
-                          this.traceContexts[item.context_id!].automation_id
+                          this.traceContexts[item.context_id!].item_id
                         }?run_id=${
                           this.traceContexts[item.context_id!].run_id
                         }`}
@@ -259,7 +259,7 @@ class HaLogbook extends LitElement {
       haStyle,
       haStyleScrollbar,
       css`
-        :host {
+        :host([virtualize]) {
           display: block;
           height: 100%;
         }

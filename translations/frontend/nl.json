@@ -467,12 +467,14 @@
                     "docker": "De Docker omgeving werkt niet goed",
                     "privileged": "Supervisor heeft onvoldoende toegangsrechten",
                     "setup": "Setup van de Supervisor mislukt",
-                    "supervisor": "Supervisor kon niet worden bijgewerkt"
+                    "supervisor": "Supervisor kon niet worden bijgewerkt",
+                    "untrusted": "Niet-vertrouwde inhoud gedetecteerd"
                 },
                 "unhealthy_title": "Er is iets mis met je installatie",
                 "unsupported_description": "Hieronder vindt je een lijst met problemen die bij je installatie zijn aangetroffen. Klik op de links om te zien hoe je de problemen kunt oplossen.",
                 "unsupported_reason": {
                     "container": "Containers waarvan bekend is dat ze problemen veroorzaken",
+                    "content-trust": "Validatie van content-trust is uitgeschakeld",
                     "dbus": "DBUS",
                     "docker_configuration": "Docker Configuratie",
                     "docker_version": "Docker versie",
@@ -721,6 +723,9 @@
                 "today": "Vandaag"
             },
             "data-table": {
+                "clear": "Wis",
+                "filtering_by": "Filteren op",
+                "hidden": "{number} verborgen",
                 "no-data": "Geen gegevens",
                 "search": "Zoek"
             },
@@ -834,6 +839,12 @@
             "picture-upload": {
                 "label": "Afbeelding",
                 "unsupported_format": "Niet-ondersteund formaat. Kies een JPEG-, PNG- of GIF-afbeelding."
+            },
+            "related-filter-menu": {
+                "filter_by_area": "Filter op gebied",
+                "filter_by_device": "Filter op apparaat",
+                "filtered_by_area": "gebied: {area_name}",
+                "filtered_by_device": "apparaat: {device_name}"
             },
             "related-items": {
                 "area": "Gebied",
@@ -1116,7 +1127,7 @@
                         "reload": "Herlaad {domain}",
                         "rest": "Herlaad rest entiteiten en notificatieservices",
                         "rpi_gpio": "Herlaad Raspberry PI GPIO entiteiten",
-                        "scene": "Herlaad scenes",
+                        "scene": "Scenes",
                         "script": "Herlaad scripts",
                         "smtp": "Herlaad smtp notificatie services",
                         "statistics": "Herlaad statistieken entiteiten",
@@ -1130,6 +1141,11 @@
                         "perform_action": "{action} Server",
                         "restart": "Herstarten",
                         "stop": "Stop"
+                    },
+                    "types": {
+                        "navigation": "Navigeer",
+                        "reload": "Herlaad",
+                        "server_control": "Server"
                     }
                 },
                 "filter_placeholder": "Entiteitsfilter"
@@ -1172,6 +1188,9 @@
                 "zha_device_card": {
                     "device_name_placeholder": "Wijzig apparaatnaam"
                 }
+            },
+            "zha_reconfigure_device": {
+                "heading": "Apparaat opnieuw configureren"
             }
         },
         "duration": {
@@ -1298,10 +1317,15 @@
                                 "device_id": {
                                     "action": "Actie",
                                     "extra_fields": {
+                                        "brightness_pct": "Helderheid",
                                         "code": "Code",
+                                        "flash": "Flash",
+                                        "humidity": "Vochtigheid",
                                         "message": "Bericht",
+                                        "mode": "Modus",
                                         "position": "Positie",
-                                        "title": "Titel"
+                                        "title": "Titel",
+                                        "value": "Waarde"
                                     },
                                     "label": "Apparaat"
                                 },
@@ -1374,7 +1398,9 @@
                                     "extra_fields": {
                                         "above": "Boven",
                                         "below": "Onder",
-                                        "for": "Duur"
+                                        "for": "Duur",
+                                        "hvac_mode": "HVAC-modus",
+                                        "preset_mode": "Vooraf ingestelde modus"
                                     },
                                     "label": "Apparaat"
                                 },
@@ -1459,6 +1485,7 @@
                         "move_down": "Verplaats omlaag",
                         "move_up": "Verplaats omhoog",
                         "save": "Opslaan",
+                        "show_trace": "Tracering weergeven",
                         "triggers": {
                             "add": "Trigger toevoegen",
                             "delete": "Verwijderen",
@@ -1568,7 +1595,7 @@
                         "delete_automation": "Verwijder automatisering",
                         "delete_confirm": "Weet je zeker dat je deze automatisering wilt verwijderen?",
                         "dev_automation": "Debug automatisering",
-                        "dev_only_editable": "Alleen automatiseringen in automations.yaml kunnen zijn debuggable",
+                        "dev_only_editable": "Alleen automatiseringen in automations.yaml kunnen worden gedebugd.",
                         "duplicate": "Dupliceren",
                         "duplicate_automation": "Dupliceer automatisering",
                         "edit_automation": "Bewerk automatisering",
@@ -1578,7 +1605,7 @@
                         },
                         "introduction": "Met de automatiseringseditor editor kun je automatiseringen maken en bewerken. Volg de link hieronder om er zeker van te zijn dat je Home Assistant juist hebt geconfigureerd.",
                         "learn_more": "Meer informatie over automatiseringen",
-                        "no_automations": "We konden geen bewerkbare automatiseringen vinden",
+                        "no_automations": "We konden geen automatiseringen vinden",
                         "only_editable": "Alleen automatiseringen in automations.yaml kunnen worden bewerkt.",
                         "pick_automation": "Kies te bewerken automatisering",
                         "show_info_automation": "Informatie weergeven over automatisering"
@@ -1632,8 +1659,8 @@
                         },
                         "introduction": "Met de Blueprinteditor kunt je Blueprints maken en bewerken.",
                         "learn_more": "Meer informatie over Blueprints",
-                        "share_blueprint": "Deel blauwdruk",
-                        "share_blueprint_no_url": "Kan blauwdruk niet delen: geen bron-URL",
+                        "share_blueprint": "Deel Blueprint",
+                        "share_blueprint_no_url": "Kan Blueprint niet delen: geen bron-URL",
                         "use_blueprint": "Automatisering maken"
                     }
                 },
@@ -1667,6 +1694,8 @@
                             "info": "Met de Google Assistant integratie voor Home Assistant Cloud kun je al je Home Assistant apparaten bedienen via elk apparaat waarop Google Assistant is ingeschakeld.",
                             "info_state_reporting": "Als u statusrapportage inschakelt, stuurt Home Assistant alle statuswijzigingen van blootgestelde entiteiten naar Google. Hierdoor kunt u altijd de meest actuele statussen in de Google-app zien.",
                             "manage_entities": "Entiteiten beheren",
+                            "not_configured_text": "Voordat u Google Assistant kunt gebruiken, moet u de Home Assistant Cloud-skill voor Google Assistant activeren in de Google Home-app.",
+                            "not_configured_title": "Google Assistant is niet geactiveerd",
                             "security_devices": "Beveiligingsapparaten",
                             "sync_entities": "Synchroniseer entiteiten met Google",
                             "sync_entities_404_message": "Kan uw entiteiten niet synchroniseren met Google, vraag Google 'Hey Google, synchroniseer mijn apparaten' om uw entiteiten te synchroniseren.",
@@ -1829,6 +1858,36 @@
                     "description": "Eenheidssysteem, locatie, tijdzone en andere algemene parameters",
                     "section": {
                         "core": {
+                            "analytics": {
+                                "documentation": "Voordat u dit inschakelt, moet u de analytics documentatie pagina {link} bezoeken om te begrijpen wat u verstuurt en hoe het wordt opgeslagen.",
+                                "header": "Analytics",
+                                "instance_id": "Instantie-ID: {huuid}",
+                                "introduction": "Deel analyses vanuit uw instantie. Deze gegevens zijn openbaar beschikbaar op {link}",
+                                "learn_more": "Lees meer over hoe uw gegevens worden verwerkt.",
+                                "needs_base": "U moet basisanalyses inschakelen om deze optie beschikbaar te maken",
+                                "preference": {
+                                    "base": {
+                                        "description": "Dit bevat de instantie-ID, de versie en het installatietype",
+                                        "title": "Basisanalyses"
+                                    },
+                                    "diagnostics": {
+                                        "description": "Deel crashrapporten en diagnostische informatie",
+                                        "title": "Diagnostiek"
+                                    },
+                                    "statistics": {
+                                        "description": "Dit omvat een telling van elementen in uw installatie, voor een volledige lijst zie de documentatie",
+                                        "title": "Gebruiksstatistieken"
+                                    },
+                                    "usage_supervisor": {
+                                        "description": "Dit omvat de namen en mogelijkheden van uw integraties en add-ons",
+                                        "title": "Gebruikte integraties en add-ons"
+                                    },
+                                    "usage": {
+                                        "description": "Dit bevat de namen van uw integraties",
+                                        "title": "Gebruikte integraties"
+                                    }
+                                }
+                            },
                             "core_config": {
                                 "edit_requires_storage": "Editor uitgeschakeld omdat de configuratie is opgeslagen in configuration.yaml",
                                 "elevation": "Hoogte",
@@ -2016,6 +2075,9 @@
                     "filtering_by": "Filteren op",
                     "show": "Toon"
                 },
+                "hassio": {
+                    "button": "Configureer"
+                },
                 "header": "Configureer Home Assistant",
                 "helpers": {
                     "caption": "Helpers",
@@ -2102,8 +2164,10 @@
                         "entity_unavailable": "Entiteit niet beschikbaar",
                         "firmware": "Firmware: {version}",
                         "hub": "Verbonden via",
+                        "logs": "logs",
                         "manuf": "door {manufacturer}",
                         "no_area": "Geen Gebied",
+                        "not_loaded": "Niet geladen, controleer de {logs_link}",
                         "options": "Opties",
                         "reload": "Herlaad",
                         "reload_confirm": "De integratie is opnieuw geladen",
@@ -2129,6 +2193,7 @@
                         "finish": "Voltooien",
                         "loading_first_time": "Even geduld a.u.b. terwijl de integratie wordt geïnstalleerd",
                         "not_all_required_fields": "Niet alle verplichte velden zijn ingevuld.",
+                        "not_loaded": "De integratie kan niet worden geladen, probeer Home Assistant opnieuw te starten.",
                         "pick_flow_step": {
                             "new_flow": "Nee, zet een andere instantie van {integration} op",
                             "title": "We hebben deze ontdekt. Wil je ze instellen?"
@@ -2143,6 +2208,7 @@
                     "disable": {
                         "disabled_integrations": "{number} uitgeschakeld",
                         "hide_disabled": "Verberg uitgeschakelde integraties",
+                        "show": "Toon",
                         "show_disabled": "Toon uitgeschakelde integraties"
                     },
                     "discovered": "Ontdekt",
@@ -2178,10 +2244,17 @@
                     "clear": "Wis",
                     "description": "Home Assistant logboek bekijken",
                     "details": "Logboekdetails ({level})",
+                    "level": {
+                        "critical": "KRITISCH",
+                        "debug": "DEBUG",
+                        "error": "FOUT",
+                        "info": "INFO",
+                        "warning": "WAARSCHUWING"
+                    },
                     "load_full_log": "Laad volledige Home Assistant logboek",
                     "loading_log": "Foutenlogboek laden ...",
                     "multiple_messages": "bericht kwam voor het eerst om {time} en verschijnt {counter} keer",
-                    "no_errors": "Er zijn geen fouten gerapporteerd.",
+                    "no_errors": "Er zijn geen fouten gemeld",
                     "no_issues": "Er zijn geen problemen!",
                     "refresh": "Vernieuwen"
                 },
@@ -2462,7 +2535,7 @@
                         },
                         "introduction": "Met de scene editor kun je scenes maken en bewerken. Volg de onderstaande link om de instructies te lezen om ervoor te zorgen dat je Home Assistant correct hebt geconfigureerd.",
                         "learn_more": "Meer informatie over scènes",
-                        "no_scenes": "We konden geen bewerkbare scènes vinden.",
+                        "no_scenes": "We konden geen scènes vinden",
                         "only_editable": "Alleen scènes die zijn gedefinieerd in scenes.yaml kunnen worden bewerkt.",
                         "pick_scene": "Kies een scène om te bewerken",
                         "show_info_scene": "Informatie weergeven over scène"
@@ -2512,7 +2585,7 @@
                         },
                         "introduction": "Met de editor kunt u scripts maken en bewerken. Volg de onderstaande link om de instructies te lezen om ervoor te zorgen dat u Home Assistant correct hebt geconfigureerd.",
                         "learn_more": "Meer informatie over scripts",
-                        "no_scripts": "We hebben geen bewerkbare scrips gevonden",
+                        "no_scripts": "We hebben geen scripts gevonden",
                         "run_script": "Script uitvoeren",
                         "show_info": "Toon info over script"
                     }
@@ -2522,39 +2595,39 @@
                     "description": "De Home Assistant-server opnieuw opstarten en stoppen",
                     "section": {
                         "reloading": {
-                            "automation": "Herlaad automatiseringen",
-                            "command_line": "Herlaad opdrachtregel-entiteiten",
-                            "core": "Herlaad locatie en aanpassingen",
-                            "filesize": "Herlaad bestandsgrootte entiteiten",
-                            "filter": "Herlaad filter-entiteiten",
-                            "generic": "Herlaad generieke IP camera entiteiten",
-                            "generic_thermostat": "Herlaad generieke thermostaat entiteiten",
-                            "group": "Herlaad groepen, groepsentiteiten en notify services",
+                            "automation": "Automatiseringen",
+                            "command_line": "Opdrachtregel-entiteiten",
+                            "core": "Locatie en aanpassingen",
+                            "filesize": "Bestandsgrootte entiteiten",
+                            "filter": "Filter-entiteiten",
+                            "generic": "Generieke IP camera entiteiten",
+                            "generic_thermostat": "Generieke thermostaat entiteiten",
+                            "group": "Groepen, groepsentiteiten en notify services",
                             "heading": "Configuratie herladen",
-                            "history_stats": "Herlaad historische statistieken entiteiten",
-                            "homekit": "Herlaad HomeKit",
-                            "input_boolean": "Herlaad input booleans",
-                            "input_datetime": "Herlaad input date times",
-                            "input_number": "Herlaad input numbers",
-                            "input_select": "Herlaad input selects",
-                            "input_text": "Herlaad input texts",
+                            "history_stats": "Historische statistieken entiteiten",
+                            "homekit": "HomeKit",
+                            "input_boolean": "Input booleans",
+                            "input_datetime": "Input date times",
+                            "input_number": "Input numbers",
+                            "input_select": "Input selects",
+                            "input_text": "Input texts",
                             "introduction": "Sommige delen van Home Assistant kunnen opnieuw worden geladen zonder dat een herstart vereist is. Als je herladen gebruikt, wordt de huidige configuratie leeggemaakt en wordt de nieuwe geladen.",
-                            "min_max": "Herlaad min/max entiteiten",
+                            "min_max": "Min/max entiteiten",
                             "mqtt": "Herlaad handmatig geconfigureerde MQTT-entiteiten",
-                            "person": "Herlaad personen",
-                            "ping": "Herlaad ping binaire sensor entiteiten",
+                            "person": "Personen",
+                            "ping": "Ping binaire sensor entiteiten",
                             "reload": "Herlaad {domain}",
-                            "rest": "Herlaad rest-entiteiten en notify-services",
+                            "rest": "Rest-entiteiten en notify-services",
                             "rpi_gpio": "Herlaad Raspberry Pi GPIO-entiteiten",
-                            "scene": "Herlaad scenes",
-                            "script": "Herlaad scripts",
+                            "scene": "Scenes",
+                            "script": "Scripts",
                             "smtp": "Herlaad de SMTP notify services",
-                            "statistics": "Herlaad statistische entiteiten",
+                            "statistics": "Statistische entiteiten",
                             "telegram": "Herlaad telegram notify services",
-                            "template": "Herlaad template entiteiten",
-                            "trend": "Herlaad trend-entiteiten",
-                            "universal": "Herlaad universele mediaspeler entiteiten",
-                            "zone": "Herlaad zones"
+                            "template": "Template entiteiten",
+                            "trend": "Trend-entiteiten",
+                            "universal": "Universele mediaspeler entiteiten",
+                            "zone": "Zones"
                         },
                         "server_management": {
                             "confirm_restart": "Weet je zeker dat je Home Assistant opnieuw wilt starten?",
@@ -2806,6 +2879,7 @@
                         "server_version": "Server Versie"
                     },
                     "device_info": {
+                        "device_config": "Configureer Apparaat",
                         "node_ready": "Knooppunt gereed",
                         "node_status": "Knooppuntstatus",
                         "zwave_info": "Z-Wave info"
@@ -2817,6 +2891,15 @@
                         "connected": "Verbonden",
                         "connecting": "Verbinden",
                         "unknown": "Onbekend"
+                    },
+                    "node_config": {
+                        "attribution": "Apparaat configuratie parameters en beschrijvingen worden geleverd door de {device_database}",
+                        "battery_device_notice": "Batterij-apparaten moeten wakker zijn om hun configuratie bij te werken. Raadpleeg de handleiding van uw toestel voor instructies over hoe u het toestel kunt wekken.",
+                        "error_device_not_found": "Apparaat niet gevonden",
+                        "header": "Z-Wave apparaatconfiguratie",
+                        "introduction": "Beheren en aanpassen van apparaat (node) specifieke configuratieparameters voor het geselecteerde apparaat",
+                        "parameter_is_read_only": "Deze parameter is alleen-lezen.",
+                        "zwave_js_device_database": "Z-Wave JS Apparaat Database"
                     },
                     "node_status": {
                         "alive": "Levend",
@@ -2964,6 +3047,7 @@
                         "column_parameter": "Parameter",
                         "description": "Met het service ontwikkelhulpmiddel kunt je elke beschikbare service in Home Assistant aanroepen.",
                         "fill_example_data": "Voorbeeldgegeven invullen",
+                        "no_template_ui_support": "De UI ondersteunt geen sjablonen, u kunt nog steeds de YAML editor gebruiken.",
                         "title": "Services",
                         "ui_mode": "Ga naar UI modus",
                         "yaml_mode": "Ga naar YAML mode",
@@ -3220,7 +3304,7 @@
                             "tap_action": "Tik Actie",
                             "theme": "Thema",
                             "title": "Titel",
-                            "unit": "Maat",
+                            "unit": "Eenheid",
                             "url": "URL"
                         },
                         "glance": {
@@ -3663,6 +3747,10 @@
                 }
             },
             "page-onboarding": {
+                "analytics": {
+                    "finish": "Volgende",
+                    "intro": "Deel de analyses van uw instantie. Deze gegevens zullen publiekelijk beschikbaar zijn op {link}"
+                },
                 "core-config": {
                     "button_detect": "Detecteren",
                     "finish": "Volgende",
@@ -3672,12 +3760,14 @@
                     "location_name": "Naam van de Home Assistant installatie",
                     "location_name_default": "Huis"
                 },
+                "finish": "Voltooien",
                 "integration": {
                     "finish": "Voltooien",
                     "intro": "Apparaten en services worden in Home Assistant weergegeven als integraties. U kunt ze nu instellen of later via het configuratiescherm.",
                     "more_integrations": "Meer"
                 },
                 "intro": "Ben je klaar om je huis wakker te maken, je privacy terug te winnen en deel te nemen aan een wereldwijde gemeenschap van knutselaars?",
+                "next": "Volgende",
                 "restore": {
                     "description": "Je kunt ook herstellen vanaf een eerdere snapshot.",
                     "hide_log": "Verberg volledig logboek",
@@ -3771,6 +3861,19 @@
                     "disable": "Uitschakelen",
                     "enable": "Inschakelen",
                     "header": "Twee-factor-authenticatie modules"
+                },
+                "number_format": {
+                    "description": "Kies hoe getallen worden opgemaakt.",
+                    "dropdown_label": "Getalnotatie",
+                    "formats": {
+                        "comma_decimal": "1,234,567.89",
+                        "decimal_comma": "1.234.567,89",
+                        "language": "Automatisch (taalinstelling gebruiken)",
+                        "none": "Geen",
+                        "space_comma": "1 234 567,89",
+                        "system": "Systeemlokalen gebruiken"
+                    },
+                    "header": "Getalnotatie"
                 },
                 "push_notifications": {
                     "add_device_prompt": {

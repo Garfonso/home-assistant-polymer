@@ -5,7 +5,6 @@ import {
 } from "home-assistant-js-websocket";
 import { computeObjectId } from "../common/entity/compute_object_id";
 import { navigate } from "../common/navigate";
-import { LocalizeFunc } from "../common/translations/localize";
 import { HomeAssistant } from "../types";
 import { Condition, Trigger } from "./automation";
 
@@ -23,7 +22,7 @@ export interface ScriptEntity extends HassEntityBase {
 
 export interface ScriptConfig {
   alias: string;
-  sequence: Action[];
+  sequence: Action | Action[];
   icon?: string;
   mode?: typeof MODES[number];
   max?: number;
@@ -38,7 +37,8 @@ export interface EventAction {
 
 export interface ServiceAction {
   alias?: string;
-  service: string;
+  service?: string;
+  service_template?: string;
   entity_id?: string;
   target?: HassServiceTarget;
   data?: Record<string, any>;
@@ -77,7 +77,7 @@ export interface WaitAction {
 
 export interface WaitForTriggerAction {
   alias?: string;
-  wait_for_trigger: Trigger[];
+  wait_for_trigger: Trigger | Trigger[];
   timeout?: number;
   continue_on_timeout?: boolean;
 }
@@ -88,7 +88,8 @@ export interface RepeatAction {
 }
 
 interface BaseRepeat {
-  sequence: Action[];
+  alias?: string;
+  sequence: Action | Action[];
 }
 
 export interface CountRepeat extends BaseRepeat {
@@ -103,10 +104,26 @@ export interface UntilRepeat extends BaseRepeat {
   until: Condition[];
 }
 
+export interface ChooseActionChoice {
+  alias?: string;
+  conditions: string | Condition[];
+  sequence: Action | Action[];
+}
+
 export interface ChooseAction {
   alias?: string;
-  choose: [{ conditions: Condition[]; sequence: Action[] }];
-  default?: Action[];
+  choose: ChooseActionChoice[];
+  default?: Action | Action[];
+}
+
+export interface VariablesAction {
+  alias?: string;
+  variables: Record<string, unknown>;
+}
+
+interface UnknownAction {
+  alias?: string;
+  [key: string]: unknown;
 }
 
 export type Action =
@@ -119,7 +136,26 @@ export type Action =
   | WaitAction
   | WaitForTriggerAction
   | RepeatAction
-  | ChooseAction;
+  | ChooseAction
+  | VariablesAction
+  | UnknownAction;
+
+export interface ActionTypes {
+  delay: DelayAction;
+  wait_template: WaitAction;
+  check_condition: Condition;
+  fire_event: EventAction;
+  device_action: DeviceAction;
+  activate_scene: SceneAction;
+  repeat: RepeatAction;
+  choose: ChooseAction;
+  wait_for_trigger: WaitForTriggerAction;
+  variables: VariablesAction;
+  service: ServiceAction;
+  unknown: UnknownAction;
+}
+
+export type ActionType = keyof ActionTypes;
 
 export const triggerScript = (
   hass: HomeAssistant,
@@ -160,40 +196,40 @@ export const getScriptEditorInitData = () => {
   return data;
 };
 
-export const describeAction = (action: Action, _localize: LocalizeFunc) => {
+export const getActionType = (action: Action): ActionType => {
   // Check based on config_validation.py#determine_script_action
   if ("delay" in action) {
-    return "Delay";
+    return "delay";
   }
   if ("wait_template" in action) {
-    return "Wait";
+    return "wait_template";
   }
   if ("condition" in action) {
-    return "Check condition";
+    return "check_condition";
   }
   if ("event" in action) {
-    return "Fire event";
+    return "fire_event";
   }
   if ("device_id" in action) {
-    return "Run Device Action";
+    return "device_action";
   }
   if ("scene" in action) {
-    return "Activate a scene";
+    return "activate_scene";
   }
   if ("repeat" in action) {
-    return "Repeat an action multiple times";
+    return "repeat";
   }
   if ("choose" in action) {
-    return "Choose an action";
+    return "choose";
   }
   if ("wait_for_trigger" in action) {
-    return "Wait for a trigger";
+    return "wait_for_trigger";
   }
   if ("variables" in action) {
-    return "Define variables";
+    return "variables";
   }
   if ("service" in action) {
-    return "Call service";
+    return "service";
   }
-  return "Unknown action";
+  return "unknown";
 };

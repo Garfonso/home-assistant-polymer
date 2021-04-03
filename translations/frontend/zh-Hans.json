@@ -467,12 +467,14 @@
                     "docker": "Docker 环境无法正常工作",
                     "privileged": "Supervisor 权限不够",
                     "setup": "Supervisor 设置失败",
-                    "supervisor": "Supervisor 未能更新"
+                    "supervisor": "Supervisor 未能更新",
+                    "untrusted": "检测到不受信任的内容"
                 },
                 "unhealthy_title": "系统状态不佳",
                 "unsupported_description": "以下是系统存在的问题的列表，请点击链接以了解如何解决问题。",
                 "unsupported_reason": {
                     "container": "已知会导致问题的容器",
+                    "content-trust": "内容信任验证已禁用",
                     "dbus": "DBUS",
                     "docker_configuration": "Docker 配置",
                     "docker_version": "Docker 版本",
@@ -721,6 +723,9 @@
                 "today": "今天"
             },
             "data-table": {
+                "clear": "清除",
+                "filtering_by": "筛选方式:",
+                "hidden": "{number} 个已隐藏",
                 "no-data": "没有数据",
                 "search": "搜索"
             },
@@ -834,6 +839,12 @@
             "picture-upload": {
                 "label": "图片",
                 "unsupported_format": "格式不受支持，请选择 JPEG、PNG 或 GIF 图像。"
+            },
+            "related-filter-menu": {
+                "filter_by_area": "按区域",
+                "filter_by_device": "按设备",
+                "filtered_by_area": "区域: {area_name}",
+                "filtered_by_device": "设备: {device_name}"
             },
             "related-items": {
                 "area": "区域",
@@ -1094,42 +1105,47 @@
                         "zone": "地点"
                     },
                     "reload": {
-                        "automation": "重载自动化",
-                        "command_line": "重载命令行实体",
-                        "core": "重载位置和自定义",
-                        "filesize": "重载文件大小实体",
-                        "filter": "重载 filter 实体",
-                        "generic": "重载通用 IP 摄像机实体",
-                        "generic_thermostat": "重载通用恒温器实体",
-                        "group": "重载分组、分组实体及其通知服务",
-                        "history_stats": "重载历史记录统计实体",
-                        "homekit": "重载 HomeKit",
+                        "automation": "自动化",
+                        "command_line": "命令行实体",
+                        "core": "位置和自定义",
+                        "filesize": "文件大小实体",
+                        "filter": "filter 实体",
+                        "generic": "通用 IP 摄像机实体",
+                        "generic_thermostat": "通用恒温器实体",
+                        "group": "分组、分组实体及其通知服务",
+                        "history_stats": "历史记录统计实体",
+                        "homekit": "HomeKit",
                         "input_boolean": "重载二元选择器",
                         "input_datetime": "重载日期选择器",
                         "input_number": "重载数值选择器",
                         "input_select": "重载多项选择器",
                         "input_text": "重载文字输入",
-                        "min_max": "重载最小值/最大值实体",
-                        "mqtt": "重载手动配置的 MQTT 实体",
-                        "person": "重载人员",
-                        "ping": "重载 ping 二元传感器实体",
-                        "reload": "重载{domain}",
-                        "rest": "重载 REST 实体及其通知服务",
-                        "rpi_gpio": "重载树莓派 GPIO 实体",
-                        "scene": "重载场景",
-                        "script": "重载脚本",
-                        "smtp": "重载 SMTP 通知服务",
-                        "statistics": "重载 statistics 实体",
-                        "telegram": "重载 telegram 通知服务",
-                        "template": "重载模板实体",
-                        "trend": "重载 trend 实体",
-                        "universal": "重载通用媒体播放器实体",
-                        "zone": "重载地点"
+                        "min_max": "最小值/最大值实体",
+                        "mqtt": "手动配置的 MQTT 实体",
+                        "person": "人员",
+                        "ping": "ping 二元传感器实体",
+                        "reload": "{domain}",
+                        "rest": "REST 实体及其通知服务",
+                        "rpi_gpio": "树莓派 GPIO 实体",
+                        "scene": "场景",
+                        "script": "脚本",
+                        "smtp": "SMTP 通知服务",
+                        "statistics": "statistics 实体",
+                        "telegram": "Telegram 通知服务",
+                        "template": "模板实体",
+                        "trend": "trend 实体",
+                        "universal": "通用媒体播放器实体",
+                        "zone": "地点"
                     },
                     "server_control": {
                         "perform_action": "{action}服务",
                         "restart": "重启",
                         "stop": "停止"
+                    },
+                    "types": {
+                        "navigation": "前往",
+                        "reload": "重载",
+                        "server_control": "服务"
                     }
                 },
                 "filter_placeholder": "实体筛选"
@@ -1172,6 +1188,9 @@
                 "zha_device_card": {
                     "device_name_placeholder": "更改设备名称"
                 }
+            },
+            "zha_reconfigure_device": {
+                "heading": "重新配置设备"
             }
         },
         "duration": {
@@ -1298,10 +1317,15 @@
                                 "device_id": {
                                     "action": "动作",
                                     "extra_fields": {
+                                        "brightness_pct": "亮度",
                                         "code": "代码",
+                                        "flash": "闪烁",
+                                        "humidity": "湿度",
                                         "message": "消息",
+                                        "mode": "模式",
                                         "position": "位置",
-                                        "title": "标题"
+                                        "title": "标题",
+                                        "value": "值"
                                     },
                                     "label": "设备"
                                 },
@@ -1374,7 +1398,9 @@
                                     "extra_fields": {
                                         "above": "大于",
                                         "below": "小于",
-                                        "for": "持续时间"
+                                        "for": "持续时间",
+                                        "hvac_mode": "空调模式",
+                                        "preset_mode": "预设模式"
                                     },
                                     "label": "设备"
                                 },
@@ -1459,6 +1485,7 @@
                         "move_down": "下移",
                         "move_up": "上移",
                         "save": "保存",
+                        "show_trace": "显示轨迹",
                         "triggers": {
                             "add": "添加触发条件",
                             "delete": "删除",
@@ -1659,7 +1686,7 @@
                         "google": {
                             "config_documentation": "配置文档",
                             "devices_pin": "安全设备 PIN 码",
-                            "enable_ha_skill": "激活 Google 助理的 Home Assistant 技能",
+                            "enable_ha_skill": "为 Google Assistant 激活 Home Assistant 技能",
                             "enable_state_reporting": "启用状态报告",
                             "enter_pin_error": "无法存储pin：",
                             "enter_pin_hint": "输入 PIN 码以使用安全设备",
@@ -1667,6 +1694,8 @@
                             "info": "通过 Home Assistant Cloud 的 Google Assistant 集成，您将可以通过任何启用了 Google Assistant 的设备来控制所有 Home Assistant 设备。",
                             "info_state_reporting": "如果启用状态报告，则 Home Assistant 会将公开实体的所有状态变化发送给 Google。这样您就可以始终在 Google 应用中看到最新状态。",
                             "manage_entities": "管理实体",
+                            "not_configured_text": "在使用 Google Assistant 之前，需要在 Google Home 应用中激活 Google Assistant 的 Home Assistant Cloud 技能。",
+                            "not_configured_title": "Google Assistant 未激活",
                             "security_devices": "安全设备",
                             "sync_entities": "同步实体到 Google",
                             "sync_entities_404_message": "无法将实体同步到 Google，请对 Google 说 “Hey Google, sync my devices”来同步实体。",
@@ -1829,6 +1858,36 @@
                     "description": "单位制、位置、时区及其他通用参数",
                     "section": {
                         "core": {
+                            "analytics": {
+                                "documentation": "在启用此功能之前，请确保您已阅读了分析文档页面 {link}，以了解将发送的内容及其存储方式。",
+                                "header": "分析",
+                                "instance_id": "实例ID: {huuid}",
+                                "introduction": "共享实例的分析。此数据将在 {link} 公开。",
+                                "learn_more": "详细了解您的数据将被如何处理。",
+                                "needs_base": "需要启用基础分析才能启用此选项",
+                                "preference": {
+                                    "base": {
+                                        "description": "包括实例 ID，版本号和安装类型",
+                                        "title": "基础分析"
+                                    },
+                                    "diagnostics": {
+                                        "description": "共享崩溃报告和诊断信息",
+                                        "title": "诊断"
+                                    },
+                                    "statistics": {
+                                        "description": "包括安装的元素数量，完整列表请参阅文档",
+                                        "title": "使用情况统计"
+                                    },
+                                    "usage_supervisor": {
+                                        "description": "包括集成和加载项的名称和能力",
+                                        "title": "使用的集成和加载项"
+                                    },
+                                    "usage": {
+                                        "description": "包括集成的名称",
+                                        "title": "使用的集成"
+                                    }
+                                }
+                            },
                             "core_config": {
                                 "edit_requires_storage": "编辑器已禁用，因为配置存储于 configuration.yaml。",
                                 "elevation": "海拔",
@@ -2016,6 +2075,9 @@
                     "filtering_by": "正在筛选:",
                     "show": "显示"
                 },
+                "hassio": {
+                    "button": "配置"
+                },
                 "header": "配置 Home Assistant",
                 "helpers": {
                     "caption": "辅助元素",
@@ -2102,8 +2164,10 @@
                         "entity_unavailable": "实体不可用",
                         "firmware": "固件：{version}",
                         "hub": "连接于",
+                        "logs": "日志",
                         "manuf": "by {manufacturer}",
                         "no_area": "没有区域",
+                        "not_loaded": "未加载，请检查{logs_link}",
                         "options": "选项",
                         "reload": "重载",
                         "reload_confirm": "集成已重新加载",
@@ -2129,6 +2193,7 @@
                         "finish": "完成",
                         "loading_first_time": "正在安装集成，请稍候",
                         "not_all_required_fields": "请填写所有必填字段",
+                        "not_loaded": "集成未能加载，请尝试重启 Home Assistant。",
                         "pick_flow_step": {
                             "new_flow": "否，设置另一个 {integration} 实例",
                             "title": "已发现以下集成，要设置它们吗？"
@@ -2143,6 +2208,7 @@
                     "disable": {
                         "disabled_integrations": "{number} 个已禁用",
                         "hide_disabled": "隐藏禁用的集成",
+                        "show": "显示",
                         "show_disabled": "显示禁用的集成"
                     },
                     "discovered": "已发现",
@@ -2178,10 +2244,17 @@
                     "clear": "清除",
                     "description": "查看 Home Assistant 日志",
                     "details": "日志详细信息（ {level} ）",
+                    "level": {
+                        "critical": "CRITICAL",
+                        "debug": "DEBUG",
+                        "error": "ERROR",
+                        "info": "INFO",
+                        "warning": "WARNING"
+                    },
                     "load_full_log": "加载完整 Home Assistant 日志",
                     "loading_log": "正在加载错误日志...",
                     "multiple_messages": "消息首次出现在 {time}，显示了 {counter} 次",
-                    "no_errors": "未报告任何错误。",
+                    "no_errors": "未报告任何错误",
                     "no_issues": "没有新问题！",
                     "refresh": "刷新"
                 },
@@ -2522,39 +2595,39 @@
                     "description": "重新启动或停止 Home Assistant 服务",
                     "section": {
                         "reloading": {
-                            "automation": "重载自动化",
-                            "command_line": "重载命令行实体",
-                            "core": "重载位置和自定义",
-                            "filesize": "重载文件大小实体",
-                            "filter": "重载 filter 实体",
-                            "generic": "重载通用 IP 摄像机实体",
-                            "generic_thermostat": "重载通用恒温器实体",
-                            "group": "重载分组、分组实体及其通知服务",
+                            "automation": "自动化",
+                            "command_line": "命令行实体",
+                            "core": "位置和自定义",
+                            "filesize": "文件大小实体",
+                            "filter": "filter 实体",
+                            "generic": "通用 IP 摄像机实体",
+                            "generic_thermostat": "通用恒温器实体",
+                            "group": "分组、分组实体及其通知服务",
                             "heading": "配置重载",
-                            "history_stats": "重载历史记录统计实体",
-                            "homekit": "重载 HomeKit",
-                            "input_boolean": "重载二元选择器",
-                            "input_datetime": "重载日期选择器",
-                            "input_number": "重载数值选择器",
-                            "input_select": "重载多项选择器",
-                            "input_text": "重载文字输入",
+                            "history_stats": "历史记录统计实体",
+                            "homekit": "HomeKit",
+                            "input_boolean": "二元选择器",
+                            "input_datetime": "日期选择器",
+                            "input_number": "数值选择器",
+                            "input_select": "多项选择器",
+                            "input_text": "文字输入",
                             "introduction": "Home Assistant 中的部分配置可以直接重载，而无需重启服务。点击重载按钮将重新载入新的配置。",
-                            "min_max": "重载最小值/最大值实体",
-                            "mqtt": "重载手动配置的 MQTT 实体",
-                            "person": "重载人员",
-                            "ping": "重载 ping 二元传感器实体",
-                            "reload": "重载{domain}",
-                            "rest": "重载 REST 实体及其通知服务",
-                            "rpi_gpio": "重载树莓派 GPIO 实体",
-                            "scene": "重载场景",
-                            "script": "重载脚本",
-                            "smtp": "重载 SMTP 通知服务",
-                            "statistics": "重载 statistics 实体",
-                            "telegram": "重载 telegram 通知服务",
-                            "template": "重载模板实体",
-                            "trend": "重载 trend 实体",
-                            "universal": "重载通用媒体播放器实体",
-                            "zone": "重载地点"
+                            "min_max": "最小值/最大值实体",
+                            "mqtt": "手动配置的 MQTT 实体",
+                            "person": "人员",
+                            "ping": "ping 二元传感器实体",
+                            "reload": "{domain}",
+                            "rest": "REST 实体及其通知服务",
+                            "rpi_gpio": "树莓派 GPIO 实体",
+                            "scene": "场景",
+                            "script": "脚本",
+                            "smtp": "SMTP 通知服务",
+                            "statistics": "statistics 实体",
+                            "telegram": "Telegram 通知服务",
+                            "template": "模板实体",
+                            "trend": "trend 实体",
+                            "universal": "通用媒体播放器实体",
+                            "zone": "地点"
                         },
                         "server_management": {
                             "confirm_restart": "您确定要重新启动 Home Assistant 吗？",
@@ -2806,6 +2879,7 @@
                         "server_version": "服务器版本"
                     },
                     "device_info": {
+                        "device_config": "配置设备",
                         "node_ready": "节点就绪",
                         "node_status": "节点状态",
                         "zwave_info": "Z-Wave 信息"
@@ -2817,6 +2891,15 @@
                         "connected": "已连接",
                         "connecting": "正在连接",
                         "unknown": "未知"
+                    },
+                    "node_config": {
+                        "attribution": "设备配置参数和描述由 {device_database} 提供。",
+                        "battery_device_notice": "电池供电的设备必须处于唤醒状态才能更新配置。请参阅设备说明书，了解如何唤醒设备。",
+                        "error_device_not_found": "未找到设备",
+                        "header": "Z-Wave 设备配置",
+                        "introduction": "管理并调整所选设备（节点）的具体配置参数。",
+                        "parameter_is_read_only": "此参数为只读。",
+                        "zwave_js_device_database": "Z-Wave JS 设备数据库"
                     },
                     "node_status": {
                         "alive": "在线",
@@ -2964,6 +3047,7 @@
                         "column_parameter": "参数",
                         "description": "服务开发工具可让您调用 Home Assistant 中任何可用的服务。",
                         "fill_example_data": "填写示例数据",
+                        "no_template_ui_support": "UI 不支持模板，请使用 YAML 编辑器。",
                         "title": "服务",
                         "ui_mode": "进入 UI 模式",
                         "yaml_mode": "进入 YAML 模式",
@@ -3663,6 +3747,10 @@
                 }
             },
             "page-onboarding": {
+                "analytics": {
+                    "finish": "下一步",
+                    "intro": "共享实例的分析。此数据将在 {link} 公开。"
+                },
                 "core-config": {
                     "button_detect": "自动检测",
                     "finish": "下一步",
@@ -3672,12 +3760,14 @@
                     "location_name": "Home Assistant 安装的名称",
                     "location_name_default": "我的家"
                 },
+                "finish": "完成",
                 "integration": {
                     "finish": "完成",
                     "intro": "设备和服务在 Home Assistant 中表示为集成。您可以立即设置它们，也可以稍后在配置屏幕进行设置。",
                     "more_integrations": "更多"
                 },
                 "intro": "准备好唤醒你的家、找回你的隐私，并加入世界级的极客社区了吗？",
+                "next": "下一步",
                 "restore": {
                     "description": "或者，您也可以从以前的快照还原。",
                     "hide_log": "隐藏完整日志",
@@ -3771,6 +3861,19 @@
                     "disable": "禁用",
                     "enable": "启用",
                     "header": "多因素身份验证模块"
+                },
+                "number_format": {
+                    "description": "选择数字的格式。",
+                    "dropdown_label": "数字格式",
+                    "formats": {
+                        "comma_decimal": "1,234,567.89",
+                        "decimal_comma": "1.234.567,89",
+                        "language": "自动（使用语言设置）",
+                        "none": "无",
+                        "space_comma": "1 234 567,89",
+                        "system": "使用系统区域设置"
+                    },
+                    "header": "数字格式"
                 },
                 "push_notifications": {
                     "add_device_prompt": {

@@ -98,8 +98,8 @@
         "default": {
             "off": "끄기",
             "on": "켜기",
-            "unavailable": "사용불가",
-            "unknown": "알수없음"
+            "unavailable": "사용 불가",
+            "unknown": "알 수 없음"
         }
     },
     "supervisor": {
@@ -123,7 +123,7 @@
                     "edit_in_yaml": "YAML로 편집하기",
                     "header": "옵션",
                     "invalid_yaml": "YAML이 잘못되었습니다",
-                    "show_unused_optional": "사용하지 않는 선택적 구성 옵션 표시하기"
+                    "show_unused_optional": "사용되지 않는 선택적 구성 옵션 표시하기"
                 }
             },
             "dashboard": {
@@ -200,7 +200,7 @@
                         "manager": "매니저"
                     },
                     "stage": {
-                        "description": "애드온은 다음 세 가지 단계 중 하나일 수 있습니다:\n\n{icon_stable} **안정적*: 실제 환경에서 바로 사용할 수 있는 애드온입니다.\n\n{icon_experimental} **실험적**: 버그를 포함할 수 있으며 완성되지 않았을 수 있습니다.\n\n{icon_deprecated} **지원중단**: 이러한 애드온은 더 이상 업데이트되지 않습니다.",
+                        "description": "애드온은 다음 세 가지 단계 중 하나일 수 있습니다:\n\n{icon_stable} **안정 버전**: 실제 환경에서 바로 사용할 수 있는 애드온입니다.\n\n{icon_experimental} **실험 버전**: 버그를 포함할 수 있으며 완성되지 않았을 수 있습니다.\n\n{icon_deprecated} **지원 중단**: 이러한 애드온은 더 이상 업데이트되지 않습니다.",
                         "title": "애드온 단계"
                     }
                 },
@@ -462,17 +462,19 @@
                 "share_diagnostics_description": "충돌 보고서 및 진단 정보를 공유합니다.",
                 "share_diagonstics_description": "Supervisor에서 예기치 않은 오류가 발생할 경우 충돌 보고서 및 진단 정보를 자동으로 공유하시겠습니까? {line_break} 공유된 내용으로 발생된 문제를 해결할 수 있으며, 해당 정보는 Home Assistant Core 팀에서만 접근할 수 있을 뿐, 다른 사람과 공유되지 않습니다.{line_break} 데이터에는 개인 및 민감한 정보가 포함되어 있지 않으므로 언제든지 설정에서 이 정보를 사용하지 않도록 설정할 수 있습니다.",
                 "share_diagonstics_title": "Home Assistant 개선 도와주기",
-                "unhealthy_description": "비정상적으로 설치를 실행하면 문제가 발생합니다. 다음은 설치 시 발견된 문제 목록입니다. 문제를 해결하는 방법에 대해 알아보려면 링크를 클릭해주세요.",
+                "unhealthy_description": "비정상적으로 설치된 Supervisor를 실행하면 문제가 발생합니다. 다음은 설치 환경에서 발견된 문제 목록입니다. 문제를 해결하는 방법에 대해 알아보려면 링크를 클릭해주세요.",
                 "unhealthy_reason": {
                     "docker": "Docker 환경이 제대로 작동하지 않습니다",
                     "privileged": "Supervisor가 권한이 없습니다",
                     "setup": "Supervisor 설치에 실패했습니다",
-                    "supervisor": "Supervisor가 업데이트할 수 없습니다"
+                    "supervisor": "Supervisor가 업데이트할 수 없습니다",
+                    "untrusted": "신뢰할 수 없는 내용이 발견되었습니다"
                 },
-                "unhealthy_title": "설치가 비정상적입니다",
-                "unsupported_description": "다음은 설치 시 발견된 문제 목록입니다. 문제를 해결하는 방법에 대해 알아보려면 링크를 클릭해주세요.",
+                "unhealthy_title": "설치 상태가 비정상적입니다",
+                "unsupported_description": "다음은 설치된 Supervisor에서 발견된 문제 목록입니다. 문제를 해결하는 방법에 대해 알아보려면 링크를 클릭해주세요.",
                 "unsupported_reason": {
                     "container": "문제를 일으키는 것으로 알려진 컨테이너입니다",
+                    "content-trust": "이미지 무결성 검사가 비활성화되었습니다",
                     "dbus": "DBUS",
                     "docker_configuration": "Docker 구성 내용",
                     "docker_version": "Docker 버전",
@@ -483,7 +485,7 @@
                     "privileged": "Supervisor가 권한이 없습니다",
                     "systemd": "Systemd"
                 },
-                "unsupported_title": "지원되지 않는 설치로 실행 중입니다",
+                "unsupported_title": "지원되지 않는 설치방법으로 실행 중입니다",
                 "update_supervisor": "Supervisor 업데이트하기",
                 "warning": "경고"
             }
@@ -721,6 +723,9 @@
                 "today": "오늘"
             },
             "data-table": {
+                "clear": "지우기",
+                "filtering_by": "필터링",
+                "hidden": "{number}개 숨겨짐",
                 "no-data": "데이터가 없습니다",
                 "search": "검색"
             },
@@ -762,7 +767,7 @@
                 "messages": {
                     "became_unavailable": "이(가) 사용 불가능 상태가 되었습니다.",
                     "changed_to_state": "이(가) {state}으(로) 변경되었습니다.",
-                    "cleared_device_class": "이(가) 더 이상 {device_class}을(를) 감지하지 못했습니다.",
+                    "cleared_device_class": "이(가) 더 이상 {device_class}을(를) 감지하지 않습니다.",
                     "detected_device_class": "이(가) {device_class}을(를) 감지했습니다.",
                     "is_closing": "이(가) 닫히는 중입니다.",
                     "is_opening": "이(가) 열리는 중입니다.",
@@ -834,6 +839,12 @@
             "picture-upload": {
                 "label": "그림",
                 "unsupported_format": "지원되지 않는 형식입니다. JPEG, PNG 또는 GIF 이미지를 선택해주세요."
+            },
+            "related-filter-menu": {
+                "filter_by_area": "영역별 필터",
+                "filter_by_device": "기기별 필터",
+                "filtered_by_area": "영역: {area_name}",
+                "filtered_by_device": "기기: {device_name}"
             },
             "related-items": {
                 "area": "영역",
@@ -948,7 +959,7 @@
             },
             "helper_settings": {
                 "counter": {
-                    "initial": "초기값",
+                    "initial": "초깃값",
                     "maximum": "최댓값",
                     "minimum": "최솟값",
                     "restore": "Home Assistant가 시작될 때 최근 값으로 복원",
@@ -1084,7 +1095,7 @@
                         "integrations": "통합 구성요소",
                         "logs": "로그",
                         "lovelace": "Lovelace 대시보드",
-                        "navigate_to": "{panel} 뷰로 이동하기",
+                        "navigate_to": "{panel}(으)로 이동하기",
                         "person": "구성원",
                         "scene": "씬",
                         "script": "스크립트",
@@ -1094,42 +1105,47 @@
                         "zone": "지역"
                     },
                     "reload": {
-                        "automation": "자동화 다시 읽어오기",
-                        "command_line": "명령줄 구성요소 다시 읽어오기",
-                        "core": "위치 및 사용자화 다시 읽어오기",
-                        "filesize": "파일 크기 구성요소 다시 읽어오기",
-                        "filter": "필터 구성요소 다시 읽어오기",
-                        "generic": "일반 IP 카메라 구성요소 다시 읽어오기",
-                        "generic_thermostat": "일반 온도 조절기 구성요소 다시 읽어오기",
-                        "group": "그룹, 그룹 구성요소 및 알림 서비스 다시 읽어오기",
-                        "history_stats": "기록 통계 구성요소 다시 읽어오기",
-                        "homekit": "HomeKit 다시 읽어오기",
-                        "input_boolean": "논리입력 다시 읽어오기",
-                        "input_datetime": "날짜 / 시간입력 다시 읽어오기",
-                        "input_number": "숫자입력 다시 읽어오기",
-                        "input_select": "선택입력 다시 읽어오기",
-                        "input_text": "문자입력 다시 읽어오기",
-                        "min_max": "최소/최대 구성요소 다시 읽어오기",
-                        "mqtt": "직접 구성한 MQTT 구성요소 다시 읽어오기",
-                        "person": "구성원 다시 읽어오기",
-                        "ping": "ping 이진 센서 구성요소 다시 읽어오기",
-                        "reload": "{domain} 다시 읽어오기",
-                        "rest": "REST 구성요소 및 알림 서비스 다시 읽어오기",
-                        "rpi_gpio": "Raspberry Pi GPIO 구성요소 다시 읽어오기",
-                        "scene": "씬 다시 읽어오기",
-                        "script": "스크립트 다시 읽어오기",
-                        "smtp": "SMTP 알림 서비스 다시 읽어오기",
-                        "statistics": "통계 구성요소 다시 읽어오기",
-                        "telegram": "Telegram 알림 서비스 다시 읽어오기",
-                        "template": "템플릿 구성요소 다시 읽어오기",
-                        "trend": "추세 구성요소 다시 읽어오기",
-                        "universal": "범용 미디어 플레이어 구성요소 다시 읽어오기",
-                        "zone": "지역 다시 읽어오기"
+                        "automation": "자동화",
+                        "command_line": "명령줄 구성요소",
+                        "core": "위치 및 사용자화",
+                        "filesize": "파일 크기 구성요소",
+                        "filter": "필터 구성요소",
+                        "generic": "일반 IP 카메라 구성요소",
+                        "generic_thermostat": "일반 온도 조절기 구성요소",
+                        "group": "그룹, 그룹 구성요소 및 알림 서비스",
+                        "history_stats": "기록 통계 구성요소",
+                        "homekit": "HomeKit",
+                        "input_boolean": "논리 입력",
+                        "input_datetime": "날짜/시간 입력",
+                        "input_number": "숫자 입력",
+                        "input_select": "선택 입력",
+                        "input_text": "문자 입력",
+                        "min_max": "최소/최대 구성요소",
+                        "mqtt": "직접 구성한 MQTT 구성요소",
+                        "person": "구성원",
+                        "ping": "Ping 이진 센서 구성요소",
+                        "reload": "{domain}",
+                        "rest": "REST 구성요소 및 알림 서비스",
+                        "rpi_gpio": "Raspberry Pi GPIO 구성요소",
+                        "scene": "씬",
+                        "script": "스크립트",
+                        "smtp": "SMTP 알림 서비스",
+                        "statistics": "통계 구성요소",
+                        "telegram": "Telegram 알림 서비스",
+                        "template": "템플릿 구성요소",
+                        "trend": "추세 구성요소",
+                        "universal": "범용 미디어 플레이어 구성요소",
+                        "zone": "지역"
                     },
                     "server_control": {
                         "perform_action": "서버 {action}",
                         "restart": "다시 시작하기",
                         "stop": "중지하기"
+                    },
+                    "types": {
+                        "navigation": "탐색하기",
+                        "reload": "다시 읽어오기",
+                        "server_control": "서버 제어하기"
                     }
                 },
                 "filter_placeholder": "구성요소 필터"
@@ -1144,7 +1160,7 @@
             },
             "zha_device_info": {
                 "buttons": {
-                    "add": "이 기기를 통해 기기 추가하기",
+                    "add": "이 기기를 통해 하위 기기 추가하기",
                     "clusters": "클러스터 관리",
                     "device_children": "하위 기기 보기",
                     "reconfigure": "기기 재구성하기",
@@ -1172,6 +1188,9 @@
                 "zha_device_card": {
                     "device_name_placeholder": "기기 이름 변경"
                 }
+            },
+            "zha_reconfigure_device": {
+                "heading": "기기 재구성 중"
             }
         },
         "duration": {
@@ -1298,10 +1317,15 @@
                                 "device_id": {
                                     "action": "동작",
                                     "extra_fields": {
+                                        "brightness_pct": "밝기",
                                         "code": "코드",
+                                        "flash": "플래시",
+                                        "humidity": "습도",
                                         "message": "메시지",
+                                        "mode": "모드",
                                         "position": "위치",
-                                        "title": "제목"
+                                        "title": "제목",
+                                        "value": "값"
                                     },
                                     "label": "기기"
                                 },
@@ -1374,7 +1398,9 @@
                                     "extra_fields": {
                                         "above": "이상",
                                         "below": "이하",
-                                        "for": "동안"
+                                        "for": "동안",
+                                        "hvac_mode": "공조 모드",
+                                        "preset_mode": "프리셋 모드"
                                     },
                                     "label": "기기"
                                 },
@@ -1459,6 +1485,7 @@
                         "move_down": "아래로 이동",
                         "move_up": "위로 이동",
                         "save": "저장하기",
+                        "show_trace": "추적 표시하기",
                         "triggers": {
                             "add": "트리거 추가하기",
                             "delete": "삭제하기",
@@ -1568,7 +1595,7 @@
                         "delete_automation": "자동화 삭제하기",
                         "delete_confirm": "이 자동화를 삭제하시겠습니까?",
                         "dev_automation": "자동화 디버그하기",
-                        "dev_only_editable": "automations.yaml에서 설정한 자동화만 디버그 할 수 있습니다.",
+                        "dev_only_editable": "automations.yaml에 정의된 자동화 만 디버깅할 수 있습니다.",
                         "duplicate": "복제하기",
                         "duplicate_automation": "자동화 복제하기",
                         "edit_automation": "자동화 편집하기",
@@ -1578,8 +1605,8 @@
                         },
                         "introduction": "자동화 편집기를 사용하여 자동화를 작성하고 편집할 수 있습니다. 아래 링크를 따라 안내사항을 읽고 Home Assistant를 올바르게 구성했는지 확인해보세요.",
                         "learn_more": "자동화에 대해 더 알아보기",
-                        "no_automations": "편집 가능한 자동화를 찾을 수 없습니다",
-                        "only_editable": "automations.yaml에 정의 된 자동화 만 편집 할 수 있습니다.",
+                        "no_automations": "자동화를 찾을 수 없습니다",
+                        "only_editable": "automations.yaml에 정의된 자동화 만 편집할 수 있습니다.",
                         "pick_automation": "편집할 자동화 선택",
                         "show_info_automation": "자동화에 대한 정보 표시하기"
                     },
@@ -1659,18 +1686,20 @@
                         "google": {
                             "config_documentation": "구성 문서",
                             "devices_pin": "보안 기기 PIN",
-                            "enable_ha_skill": "Google 어시스턴트에 Home Assistant 스킬 사용하기",
+                            "enable_ha_skill": "Google Assistant에 Home Assistant 스킬 사용하기",
                             "enable_state_reporting": "상태 보고 활성화",
                             "enter_pin_error": "PIN을 저장할 수 없습니다:",
                             "enter_pin_hint": "보안 기기 사용 PIN 입력",
-                            "enter_pin_info": "보안 기기를 제어하기 위한 PIN을 설정해주세요. 보안 기기는 현관문, 차고 문, 도어록과 같은 기기입니다. Google 어시스턴트를 통해 이러한 기기를 제어할 때 PIN을 입력하거나 말씀해주셔야 합니다.",
-                            "info": "Home Assistant Cloud의 Google 어시스턴트 연동 기능으로 Google 어시스턴트가 지원하는 기기로서 Home Assistant 기기를 제어할 수 있습니다.",
+                            "enter_pin_info": "보안 기기를 제어하기 위한 PIN을 설정해주세요. 보안 기기는 현관문, 차고 문, 도어록과 같은 기기입니다. Google Assistant를 통해 이러한 기기를 제어할 때 PIN을 입력하거나 말씀해주셔야 합니다.",
+                            "info": "Home Assistant Cloud의 Google Assistant 연동 기능으로 Google Assistant가 지원하는 기기로서 Home Assistant 기기를 제어할 수 있습니다.",
                             "info_state_reporting": "상태 보고를 활성화하면 Home Assistant는 노출된 구성요소의 모든 상태 변경 사항을 Google에 보냅니다. 이를 통해 Google 앱에서 언제든지 구성요소의 최신 상태를 확인할 수 있습니다.",
                             "manage_entities": "구성요소 관리",
+                            "not_configured_text": "Google Assistant를 사용하려면 먼저 Google Assistant에 대한 Home Assistant Cloud 서비스를 Google Home 앱에서 연결해야 합니다.",
+                            "not_configured_title": "Google Assistant가 연결되지 않았습니다",
                             "security_devices": "보안 기기",
                             "sync_entities": "구성요소를 Google에 동기화",
                             "sync_entities_404_message": "구성요소를 Google과 동기화하지 못했습니다. Google에 'Hey Google, 기기 동기화해줘' 라고 말씀하셔서 구성요소를 동기화해주세요.",
-                            "title": "Google 어시스턴트"
+                            "title": "Google Assistant"
                         },
                         "integrations": "서비스 연동",
                         "integrations_introduction": "Home Assistant Cloud에 연동하면 Home Assistant 인스턴스를 인터넷에 공개적으로 노출하지 않고도 클라우드를 통해 서비스에 연결할 수 있습니다.",
@@ -1731,7 +1760,7 @@
                         "not_exposed_entities": "노출되지 않은 구성요소",
                         "title": "Alexa"
                     },
-                    "description_features": "집 밖에서도 집을 관리하고 Alexa 및 Google 어시스턴트와 연동시킵니다",
+                    "description_features": "집 밖에서도 집을 관리하고 Alexa 및 Google Assistant와 연동시킵니다",
                     "description_login": "{email}(으)로 로그인 되어있습니다",
                     "description_not_login": "로그인이 되어있지 않습니다",
                     "dialog_certificate": {
@@ -1765,7 +1794,7 @@
                         "banner": "configuration.yaml에서 구성요소 필터를 구성했으므로 이 UI를 통해 노출되는 구성요소는 편집할 수 없습니다.",
                         "disable_2FA": "2단계 인증 비활성화",
                         "dont_expose_entity": "구성 요소 노출하지 않기",
-                        "expose": "Google 어시스턴트에 노출",
+                        "expose": "Google Assistant에 노출",
                         "expose_entity": "구성 요소 노출하기",
                         "exposed": "{selected}개의 구성요소가 노출됨",
                         "exposed_entities": "노출된 구성요소",
@@ -1774,7 +1803,7 @@
                         "not_exposed": "{selected}개의 구성요소가 노출되지 않음",
                         "not_exposed_entities": "노출되지 않은 구성요소",
                         "sync_to_google": "변경 사항을 Google에 동기화하는 중.",
-                        "title": "Google 어시스턴트"
+                        "title": "Google Assistant"
                     },
                     "login": {
                         "alert_email_confirm_necessary": "로그인하기 전에 검증 이메일을 확인해야 합니다.",
@@ -1783,7 +1812,7 @@
                         "email": "이메일",
                         "email_error_msg": "이메일 형식이 잘못되었습니다",
                         "forgot_password": "비밀번호가 기억나지 않으세요?",
-                        "introduction": "Home Assistant Cloud는 집 밖에서도 구성요소에 대한 안전한 원격 연결을 제공해드립니다. 또한 Amazon Alexa 및 Google 어시스턴트와 같은 클라우드 전용 서비스에 연결할 수 있습니다.",
+                        "introduction": "Home Assistant Cloud는 집 밖에서도 구성요소에 대한 안전한 원격 연결을 제공해드립니다. 또한 Amazon Alexa 및 Google Assistant와 같은 클라우드 전용 서비스에 연결할 수 있습니다.",
                         "introduction2": "이 서비스는 Home Assistant와 Hass.io의 창립자가 설립한 회사인 ",
                         "introduction2a": "에 의해 운영되고 있습니다.",
                         "introduction3": "Home Assistant Cloud는 1개월 무료 평가판이 포함된 구독 서비스입니다. 결제 정보는 필요하지 않습니다.",
@@ -1801,7 +1830,7 @@
                         "email_address": "이메일 주소",
                         "email_error_msg": "이메일 형식이 잘못되었습니다",
                         "feature_amazon_alexa": "Amazon Alexa 연동",
-                        "feature_google_home": "Google 어시스턴트 연동",
+                        "feature_google_home": "Google Assistant 연동",
                         "feature_remote_control": "집 밖에서 Home Assistant를 제어",
                         "feature_webhook_apps": "OwnTracks 와 같은 웹 훅 기반 앱과 쉬운 연동",
                         "headline": "1개월 무료 평가판 사용해 보기",
@@ -1829,6 +1858,36 @@
                     "description": "도량형 단위, 위치, 시간대 및 기타 일반적인 매개 변수를 관리합니다",
                     "section": {
                         "core": {
+                            "analytics": {
+                                "documentation": "이 옵션을 활성화하기 전에 분석 관련 문서 페이지 {link}을(를) 방문하여 사용자 통계를 보내는 내용과 저장 방법에 대해 알아보세요.",
+                                "header": "분석",
+                                "instance_id": "인스턴스 ID: {huuid}",
+                                "introduction": "인스턴스의 분석 내용을 공유합니다. 이 데이터는 {link}에서 공개적으로 사용될 수 있습니다",
+                                "learn_more": "통계자료가 어떻게 처리되는지 알아보기.",
+                                "needs_base": "이 옵션을 사용하려면 기본 분석을 활성화해야 합니다",
+                                "preference": {
+                                    "base": {
+                                        "description": "여기에는 인스턴스 ID, 버전 및 설치 유형이 포함됩니다",
+                                        "title": "기본 분석"
+                                    },
+                                    "diagnostics": {
+                                        "description": "충돌 보고서 및 진단 정보를 공유합니다",
+                                        "title": "진단"
+                                    },
+                                    "statistics": {
+                                        "description": "여기에는 설치에 사용된 요소의 개수가 포함되며 전체 목록은 문서를 참조해주세요",
+                                        "title": "사용 통계"
+                                    },
+                                    "usage_supervisor": {
+                                        "description": "여기에는 통합 구성요소 및 애드온의 이름과 기능이 포함됩니다",
+                                        "title": "사용된 통합 구성요소 및 애드온"
+                                    },
+                                    "usage": {
+                                        "description": "여기에는 통합 구성요소의 이름이 포함됩니다",
+                                        "title": "사용된 통합 구성요소"
+                                    }
+                                }
+                            },
                             "core_config": {
                                 "edit_requires_storage": "구성내용이 configuration.yaml에 저장되어 있기 때문에 편집기가 비활성화되었습니다.",
                                 "elevation": "고도",
@@ -2016,6 +2075,9 @@
                     "filtering_by": "필터링",
                     "show": "표시하기"
                 },
+                "hassio": {
+                    "button": "구성하기"
+                },
                 "header": "Home Assistant 구성하기",
                 "helpers": {
                     "caption": "도우미",
@@ -2102,8 +2164,10 @@
                         "entity_unavailable": "구성요소 사용불가",
                         "firmware": "펌웨어: {version}",
                         "hub": "연결 경유 대상",
+                        "logs": "로그",
                         "manuf": "{manufacturer} 제조",
                         "no_area": "영역 없음",
+                        "not_loaded": "불러오지 못했습니다. {logs_link}을(를) 확인해주세요.",
                         "options": "옵션",
                         "reload": "다시 읽어오기",
                         "reload_confirm": "통합 구성요소를 다시 읽어 들였습니다",
@@ -2129,6 +2193,7 @@
                         "finish": "완료",
                         "loading_first_time": "통합 구성요소가 설치되는 동안 기다려주세요",
                         "not_all_required_fields": "필수 입력란이 모두 채워지지 않았습니다.",
+                        "not_loaded": "통합 구성요소를 불러올 수 없습니다. Home Assistant를 다시 시작해주세요.",
                         "pick_flow_step": {
                             "new_flow": "아니요, 다른 {integration}의 인스턴스를 설정합니다",
                             "title": "이걸 발견했습니다. 설정하시겠습니까?"
@@ -2143,6 +2208,7 @@
                     "disable": {
                         "disabled_integrations": "{number}개의 비활성화된 통합 구성요소",
                         "hide_disabled": "비활성화된 통합 구성요소 숨기기",
+                        "show": "표시하기",
                         "show_disabled": "비활성화된 통합 구성요소 표시하기"
                     },
                     "discovered": "발견된 구성요소",
@@ -2150,7 +2216,7 @@
                     "ignore": {
                         "confirm_delete_ignore": "이렇게 하면 발견된 통합 구성요소가 발견될 때, 발견된 통합 구성요소에 다시 나타나게 됩니다. 다시 시작해야 하거나 시간이 걸릴 수 있습니다.",
                         "confirm_delete_ignore_title": "{name} 무시를 중지하시겠습니까?",
-                        "confirm_ignore": "이 통합 구성요소의 설정을 하지 않으시겠습니까? 오른쪽 상단의 오버플로 메뉴에서 '무시된 통합 구성요소 표시하기'를 클릭하여 이 작업을 취소할 수 있습니다.",
+                        "confirm_ignore": "이 통합 구성요소를 설정하지 않으시겠습니까? 오른쪽 상단의 오버플로 메뉴에서 '무시된 통합 구성요소 표시하기'를 클릭하여 이 작업을 취소할 수 있습니다.",
                         "confirm_ignore_title": "발견된 {name} 기기를 무시하시겠습니까?",
                         "hide_ignored": "무시된 통합 구성요소 숨기기",
                         "ignore": "무시",
@@ -2178,6 +2244,13 @@
                     "clear": "지우기",
                     "description": "Home Assistant 로그 내역을 봅니다",
                     "details": "로그 상세정보 ({level})",
+                    "level": {
+                        "critical": "치명적오류",
+                        "debug": "디버그",
+                        "error": "오류",
+                        "info": "정보",
+                        "warning": "경고"
+                    },
                     "load_full_log": "Home Assistant 로그 전부 불러오기",
                     "loading_log": "오류 로그를 읽는 중...",
                     "multiple_messages": "{time}에 처음 발생했으며, {counter}번 발생했습니다.",
@@ -2329,7 +2402,7 @@
                     },
                     "node_config": {
                         "header": "노드 구성",
-                        "help_source": "구성 매개 변수 설명 및 도움말 텍스트는 OpenZWave 프로젝트에서 제공합니다.",
+                        "help_source": "구성 매개 변수 설명 및 도움말 텍스트는 OpenZWave 프로젝트에서 제공됩니다.",
                         "introduction": "Z-Wave 노드에 대한 다양한 구성 매개 변수를 관리합니다.",
                         "wakeup_help": "배터리 전원을 사용하는 노드는 구성을 변경하려면 반드시 절전 해제된 상태이어야 합니다. 노드가 절전 상태면 Openzwave는 절전 해제될 때 노드의 구성 업데이트를 시도합니다. 이 과정은 몇 시간 (또는 며칠) 후에 이루어질 수 있습니다. 기기를 절전 해제하려면 다음 단계를 따라주세요."
                     },
@@ -2462,8 +2535,8 @@
                         },
                         "introduction": "씬 편집기를 사용하여 씬을 작성하고 편집 할 수 있습니다. 아래 링크를 따라 안내사항을 읽고 Home Assistant를 올바르게 구성했는지 확인해보세요.",
                         "learn_more": "씬에 대해 더 알아보기",
-                        "no_scenes": "편집 가능한 씬을 찾을 수 없습니다",
-                        "only_editable": "scenes.yaml에 정의 된 씬 만 편집 할 수 있습니다.",
+                        "no_scenes": "씬을 찾을 수 없습니다",
+                        "only_editable": "scenes.yaml에 정의된 씬 만 편집할 수 있습니다.",
                         "pick_scene": "편집할 씬 선택하기",
                         "show_info_scene": "씬에 대한 정보 표시하기"
                     }
@@ -2512,7 +2585,7 @@
                         },
                         "introduction": "스크립트 편집기를 사용하여 스크립트를 작성하고 편집할 수 있습니다. 아래 링크를 따라 안내사항을 읽고 Home Assistant를 올바르게 구성했는지 확인해보세요.",
                         "learn_more": "스크립트에 대해 더 알아보기",
-                        "no_scripts": "편집 가능한 스크립트를 찾을 수 없습니다",
+                        "no_scripts": "스크립트를 찾을 수 없습니다",
                         "run_script": "스크립트 실행",
                         "show_info": "스크립트에 대한 정보 표시하기"
                     }
@@ -2522,39 +2595,39 @@
                     "description": "Home Assistant 서버를 다시 시작하거나 중지합니다",
                     "section": {
                         "reloading": {
-                            "automation": "자동화 다시 읽어오기",
-                            "command_line": "명령줄 구성요소 다시 읽어오기",
-                            "core": "위치 및 사용자화 다시 읽어오기",
-                            "filesize": "파일 크기 구성요소 다시 읽어오기",
-                            "filter": "필터 구성요소 다시 읽어오기",
-                            "generic": "일반 IP 카메라 구성요소 다시 읽어오기",
-                            "generic_thermostat": "일반 온도 조절기 구성요소 다시 읽어오기",
-                            "group": "그룹, 그룹 구성요소 및 알림 서비스 다시 읽어오기",
+                            "automation": "자동화",
+                            "command_line": "명령줄 구성요소",
+                            "core": "위치 및 사용자화",
+                            "filesize": "파일 크기 구성요소",
+                            "filter": "필터 구성요소",
+                            "generic": "일반 IP 카메라 구성요소",
+                            "generic_thermostat": "일반 온도 조절기 구성요소",
+                            "group": "그룹, 그룹 구성요소 및 알림 서비스",
                             "heading": "YAML 구성 다시 읽어오기",
-                            "history_stats": "기록 통계 구성요소 다시 읽어오기",
-                            "homekit": "HomeKit 다시 읽어오기",
-                            "input_boolean": "논리입력 다시 읽어오기",
-                            "input_datetime": "날짜 / 시간입력 다시 읽어오기",
-                            "input_number": "숫자입력 다시 읽어오기",
-                            "input_select": "선택입력 다시 읽어오기",
-                            "input_text": "문자입력 다시 읽어오기",
+                            "history_stats": "기록 통계 구성요소",
+                            "homekit": "HomeKit",
+                            "input_boolean": "논리 입력",
+                            "input_datetime": "날짜/시간 입력",
+                            "input_number": "숫자 입력",
+                            "input_select": "선택 입력",
+                            "input_text": "문자 입력",
                             "introduction": "Home Assistant의 일부 구성 내용은 다시 시작할 필요 없이 다시 읽어 들일 수 있습니다. 다시 읽어오기를 누르면 현재 사용 중인 YAML 구성 내용을 내리고 새로운 구성 내용을 읽어 들입니다.",
-                            "min_max": "최소/최대 구성요소 다시 읽어오기",
-                            "mqtt": "직접 구성한 MQTT 구성요소 다시 읽어오기",
-                            "person": "구성원 다시 읽어오기",
-                            "ping": "ping 이진 센서 구성요소 다시 읽어오기",
-                            "reload": "{domain} 다시 읽어오기",
-                            "rest": "REST 구성요소 및 알림 서비스 다시 읽어오기",
-                            "rpi_gpio": "Raspberry Pi GPIO 구성요소 다시 읽어오기",
-                            "scene": "씬 다시 읽어오기",
-                            "script": "스크립트 다시 읽어오기",
-                            "smtp": "SMTP 알림 서비스 다시 읽어오기",
-                            "statistics": "통계 구성요소 다시 읽어오기",
-                            "telegram": "Telegram 알림 서비스 다시 읽어오기",
-                            "template": "템플릿 구성요소 다시 읽어오기",
-                            "trend": "추세 구성요소 다시 읽어오기",
-                            "universal": "범용 미디어 플레이어 구성요소 다시 읽어오기",
-                            "zone": "지역 다시 읽어오기"
+                            "min_max": "최소/최대 구성요소",
+                            "mqtt": "직접 구성한 MQTT 구성요소",
+                            "person": "구성원",
+                            "ping": "Ping 이진 센서 구성요소",
+                            "reload": "{domain}",
+                            "rest": "REST 구성요소 및 알림 서비스",
+                            "rpi_gpio": "Raspberry Pi GPIO 구성요소",
+                            "scene": "씬",
+                            "script": "스크립트",
+                            "smtp": "SMTP 알림 서비스",
+                            "statistics": "통계 구성요소",
+                            "telegram": "Telegram 알림 서비스",
+                            "template": "템플릿 구성요소",
+                            "trend": "추세 구성요소",
+                            "universal": "범용 미디어 플레이어 구성요소",
+                            "zone": "지역"
                         },
                         "server_management": {
                             "confirm_restart": "Home Assistant를 다시 시작하시겠습니까?",
@@ -2797,7 +2870,7 @@
                         "dump_dead_nodes_title": "일부 노드가 작동하지 않습니다",
                         "dump_debug": "문제 진단에 도움이 되는 네트워크 덤프 내려받기",
                         "dump_not_ready_confirm": "내려받기",
-                        "dump_not_ready_text": "모든 노드가 준비되지 않은 상태에서 내보내기를 생성하면 필요한 데이터가 누락될 수 있습니다. 네트워크에 모든 노드를 쿼리 할 시간을 주세요. 덤프를 계속하시겠습니까?",
+                        "dump_not_ready_text": "모든 노드가 준비되지 않은 상태에서 내보내기를 생성하면 필요한 데이터가 누락될 수 있습니다. 네트워크에 모든 노드를 등록 할 시간을 주세요. 덤프를 계속하시겠습니까?",
                         "dump_not_ready_title": "모든 노드가 아직 준비되지 않았습니다",
                         "header": "Z-Wave 네트워크를 관리합니다",
                         "home_id": "집 ID",
@@ -2806,6 +2879,7 @@
                         "server_version": "서버 버전"
                     },
                     "device_info": {
+                        "device_config": "기기 구성하기",
                         "node_ready": "노드 준비",
                         "node_status": "노드 상태",
                         "zwave_info": "Z-Wave 정보"
@@ -2816,21 +2890,30 @@
                     "network_status": {
                         "connected": "연결됨",
                         "connecting": "연결 중",
-                        "unknown": "알 수 없슴"
+                        "unknown": "알 수 없음"
+                    },
+                    "node_config": {
+                        "attribution": "기기를 구성하는 매개 변수 및 설명은 {device_database}에서 제공됩니다",
+                        "battery_device_notice": "배터리 방식 기기의 구성을 업데이트하려면 기기가 절전 해제된 상태이어야 합니다. 기기의 절전 모드를 해제하는 방법은 기기의 설명서를 참조해주세요.",
+                        "error_device_not_found": "기기를 찾을 수 없습니다",
+                        "header": "Z-Wave 기기 구성",
+                        "introduction": "선택한 기기(노드)의 매개 변수를 관리하고 조정합니다.",
+                        "parameter_is_read_only": "이 매개 변수는 읽기 전용입니다.",
+                        "zwave_js_device_database": "Z-Wave JS 기기 데이터베이스"
                     },
                     "node_status": {
                         "alive": "사용가능",
                         "asleep": "절전",
                         "awake": "절전해제",
                         "dead": "사용불가",
-                        "unknown": "알 수 없슴"
+                        "unknown": "알 수 없음"
                     },
                     "remove_node": {
                         "cancel_exclusion": "제외 취소하기",
                         "controller_in_exclusion_mode": "Z-Wave 컨트롤러가 이제 제외 모드에 있습니다",
                         "exclusion_failed": "노드를 제거할 수 없습니다. 자세한 내용은 로그를 확인해주세요.",
                         "exclusion_finished": "Z-Wave 네트워크에서 {id} 노드가 제거되었습니다.",
-                        "follow_device_instructions": "기기에서 제외를 트리거하려면  기기와 함께 제공된 지침을 따라주세요.",
+                        "follow_device_instructions": "기기를 제거하려면 기기의 설명서를 따라주세요.",
                         "introduction": "Z-Wave 네트워크에서 노드를 제거하고 Home Assistant에서 연결된 기기와 구성요소를 제거합니다.",
                         "start_exclusion": "제외 시작하기",
                         "title": "Z-Wave 노드 제거하기"
@@ -2964,6 +3047,7 @@
                         "column_parameter": "매개 변수",
                         "description": "서비스 개발 도구를 사용하면 Home Assistant에서 사용 가능한 서비스를 호출할 수 있습니다.",
                         "fill_example_data": "예제 데이터를 입력란에 넣기",
+                        "no_template_ui_support": "UI에서 템플릿을 지원하지 않습니다. YAML 편집기를 이용해주세요.",
                         "title": "서비스",
                         "ui_mode": "UI 모드로 이동하기",
                         "yaml_mode": "YAML 모드로 이동하기",
@@ -3015,7 +3099,7 @@
                     "reboot": "호스트 재부팅 시도하기",
                     "system_health": "시스템 상태 확인하기",
                     "title": "Supervisor 화면을 불러올 수 없습니다!",
-                    "wait": "방금 시작한 경우 Supervisor에게 시작할 충분한 시간을 주었는지 확인해주세요."
+                    "wait": "방금 시작한 경우 Supervisor가 완전히 시작되기까지 잠시 기다려주세요."
                 }
             },
             "history": {
@@ -3097,7 +3181,7 @@
                             "call-service": "서비스 호출",
                             "default_action": "기본 동작",
                             "more-info": "추가 정보",
-                            "navigate": "뷰 탐색",
+                            "navigate": "탐색",
                             "none": "동작 없음",
                             "toggle": "토글",
                             "url": "URL"
@@ -3435,7 +3519,7 @@
                         "close": "닫기",
                         "empty_config": "비어있는 대시보드로 시작",
                         "header": "Lovelace UI 직접 관리하기",
-                        "para": "이 대시보드는 현재 Home Assistant에 의해 유지 관리되고 있습니다. 사용할 수 있는 새로운 구성요소나 Lovelace UI 구성요소가 있을 때 자동으로 업데이트됩니다. 사용자가 직접 관리하는 경우 이 대시보드는 더 이상 자동으로 업데이트되지 않습니다. 언제든지 설정에서 새로운 대시보드를 만들 수 있습니다.",
+                        "para": "이 대시보드는 현재 Home Assistant에 의해 유지 관리되고 있습니다. 사용할 수 있는 새로운 구성요소나 Lovelace UI 구성요소가 있을 때 자동으로 업데이트됩니다. 사용자가 직접 관리하는 경우 이 대시보드는 더 이상 자동으로 업데이트되지 않습니다. 언제든지 구성에서 새로운 대시보드를 만들 수 있습니다.",
                         "para_sure": "사용자 인터페이스를 직접 관리하시겠습니까?",
                         "save": "직접 관리할게요",
                         "yaml_config": "시작하는데 도움이 될 수 있는 대시보드의 현재 구성은 다음과 같습니다:",
@@ -3630,12 +3714,12 @@
                 "config": {
                     "arsaboo": {
                         "labels": {
-                            "activity": "활동",
+                            "activity": "프리셋",
                             "air": "공조기",
                             "commute_home": "집으로 퇴근",
                             "entertainment": "엔터테인먼트",
                             "hdmi_input": "HDMI 입력",
-                            "hdmi_switcher": "HDMI 선택기",
+                            "hdmi_switcher": "HDMI 선택",
                             "information": "정보",
                             "lights": "조명",
                             "morning_commute": "아침 출근",
@@ -3652,7 +3736,7 @@
                             "mirror": "거울",
                             "patio": "마당",
                             "right": "오른쪽",
-                            "temperature_study": "온도 학습",
+                            "temperature_study": "서재 온도",
                             "upstairs": "위층"
                         },
                         "unit": {
@@ -3663,6 +3747,10 @@
                 }
             },
             "page-onboarding": {
+                "analytics": {
+                    "finish": "다음",
+                    "intro": "인스턴스의 분석 내용을 공유합니다. 이 데이터는 {link}에서 공개적으로 사용될 수 있습니다"
+                },
                 "core-config": {
                     "button_detect": "탐색",
                     "finish": "다음",
@@ -3672,12 +3760,14 @@
                     "location_name": "설치된 Home Assistant 이름",
                     "location_name_default": "집"
                 },
+                "finish": "완료",
                 "integration": {
                     "finish": "완료",
-                    "intro": "기기 및 서비스는 Home Assistant에서 통합 구성요소로 표시됩니다. 지금 구성하거나 나중에 설정 화면에서 구성할 수 있습니다.",
+                    "intro": "기기 및 서비스는 Home Assistant에서 통합 구성요소로 표시됩니다. 지금 설정하거나 나중에 구성 화면에서 설정할 수 있습니다.",
                     "more_integrations": "더보기"
                 },
                 "intro": "잠들어 있는 집을 깨우고 개인정보를 보호하며 전세계의 공돌이 커뮤니티에 가입 할 준비가 되셨나요?",
+                "next": "다음",
                 "restore": {
                     "description": "이전 스냅숏에서 복원할 수 있습니다.",
                     "hide_log": "전체 로그 숨기기",
@@ -3751,12 +3841,12 @@
                     "create_failed": "액세스 토큰을 생성을 할 수 없습니다.",
                     "created": "{date}에 생성 됨",
                     "delete_failed": "액세스 토큰을 삭제할 수 없습니다.",
-                    "description": "스크립트가 Home Assistant 구성요소와 상호 작용할 수 있도록 장기 액세스 토큰을 생성하세요. 각 토큰은 생성 후 10년 동안 유효합니다. 현재 활성 상태인 장기 액세스 토큰은 다음과 같습니다.",
+                    "description": "스크립트가 Home Assistant 구성요소와 상호 작용할 수 있도록 장기 액세스 토큰을 생성할 수 있습니다. 각 토큰은 생성 후 10년 동안 유효합니다. 현재 활성 상태인 장기 액세스 토큰은 다음과 같습니다.",
                     "empty_state": "장기 액세스 토큰이 없습니다.",
                     "header": "장기 액세스 토큰",
                     "learn_auth_requests": "인증 요청을 생성하는 방법에 대해 알아보세요.",
                     "name": "이름",
-                    "prompt_copy_token": "Ctrl + C를 눌러 액세스 토큰을 복사하세요. 이 안내는 다시 표시되지 않습니다.",
+                    "prompt_copy_token": "액세스 토큰을 복사하세요. 이 안내는 다시 표시되지 않습니다.",
                     "prompt_name": "토큰 이름을 지어주세요."
                 },
                 "mfa_setup": {
@@ -3771,6 +3861,19 @@
                     "disable": "비활성화",
                     "enable": "활성화",
                     "header": "다단계 인증 모듈"
+                },
+                "number_format": {
+                    "description": "숫자 형식을 선택해주세요.",
+                    "dropdown_label": "숫자 형식",
+                    "formats": {
+                        "comma_decimal": "1,234,567.89",
+                        "decimal_comma": "1.234.567,89",
+                        "language": "자동 (언어 설정 사용)",
+                        "none": "없음",
+                        "space_comma": "1 234 567,89",
+                        "system": "시스템 로케일 사용하기"
+                    },
+                    "header": "숫자 형식"
                 },
                 "push_notifications": {
                     "add_device_prompt": {
@@ -3815,7 +3918,7 @@
                 },
                 "vibrate": {
                     "description": "기기를 제어할 때 이 기기에서 진동을 활성화 또는 비활성화합니다.",
-                    "header": "진동효과"
+                    "header": "진동 효과"
                 }
             },
             "shopping_list": {

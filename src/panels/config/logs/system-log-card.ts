@@ -68,11 +68,14 @@ export class SystemLogCard extends LitElement {
                             <div secondary>
                               ${formatSystemLogTime(
                                 item.timestamp,
-                                this.hass!.language
+                                this.hass!.locale
                               )}
                               –
                               ${html`(<span class="${item.level.toLowerCase()}"
-                                  >${item.level}</span
+                                  >${this.hass.localize(
+                                    "ui.panel.config.logs.level." +
+                                      item.level.toLowerCase()
+                                  )}</span
                                 >) `}
                               ${integrations[idx]
                                 ? domainToName(
@@ -88,7 +91,7 @@ export class SystemLogCard extends LitElement {
                                       "time",
                                       formatSystemLogTime(
                                         item.first_occurred,
-                                        this.hass!.language
+                                        this.hass!.locale
                                       ),
                                       "counter",
                                       item.count

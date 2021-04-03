@@ -110,7 +110,7 @@ export interface LovelaceBadgeConfig {
 export interface LovelaceCardConfig {
   index?: number;
   view_index?: number;
-  layout?: any;
+  view_layout?: any;
   type: string;
   [key: string]: any;
 }

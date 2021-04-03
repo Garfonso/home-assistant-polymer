@@ -467,12 +467,14 @@
                     "docker": "The Docker environment is not working properly",
                     "privileged": "Supervisor is not privileged",
                     "setup": "Setup of the Supervisor failed",
-                    "supervisor": "Supervisor was not able to update"
+                    "supervisor": "Supervisor was not able to update",
+                    "untrusted": "Detected untrusted content"
                 },
                 "unhealthy_title": "Your installation is unhealthy",
                 "unsupported_description": "Below is a list of issues found with your installation, click on the links to learn how you can resolve the issues.",
                 "unsupported_reason": {
                     "container": "Containers known to cause issues",
+                    "content-trust": "Content-trust validation is disabled",
                     "dbus": "DBUS",
                     "docker_configuration": "Docker Configuration",
                     "docker_version": "Docker Version",
@@ -721,6 +723,9 @@
                 "today": "Today"
             },
             "data-table": {
+                "clear": "Clear",
+                "filtering_by": "Filtering by",
+                "hidden": "{number} hidden",
                 "no-data": "No data",
                 "search": "Search"
             },
@@ -834,6 +839,14 @@
             "picture-upload": {
                 "label": "Picture",
                 "unsupported_format": "Unsupported format, please choose a JPEG, PNG or GIF image."
+            },
+            "related-filter-menu": {
+                "filter_by_area": "Filter by area",
+                "filter_by_device": "Filter by device",
+                "filter_by_entity": "Filter by entity",
+                "filtered_by_area": "area: {area_name}",
+                "filtered_by_device": "device: {device_name}",
+                "filtered_by_entity": "entity: {entity_name}"
             },
             "related-items": {
                 "area": "Area",
@@ -1094,42 +1107,47 @@
                         "zone": "Zones"
                     },
                     "reload": {
-                        "automation": "Reload automations",
-                        "command_line": "Reload command line entities",
-                        "core": "Reload location & customizations",
-                        "filesize": "Reload file size entities",
-                        "filter": "Reload filter entities",
-                        "generic": "Reload generic IP camera entities",
-                        "generic_thermostat": "Reload generic thermostat entities",
-                        "group": "Reload groups, group entities, and group notify services",
-                        "history_stats": "Reload history stats entities",
-                        "homekit": "Reload HomeKit",
-                        "input_boolean": "Reload input booleans",
-                        "input_datetime": "Reload input date times",
-                        "input_number": "Reload input numbers",
-                        "input_select": "Reload input selects",
-                        "input_text": "Reload input texts",
-                        "min_max": "Reload min/max entities",
-                        "mqtt": "Reload manually configured MQTT entities",
-                        "person": "Reload people",
-                        "ping": "Reload ping binary sensor entities",
-                        "reload": "Reload {domain}",
-                        "rest": "Reload rest entities, and rest notify services",
-                        "rpi_gpio": "Reload Raspberry Pi GPIO entities",
-                        "scene": "Reload scenes",
-                        "script": "Reload scripts",
-                        "smtp": "Reload SMTP notify services",
-                        "statistics": "Reload statistics entities",
-                        "telegram": "Reload telegram notify services",
-                        "template": "Reload template entities",
-                        "trend": "Reload trend entities",
-                        "universal": "Reload universal media player entities",
-                        "zone": "Reload zones"
+                        "automation": "Automations",
+                        "command_line": "Command line entities",
+                        "core": "Location & customizations",
+                        "filesize": "File size entities",
+                        "filter": "Filter entities",
+                        "generic": "Generic IP camera entities",
+                        "generic_thermostat": "Generic thermostat entities",
+                        "group": "Groups, group entities, and notify services",
+                        "history_stats": "History stats entities",
+                        "homekit": "HomeKit",
+                        "input_boolean": "Input booleans",
+                        "input_datetime": "Input date times",
+                        "input_number": "Input numbers",
+                        "input_select": "Input selects",
+                        "input_text": "Input texts",
+                        "min_max": "Min/max entities",
+                        "mqtt": "Manually configured MQTT entities",
+                        "person": "People",
+                        "ping": "Ping binary sensor entities",
+                        "reload": "{domain}",
+                        "rest": "Rest entities and notify services",
+                        "rpi_gpio": "Raspberry Pi GPIO entities",
+                        "scene": "Scenes",
+                        "script": "Scripts",
+                        "smtp": "SMTP notify services",
+                        "statistics": "Statistics entities",
+                        "telegram": "Telegram notify services",
+                        "template": "Template entities",
+                        "trend": "Trend entities",
+                        "universal": "Universal media player entities",
+                        "zone": "Zones"
                     },
                     "server_control": {
-                        "perform_action": "{action} Server",
+                        "perform_action": "{action} server",
                         "restart": "Restart",
                         "stop": "Stop"
+                    },
+                    "types": {
+                        "navigation": "Navigate",
+                        "reload": "Reload",
+                        "server_control": "Server"
                     }
                 },
                 "filter_placeholder": "Entity Filter"
@@ -1172,6 +1190,9 @@
                 "zha_device_card": {
                     "device_name_placeholder": "Change device name"
                 }
+            },
+            "zha_reconfigure_device": {
+                "heading": "Reconfiguring device"
             }
         },
         "duration": {
@@ -1298,10 +1319,15 @@
                                 "device_id": {
                                     "action": "Action",
                                     "extra_fields": {
+                                        "brightness_pct": "Brightness",
                                         "code": "Code",
+                                        "flash": "Flash",
+                                        "humidity": "Humidity",
                                         "message": "Message",
+                                        "mode": "Mode",
                                         "position": "Position",
-                                        "title": "Title"
+                                        "title": "Title",
+                                        "value": "Value"
                                     },
                                     "label": "Device"
                                 },
@@ -1374,7 +1400,9 @@
                                     "extra_fields": {
                                         "above": "Above",
                                         "below": "Below",
-                                        "for": "Duration"
+                                        "for": "Duration",
+                                        "hvac_mode": "HVAC mode",
+                                        "preset_mode": "Preset mode"
                                     },
                                     "label": "Device"
                                 },
@@ -1459,6 +1487,7 @@
                         "move_down": "Move down",
                         "move_up": "Move up",
                         "save": "Save",
+                        "show_trace": "Show trace",
                         "triggers": {
                             "add": "Add trigger",
                             "delete": "Delete",
@@ -1578,7 +1607,7 @@
                         },
                         "introduction": "The automation editor allows you to create and edit automations. Please follow the link below to read the instructions to make sure that you have configured Home Assistant correctly.",
                         "learn_more": "Learn more about automations",
-                        "no_automations": "We couldn’t find any editable automations",
+                        "no_automations": "We couldn’t find any automations",
                         "only_editable": "Only automations defined in automations.yaml are editable.",
                         "pick_automation": "Pick automation to edit",
                         "show_info_automation": "Show info about automation"
@@ -1659,7 +1688,7 @@
                         "google": {
                             "config_documentation": "Configuration documentation",
                             "devices_pin": "Security Devices PIN",
-                            "enable_ha_skill": "Activate the Home Assistant skill for Google Assistant",
+                            "enable_ha_skill": "Activate the Home Assistant Cloud skill for Google Assistant",
                             "enable_state_reporting": "Enable State Reporting",
                             "enter_pin_error": "Unable to store PIN:",
                             "enter_pin_hint": "Enter a PIN to use security devices",
@@ -1667,6 +1696,8 @@
                             "info": "With the Google Assistant integration for Home Assistant Cloud you'll be able to control all your Home Assistant devices via any Google Assistant-enabled device.",
                             "info_state_reporting": "If you enable state reporting, Home Assistant will send all state changes of exposed entities to Google. This allows you to always see the latest states in the Google app.",
                             "manage_entities": "Manage Entities",
+                            "not_configured_text": "Before you can use Google Assistant, you need to activate the Home Assistant Cloud skill for Google Assistant in the Google Home app.",
+                            "not_configured_title": "Google Assistant is not activated",
                             "security_devices": "Security Devices",
                             "sync_entities": "Sync Entities to Google",
                             "sync_entities_404_message": "Failed to sync your entities to Google, ask Google 'Hey Google, sync my devices' to sync your entities.",
@@ -1829,6 +1860,36 @@
                     "description": "Unit system, location, time zone & other general parameters",
                     "section": {
                         "core": {
+                            "analytics": {
+                                "documentation": "Before you enable this make sure you visit the analytics documentation page {link} to understand what you are sending and how it's stored.",
+                                "header": "Analytics",
+                                "instance_id": "Instance ID: {huuid}",
+                                "introduction": "Share analytics from your instance. This data will be publicly available at {link}",
+                                "learn_more": "Learn more about how your data will be processed.",
+                                "needs_base": "You need to enable base analytics for this option to be available",
+                                "preference": {
+                                    "base": {
+                                        "description": "This includes the instance ID, the version and the installation type",
+                                        "title": "Basic analytics"
+                                    },
+                                    "diagnostics": {
+                                        "description": "Share crash reports and diagnostic information",
+                                        "title": "Diagnostics"
+                                    },
+                                    "statistics": {
+                                        "description": "This includes a count of elements in your installation, for a full list look at the documentation",
+                                        "title": "Usage statistics"
+                                    },
+                                    "usage_supervisor": {
+                                        "description": "This includes the names and capabilities of your integrations and add-ons",
+                                        "title": "Used integrations and add-ons"
+                                    },
+                                    "usage": {
+                                        "description": "This includes the names of your integrations",
+                                        "title": "Used integrations"
+                                    }
+                                }
+                            },
                             "core_config": {
                                 "edit_requires_storage": "Editor disabled because config stored in configuration.yaml.",
                                 "elevation": "Elevation",
@@ -2016,6 +2077,9 @@
                     "filtering_by": "Filtering by",
                     "show": "Show"
                 },
+                "hassio": {
+                    "button": "Configure"
+                },
                 "header": "Configure Home Assistant",
                 "helpers": {
                     "caption": "Helpers",
@@ -2102,8 +2166,10 @@
                         "entity_unavailable": "Entity unavailable",
                         "firmware": "Firmware: {version}",
                         "hub": "Connected via",
+                        "logs": "logs",
                         "manuf": "by {manufacturer}",
                         "no_area": "No Area",
+                        "not_loaded": "Not loaded, check the {logs_link}",
                         "options": "Options",
                         "reload": "Reload",
                         "reload_confirm": "The integration was reloaded",
@@ -2129,6 +2195,7 @@
                         "finish": "Finish",
                         "loading_first_time": "Please wait while the integration is being installed",
                         "not_all_required_fields": "Not all required fields are filled in.",
+                        "not_loaded": "The integration could not be loaded, try to restart Home Assistant.",
                         "pick_flow_step": {
                             "new_flow": "No, set up an other instance of {integration}",
                             "title": "We discovered these, want to set them up?"
@@ -2143,6 +2210,7 @@
                     "disable": {
                         "disabled_integrations": "{number} disabled",
                         "hide_disabled": "Hide disabled integrations",
+                        "show": "Show",
                         "show_disabled": "Show disabled integrations"
                     },
                     "discovered": "Discovered",
@@ -2178,10 +2246,17 @@
                     "clear": "Clear",
                     "description": "View the Home Assistant logs",
                     "details": "Log Details ({level})",
+                    "level": {
+                        "critical": "CRITICAL",
+                        "debug": "DEBUG",
+                        "error": "ERROR",
+                        "info": "INFO",
+                        "warning": "WARNING"
+                    },
                     "load_full_log": "Load Full Home Assistant Log",
                     "loading_log": "Loading error log…",
                     "multiple_messages": "message first occurred at {time} and shows up {counter} times",
-                    "no_errors": "No errors have been reported.",
+                    "no_errors": "No errors have been reported",
                     "no_issues": "There are no new issues!",
                     "refresh": "Refresh"
                 },
@@ -2462,7 +2537,7 @@
                         },
                         "introduction": "The scene editor allows you to create and edit scenes. Please follow the link below to read the instructions to make sure that you have configured Home Assistant correctly.",
                         "learn_more": "Learn more about scenes",
-                        "no_scenes": "We couldn’t find any editable scenes",
+                        "no_scenes": "We couldn’t find any scenes",
                         "only_editable": "Only scenes defined in scenes.yaml are editable.",
                         "pick_scene": "Pick scene to edit",
                         "show_info_scene": "Show info about scene"
@@ -2512,7 +2587,7 @@
                         },
                         "introduction": "The script editor allows you to create and edit scripts. Please follow the link below to read the instructions to make sure that you have configured Home Assistant correctly.",
                         "learn_more": "Learn more about scripts",
-                        "no_scripts": "We couldn’t find any editable scripts",
+                        "no_scripts": "We couldn’t find any scripts",
                         "run_script": "Run script",
                         "show_info": "Show info about script"
                     }
@@ -2522,39 +2597,39 @@
                     "description": "Restart and stop the Home Assistant server",
                     "section": {
                         "reloading": {
-                            "automation": "Reload automations",
-                            "command_line": "Reload command line entities",
-                            "core": "Reload location & customizations",
-                            "filesize": "Reload file size entities",
-                            "filter": "Reload filter entities",
-                            "generic": "Reload generic IP camera entities",
-                            "generic_thermostat": "Reload generic thermostat entities",
-                            "group": "Reload groups, group entities, and group notify services",
+                            "automation": "Automations",
+                            "command_line": "Command line entities",
+                            "core": "Location & customizations",
+                            "filesize": "File size entities",
+                            "filter": "Filter entities",
+                            "generic": "Generic IP camera entities",
+                            "generic_thermostat": "Generic thermostat entities",
+                            "group": "Groups, group entities, and notify services",
                             "heading": "YAML configuration reloading",
-                            "history_stats": "Reload history stats entities",
-                            "homekit": "Reload HomeKit",
-                            "input_boolean": "Reload input booleans",
-                            "input_datetime": "Reload input date times",
-                            "input_number": "Reload input numbers",
-                            "input_select": "Reload input selects",
-                            "input_text": "Reload input texts",
+                            "history_stats": "History stats entities",
+                            "homekit": "HomeKit",
+                            "input_boolean": "Input booleans",
+                            "input_datetime": "Input date times",
+                            "input_number": "Input numbers",
+                            "input_select": "Input selects",
+                            "input_text": "Input texts",
                             "introduction": "Some parts of Home Assistant can reload without requiring a restart. Hitting reload will unload their current YAML configuration and load the new one.",
-                            "min_max": "Reload min/max entities",
-                            "mqtt": "Reload manually configured MQTT entities",
-                            "person": "Reload people",
-                            "ping": "Reload ping binary sensor entities",
-                            "reload": "Reload {domain}",
-                            "rest": "Reload rest entities, and rest notify services",
-                            "rpi_gpio": "Reload Raspberry Pi GPIO entities",
-                            "scene": "Reload scenes",
-                            "script": "Reload scripts",
-                            "smtp": "Reload SMTP notify services",
-                            "statistics": "Reload statistics entities",
-                            "telegram": "Reload telegram notify services",
-                            "template": "Reload template entities",
-                            "trend": "Reload trend entities",
-                            "universal": "Reload universal media player entities",
-                            "zone": "Reload zones"
+                            "min_max": "Min/max entities",
+                            "mqtt": "Manually configured MQTT entities",
+                            "person": "People",
+                            "ping": "Ping binary sensor entities",
+                            "reload": "{domain}",
+                            "rest": "Rest entities and notify services",
+                            "rpi_gpio": "Raspberry Pi GPIO entities",
+                            "scene": "Scenes",
+                            "script": "Scripts",
+                            "smtp": "SMTP notify services",
+                            "statistics": "Statistics entities",
+                            "telegram": "Telegram notify services",
+                            "template": "Template entities",
+                            "trend": "Trend entities",
+                            "universal": "Universal media player entities",
+                            "zone": "Zones"
                         },
                         "server_management": {
                             "confirm_restart": "Are you sure you want to restart Home Assistant?",
@@ -2806,6 +2881,7 @@
                         "server_version": "Server Version"
                     },
                     "device_info": {
+                        "device_config": "Configure Device",
                         "node_ready": "Node Ready",
                         "node_status": "Node Status",
                         "zwave_info": "Z-Wave Info"
@@ -2817,6 +2893,15 @@
                         "connected": "Connected",
                         "connecting": "Connecting",
                         "unknown": "Unknown"
+                    },
+                    "node_config": {
+                        "attribution": "Device configuration parameters and descriptions are provided by the {device_database}",
+                        "battery_device_notice": "Battery devices must be awake to update their config. Please refer to your device manual for instructions on how to wake the device.",
+                        "error_device_not_found": "Device not found",
+                        "header": "Z-Wave Device Configuration",
+                        "introduction": "Manage and adjust device (node) specific configuration parameters for the selected device",
+                        "parameter_is_read_only": "This parameter is read-only.",
+                        "zwave_js_device_database": "Z-Wave JS Device Database"
                     },
                     "node_status": {
                         "alive": "Alive",
@@ -2964,6 +3049,7 @@
                         "column_parameter": "Parameter",
                         "description": "The service dev tool allows you to call any available service in Home Assistant.",
                         "fill_example_data": "Fill Example Data",
+                        "no_template_ui_support": "The UI does not support templates, you can still use the YAML editor.",
                         "title": "Services",
                         "ui_mode": "Go to UI mode",
                         "yaml_mode": "Go to YAML mode",
@@ -3663,6 +3749,10 @@
                 }
             },
             "page-onboarding": {
+                "analytics": {
+                    "finish": "Next",
+                    "intro": "Share analytics from your instance. This data will be publicly available at {link}"
+                },
                 "core-config": {
                     "button_detect": "Detect",
                     "finish": "Next",
@@ -3672,12 +3762,14 @@
                     "location_name": "Name of your Home Assistant installation",
                     "location_name_default": "Home"
                 },
+                "finish": "Finish",
                 "integration": {
                     "finish": "Finish",
                     "intro": "Devices and services are represented in Home Assistant as integrations. You can set them up now, or do it later from the configuration screen.",
                     "more_integrations": "More"
                 },
                 "intro": "Are you ready to awaken your home, reclaim your privacy and join a worldwide community of tinkerers?",
+                "next": "Next",
                 "restore": {
                     "description": "Alternatively you can restore from a previous snapshot.",
                     "hide_log": "Hide full log",
@@ -3771,6 +3863,19 @@
                     "disable": "Disable",
                     "enable": "Enable",
                     "header": "Multi-factor Authentication Modules"
+                },
+                "number_format": {
+                    "description": "Choose how numbers are formatted.",
+                    "dropdown_label": "Number format",
+                    "formats": {
+                        "comma_decimal": "1,234,567.89",
+                        "decimal_comma": "1.234.567,89",
+                        "language": "Auto (use language setting)",
+                        "none": "None",
+                        "space_comma": "1 234 567,89",
+                        "system": "Use system locale"
+                    },
+                    "header": "Number Format"
                 },
                 "push_notifications": {
                     "add_device_prompt": {

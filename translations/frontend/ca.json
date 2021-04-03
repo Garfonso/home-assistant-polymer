@@ -467,12 +467,14 @@
                     "docker": "L'entorn Docker no està funcionant correctament",
                     "privileged": "El Supervisor no és privilegiat",
                     "setup": "Ha fallat la configuració del Supervisor",
-                    "supervisor": "El Supervisor no s'ha pogut actualitzar"
+                    "supervisor": "El Supervisor no s'ha pogut actualitzar",
+                    "untrusted": "S'ha detectat algun contingut que no és de confiança"
                 },
                 "unhealthy_title": "La teva instal·lació no és bona",
                 "unsupported_description": "A continuació es mostra una llista de problemes relacionats amb la instal·lació, fes clic als enllaços per obtenir informació sobre com resoldre'ls.",
                 "unsupported_reason": {
                     "container": "Els contenidors són coneguts per causar problemes",
+                    "content-trust": "Validació de continguts de confiança desactivada",
                     "dbus": "DBUS",
                     "docker_configuration": "Configuració de Docker",
                     "docker_version": "Versió de Docker",
@@ -721,6 +723,9 @@
                 "today": "Avui"
             },
             "data-table": {
+                "clear": "Esborra",
+                "filtering_by": "Filtratge per",
+                "hidden": "{number} amagat/s",
                 "no-data": "No hi ha dades",
                 "search": "Cerca"
             },
@@ -834,6 +839,12 @@
             "picture-upload": {
                 "label": "Imatge",
                 "unsupported_format": "Format no compatible, tria una imatge JPEG, PNG o GIF."
+            },
+            "related-filter-menu": {
+                "filter_by_area": "Filtra per àrea",
+                "filter_by_device": "Filtra per dispositiu",
+                "filtered_by_area": "àrea: {area_name}",
+                "filtered_by_device": "dispositiu: {device_name}"
             },
             "related-items": {
                 "area": "Àrea",
@@ -1094,42 +1105,47 @@
                         "zone": "Zones"
                     },
                     "reload": {
-                        "automation": "Actualitza automatitzacions",
-                        "command_line": "Actualitza entitats de comandes",
-                        "core": "Actualitza ubicació i personalitzacions",
-                        "filesize": "Actualitza entitats de mida de fitxer",
-                        "filter": "Actualitza entitats de filtre",
-                        "generic": "Actualitza entitats genèriques de càmera IP",
-                        "generic_thermostat": "Actualitza entitats genèriques de termòstat",
-                        "group": "Actualitza grups, grups d'entitats i serveis de notificació de grup",
-                        "history_stats": "Actualitza entitats d'estadístiques històriques",
-                        "homekit": "Actualitza HomeKit",
-                        "input_boolean": "Actualitza entrades booleanes",
-                        "input_datetime": "Actualitza entrades de data i hora",
-                        "input_number": "Actualitza entrades numèriques",
-                        "input_select": "Actualitza entrades de selecció",
-                        "input_text": "Actualitza entrades de text",
-                        "min_max": "Actualitza entitats min/max",
-                        "mqtt": "Actualitza entitats MQTT configurades manualment",
-                        "person": "Actualitza persones",
-                        "ping": "Actualitza entitats de sensors binaris de ping",
-                        "reload": "Actualitza {domain}",
-                        "rest": "Actualitza entitats rest i serveis de notificació rest",
-                        "rpi_gpio": "Actualitza entitats GPIO de la Raspberry Pi",
-                        "scene": "Actualitza escenes",
-                        "script": "Actualitza programes",
-                        "smtp": "Actualitza serveis de notificació SMTP",
-                        "statistics": "Actualitza entitats estadístiques",
-                        "telegram": "Actualitza serveis de notificació de Telegram",
-                        "template": "Actualitza entitats de plantilla",
-                        "trend": "Actualitza entitats de tendència",
-                        "universal": "Actualitza entitats del reproductor universal",
-                        "zone": "Actualitza zones"
+                        "automation": "Automatitzacions",
+                        "command_line": "Entitats de línia de comandes",
+                        "core": "Ubicació i personalitzacions",
+                        "filesize": "Entitats de mida de fitxer",
+                        "filter": "Entitats de filtre",
+                        "generic": "Entitats genèriques de càmera IP",
+                        "generic_thermostat": "Entitats genèriques de termòstat",
+                        "group": "Grups, grups d'entitats i serveis de notificació",
+                        "history_stats": "Entitats d'estadístiques històriques",
+                        "homekit": "HomeKit",
+                        "input_boolean": "Entrades booleanes",
+                        "input_datetime": "Entrades de data i hora",
+                        "input_number": "Entrades numèriques",
+                        "input_select": "Entrades de selecció",
+                        "input_text": "Entrades de text",
+                        "min_max": "Entitats min/max",
+                        "mqtt": "Entitats MQTT configurades manualment",
+                        "person": "Persones",
+                        "ping": "Entitats de sensors binaris de ping",
+                        "reload": "{domain}",
+                        "rest": "Entitats i serveis de notificació rest",
+                        "rpi_gpio": "Entitats GPIO de la Raspberry Pi",
+                        "scene": "Escenes",
+                        "script": "Programes (scripts)",
+                        "smtp": "Serveis de notificació SMTP",
+                        "statistics": "Entitats d'estadístiques",
+                        "telegram": "Serveis de notificació de Telegram",
+                        "template": "Entitats de plantilla",
+                        "trend": "Entitats de tendència",
+                        "universal": "Entitats del reproductor universal",
+                        "zone": "Zones"
                     },
                     "server_control": {
-                        "perform_action": "{action} Servidor",
+                        "perform_action": "{action} servidor",
                         "restart": "Reinicia",
                         "stop": "Atura"
+                    },
+                    "types": {
+                        "navigation": "Navega",
+                        "reload": "Torna a carregar",
+                        "server_control": "Servidor"
                     }
                 },
                 "filter_placeholder": "Filtre d'entitats"
@@ -1172,6 +1188,9 @@
                 "zha_device_card": {
                     "device_name_placeholder": "Canvia el nom del dispositiu"
                 }
+            },
+            "zha_reconfigure_device": {
+                "heading": "S'està reconfigurant el dispositiu"
             }
         },
         "duration": {
@@ -1298,10 +1317,15 @@
                                 "device_id": {
                                     "action": "Acció",
                                     "extra_fields": {
+                                        "brightness_pct": "Brillantor",
                                         "code": "Codi",
+                                        "flash": "Flaix",
+                                        "humidity": "Humitat",
                                         "message": "Missatge",
+                                        "mode": "Mode",
                                         "position": "Posició",
-                                        "title": "Títol"
+                                        "title": "Títol",
+                                        "value": "Valor"
                                     },
                                     "label": "Dispositiu"
                                 },
@@ -1374,7 +1398,9 @@
                                     "extra_fields": {
                                         "above": "A sobre",
                                         "below": "A sota",
-                                        "for": "Durada"
+                                        "for": "Durada",
+                                        "hvac_mode": "Mode HVAC",
+                                        "preset_mode": "Mode predefinit"
                                     },
                                     "label": "Dispositiu"
                                 },
@@ -1459,6 +1485,7 @@
                         "move_down": "Mou avall",
                         "move_up": "Mou amunt",
                         "save": "Desa",
+                        "show_trace": "Mostra la traça",
                         "triggers": {
                             "add": "Afegeix disparador",
                             "delete": "Elimina",
@@ -1578,7 +1605,7 @@
                         },
                         "introduction": "L'editor d'automatitzacions et permet crear i editar automatitzacions. Vés a l'enllaç de sota per veure'n les instruccions i assegurar-te que has configurat Home Assistant correctament.",
                         "learn_more": "Més informació sobre les automatitzacions",
-                        "no_automations": "No s'ha pogut trobar cap automatització editable",
+                        "no_automations": "No s'ha pogut trobar cap automatització",
                         "only_editable": "Només es poden editar les automatitzacions definides al fitxer automations.yaml.",
                         "pick_automation": "Selecciona l'automatització a editar",
                         "show_info_automation": "Mostra informació sobre l'automatització"
@@ -1659,7 +1686,7 @@
                         "google": {
                             "config_documentation": "Documentació de configuració",
                             "devices_pin": "PIN dels dispositius de seguretat",
-                            "enable_ha_skill": "Activa l'auxiliar de Home Assistant per Google Assistant",
+                            "enable_ha_skill": "Activa Home Assistant Cloud per Google Assistant",
                             "enable_state_reporting": "Activa els informes d'estat",
                             "enter_pin_error": "No s'ha pogut desar el PIN:",
                             "enter_pin_hint": "Introdueix un PIN per utilitzar dispositius de seguretat",
@@ -1667,6 +1694,8 @@
                             "info": "Amb la integració de Google Assistant per Home Assistant Cloud podràs controlar tots els dispositius de Home Assistant a través dels dispositius compatibles amb Google Assistant.",
                             "info_state_reporting": "Si actives els informes d'estat, Home Assistant enviarà a Google tots els canvis d'estat de les entitats exposades. Això et permetrà veure els últims estats a l'aplicació de Google.",
                             "manage_entities": "Gestió d'entitats",
+                            "not_configured_text": "Abans de poder fer servir Google Assistant, has d'activar Home Assistant Cloud per a Google Assistant a l'aplicació de Google Home.",
+                            "not_configured_title": "Google Assistant no està activat",
                             "security_devices": "Dispositius de seguretat",
                             "sync_entities": "Sincronitza les entitats amb Google",
                             "sync_entities_404_message": "No s'han pogut sincronitzar les entitats amb Google, digues \"Hey Google, sincronitza els meus dispositius\" per sincronitzar-les.",
@@ -1829,6 +1858,36 @@
                     "description": "Sistema d'unitats, ubicació, zona horària i altres paràmetres generals",
                     "section": {
                         "core": {
+                            "analytics": {
+                                "documentation": "Abans d'activar això, revisa't la documentació d'anàlisi a {link}, per entendre el què s'enviarà i com s'emmagatzemarà.",
+                                "header": "Dades analítiques",
+                                "instance_id": "ID de la instància: {huuid}",
+                                "introduction": "Comparteix dades analítiques de la teva instància. Aquestes dades estaran disponibles públicament a {link}",
+                                "learn_more": "Més informació sobre com les teves dades es processaran.",
+                                "needs_base": "Has d'habilitar l'anàlisi bàsica perquè aquesta opció estigui disponible",
+                                "preference": {
+                                    "base": {
+                                        "description": "Inclou l'ID de la instància, la versió i el tipus d'instal·lació",
+                                        "title": "Anàlisi bàsica"
+                                    },
+                                    "diagnostics": {
+                                        "description": "Comparteix informes d'errors i informació de diagnòstic",
+                                        "title": "Diagnòstics"
+                                    },
+                                    "statistics": {
+                                        "description": "Això inclou un seguit d'elements de la teva instal·lació. Per obtenir-ne una llista completa, consulta la documentació",
+                                        "title": "Estadístiques d’ús"
+                                    },
+                                    "usage_supervisor": {
+                                        "description": "Inclou els noms i funcionalitats de les teves integracions i complements",
+                                        "title": "Integracions i complements utilitzats"
+                                    },
+                                    "usage": {
+                                        "description": "Inclou els noms de les teves integracions",
+                                        "title": "Integracions utilitzades"
+                                    }
+                                }
+                            },
                             "core_config": {
                                 "edit_requires_storage": "L'editor està desactivat ja que la configuració es troba a configuration.yaml.",
                                 "elevation": "Altitud",
@@ -2016,6 +2075,9 @@
                     "filtering_by": "Filtratge per",
                     "show": "Mostra"
                 },
+                "hassio": {
+                    "button": "Configura"
+                },
                 "header": "Configuració de Home Assistant",
                 "helpers": {
                     "caption": "Ajudants",
@@ -2102,8 +2164,10 @@
                         "entity_unavailable": "Entitat no disponible",
                         "firmware": "Firmware: {version}",
                         "hub": "Connectat a través de",
+                        "logs": "registres",
                         "manuf": "de {manufacturer}",
                         "no_area": "Sense àrea",
+                        "not_loaded": "No carregat, comprova {logs_link}",
                         "options": "Opcions",
                         "reload": "Torna a carregar",
                         "reload_confirm": "La integració s'ha tornat a carregar",
@@ -2129,6 +2193,7 @@
                         "finish": "Finalitza",
                         "loading_first_time": "Espera mentre s'instal·la la integració",
                         "not_all_required_fields": "No s'han omplert tots els camps obligatoris.",
+                        "not_loaded": "No s'ha pogut carregar la integració, prova de reiniciar Home Assistant.",
                         "pick_flow_step": {
                             "new_flow": "No, configura una altra instància de {integration}",
                             "title": "N'hem descobert aquests, vols configurar-los?"
@@ -2143,6 +2208,7 @@
                     "disable": {
                         "disabled_integrations": "{number} desactivada/es",
                         "hide_disabled": "Amaga integracions desactivades",
+                        "show": "Mostra",
                         "show_disabled": "Mostra integracions desactivades"
                     },
                     "discovered": "Descobertes",
@@ -2178,10 +2244,17 @@
                     "clear": "Esborra",
                     "description": "Consulta els registres de Home Assistant",
                     "details": "Detalls del registre ({level})",
+                    "level": {
+                        "critical": "CRÍTIC",
+                        "debug": "DEPURACIÓ",
+                        "error": "ERROR",
+                        "info": "INFO",
+                        "warning": "ADVERTÈNCIA"
+                    },
                     "load_full_log": "Carrega el registre complet de Home Assistant",
                     "loading_log": "Carregant el registre d'errors...",
                     "multiple_messages": "missatge produit per primera vegada a les {time}, apareix {counter} vegades",
-                    "no_errors": "No s'ha informat de cap error.",
+                    "no_errors": "No s'ha informat de cap error",
                     "no_issues": "No hi ha registres nous!",
                     "refresh": "Actualitza"
                 },
@@ -2462,7 +2535,7 @@
                         },
                         "introduction": "L'editor d'escenes et permet crear i editar escenes. Vés a l'enllaç de sota per veure'n les instruccions i assegurar-te que has configurat Home Assistant correctament.",
                         "learn_more": "Més informació sobre les escenes",
-                        "no_scenes": "No s'ha pogut trobar cap escena editable",
+                        "no_scenes": "No s'ha pogut trobar cap escena",
                         "only_editable": "Només es poden editar les escenes definides al fitxer scenes.yaml.",
                         "pick_scene": "Selecciona l'escena a editar",
                         "show_info_scene": "Mostra informació sobre l'escena"
@@ -2512,7 +2585,7 @@
                         },
                         "introduction": "L'editor de scripts et permet crear i editar scripts. Vés a l'enllaç de sota per veure'n les instruccions i assegurar-te que has configurat Home Assistant correctament.",
                         "learn_more": "Més informació sobre els scripts",
-                        "no_scripts": "No s'ha pogut trobar cap script editable",
+                        "no_scripts": "No s'ha pogut trobar cap script",
                         "run_script": "Executa l'script",
                         "show_info": "Mostra informació sobre l'script"
                     }
@@ -2522,39 +2595,39 @@
                     "description": "Reinicia o atura el servidor de Home Assistant",
                     "section": {
                         "reloading": {
-                            "automation": "Actualitza automatitzacions",
-                            "command_line": "Actualitza entitats de comandes",
-                            "core": "Actualitza ubicació i personalitzacions",
-                            "filesize": "Actualitza entitats de mida de fitxer",
-                            "filter": "Actualitza entitats de filtre",
-                            "generic": "Actualitza entitats genèriques de càmera IP",
-                            "generic_thermostat": "Actualitza entitats genèriques de termòstat",
-                            "group": "Actualitza grups, grups d'entitats i serveis de notificació de grup",
+                            "automation": "Automatitzacions",
+                            "command_line": "Entitats de línia de comandes",
+                            "core": "Ubicació i personalitzacions",
+                            "filesize": "Entitats de mida de fitxer",
+                            "filter": "Entitats de filtre",
+                            "generic": "Entitats genèriques de càmera IP",
+                            "generic_thermostat": "Entitats genèriques de termòstat",
+                            "group": "Grups, grups d'entitats i serveis de notificació",
                             "heading": "Torna a carregar les configuracions YAML",
-                            "history_stats": "Actualitza entitats d'estadístiques històriques",
-                            "homekit": "Actualitza HomeKit",
-                            "input_boolean": "Actualitza entrades booleanes",
-                            "input_datetime": "Actualitza entrades de data i hora",
-                            "input_number": "Actualitza entrades numèriques",
-                            "input_select": "Actualitza entrades de selecció",
-                            "input_text": "Actualitza entrades de text",
+                            "history_stats": "Entitats d'estadístiques històriques",
+                            "homekit": "HomeKit",
+                            "input_boolean": "Entrades booleanes",
+                            "input_datetime": "Entrades de data i hora",
+                            "input_number": "Entrades numèriques",
+                            "input_select": "Entrades de selecció",
+                            "input_text": "Entrades de text",
                             "introduction": "Algunes parts de Home Assistant es poden actualitzar sense necessitat reiniciar-lo. Si prems actualitza s'esborrarà la configuració YAML actual i se'n carregarà la nova.",
-                            "min_max": "Actualitza entitats min/max",
-                            "mqtt": "Actualitza entitats MQTT configurades manualment",
-                            "person": "Actualitza persones",
-                            "ping": "Actualitza entitats de sensors binaris de ping",
-                            "reload": "Actualitza {domain}",
-                            "rest": "Actualitza entitats rest i serveis de notificació rest",
-                            "rpi_gpio": "Actualitza entitats GPIO de la Raspberry Pi",
-                            "scene": "Actualitza escenes",
-                            "script": "Actualitza programes",
-                            "smtp": "Actualitza serveis de notificació SMTP",
-                            "statistics": "Actualitza entitats estadístiques",
-                            "telegram": "Actualitza serveis de notificació de Telegram",
-                            "template": "Actualitza entitats de plantilla",
-                            "trend": "Actualitza entitats de tendència",
-                            "universal": "Actualitza entitats del reproductor universal",
-                            "zone": "Actualitza zones"
+                            "min_max": "Entitats min/max",
+                            "mqtt": "Entitats MQTT configurades manualment",
+                            "person": "Persones",
+                            "ping": "Entitats de sensors binaris de ping",
+                            "reload": "{domain}",
+                            "rest": "Entitats i serveis de notificació rest",
+                            "rpi_gpio": "Entitats GPIO de la Raspberry Pi",
+                            "scene": "Escenes",
+                            "script": "Programes (scripts)",
+                            "smtp": "Serveis de notificació SMTP",
+                            "statistics": "Entitats d'estadístiques",
+                            "telegram": "Serveis de notificació de Telegram",
+                            "template": "Entitats de plantilla",
+                            "trend": "Entitats de tendència",
+                            "universal": "Entitats del reproductor universal",
+                            "zone": "Zones"
                         },
                         "server_management": {
                             "confirm_restart": "Segur que vols reiniciar Home Assistant?",
@@ -2806,6 +2879,7 @@
                         "server_version": "Versió del servidor"
                     },
                     "device_info": {
+                        "device_config": "Configura dispositiu",
                         "node_ready": "Node preparat",
                         "node_status": "Estat del node",
                         "zwave_info": "Informació Z-Wave"
@@ -2817,6 +2891,15 @@
                         "connected": "Connectat",
                         "connecting": "Connectant",
                         "unknown": "Desconegut"
+                    },
+                    "node_config": {
+                        "attribution": "Els paràmetres de configuració i descripcions del dispositiu els proporcionen {device_database}",
+                        "battery_device_notice": "Els dispositius amb bateria han d'estar desperts per actualitzar-ne la configuració. Consulta el manual del dispositiu per saber com despertar-lo.",
+                        "error_device_not_found": "Dispositiu no trobat",
+                        "header": "Configuració de dispositiu Z-Wave",
+                        "introduction": "Gestiona i ajusta els paràmetres de configuració específics del dispositiu (node) seleccionat",
+                        "parameter_is_read_only": "Aquest paràmetre de només lectura.",
+                        "zwave_js_device_database": "Base de dades de dispositiu Z-Wave JS"
                     },
                     "node_status": {
                         "alive": "Viu",
@@ -2964,6 +3047,7 @@
                         "column_parameter": "Paràmetre",
                         "description": "L'eina Serveis et permet fer crides a qualsevol servei disponible a Home Assistant.",
                         "fill_example_data": "Omple amb dades d'exemple",
+                        "no_template_ui_support": "La interfície d'usuari no admet plantilles, pots utilitzar l'editor YAML.",
                         "title": "Serveis",
                         "ui_mode": "Vés al mode d'interfície d'usuari",
                         "yaml_mode": "Vés al mode YAML",
@@ -3663,6 +3747,10 @@
                 }
             },
             "page-onboarding": {
+                "analytics": {
+                    "finish": "Següent",
+                    "intro": "Comparteix dades analítiques de la teva instància. Aquestes dades estaran disponibles públicament a {link}"
+                },
                 "core-config": {
                     "button_detect": "Detecta",
                     "finish": "Següent",
@@ -3672,12 +3760,14 @@
                     "location_name": "Nom de la instal·lació de Home Assistant",
                     "location_name_default": "Casa"
                 },
+                "finish": "Acaba",
                 "integration": {
                     "finish": "Finalitza",
                     "intro": "Els dispositius i serveis es representen a Home Assistant com a integracions. Pots configurar-los ara o més tard des de la pàgina de configuració.",
                     "more_integrations": "Més"
                 },
                 "intro": "Estàs preparat donar vida pròpia a la teva llar, recuperar la teva privacitat i unir-te a una comunitat mundial de \"tinkerers\"?",
+                "next": "Següent",
                 "restore": {
                     "description": "També pots restaurar des d'una instantània anterior.",
                     "hide_log": "Amaga el registre complet",
@@ -3771,6 +3861,19 @@
                     "disable": "Desactiva",
                     "enable": "Activa",
                     "header": "Mòduls d'autenticació amb múltiples passos"
+                },
+                "number_format": {
+                    "description": "Trieu el format dels números.",
+                    "dropdown_label": "Format de número",
+                    "formats": {
+                        "comma_decimal": "1,234,567.89",
+                        "decimal_comma": "1.234.567,89",
+                        "language": "Automàtic (utilitza la configuració d'idioma)",
+                        "none": "Cap",
+                        "space_comma": "1 234 567,89",
+                        "system": "Utilitza la configuració regional del sistema"
+                    },
+                    "header": "Format de número"
                 },
                 "push_notifications": {
                     "add_device_prompt": {

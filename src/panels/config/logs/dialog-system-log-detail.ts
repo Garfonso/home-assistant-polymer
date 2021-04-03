@@ -76,7 +76,9 @@ class DialogSystemLogDetail extends LitElement {
               "ui.panel.config.logs.details",
               "level",
               html`<span class="${item.level.toLowerCase()}"
-                >${item.level}</span
+                >${this.hass.localize(
+                  "ui.panel.config.logs.level." + item.level.toLowerCase()
+                )}</span
               >`
             )}
           </span>
@@ -122,15 +124,12 @@ class DialogSystemLogDetail extends LitElement {
             ${item.count > 0
               ? html`
                   First occurred:
-                  ${formatSystemLogTime(
-                    item.first_occurred,
-                    this.hass!.language
-                  )}
+                  ${formatSystemLogTime(item.first_occurred, this.hass!.locale)}
                   (${item.count} occurrences) <br />
                 `
               : ""}
             Last logged:
-            ${formatSystemLogTime(item.timestamp, this.hass!.language)}
+            ${formatSystemLogTime(item.timestamp, this.hass!.locale)}
           </p>
           ${item.message.length > 1
             ? html`

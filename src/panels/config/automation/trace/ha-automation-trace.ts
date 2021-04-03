@@ -12,11 +12,11 @@ import { AutomationEntity } from "../../../../data/automation";
 import {
   AutomationTrace,
   AutomationTraceExtended,
-  loadAutomationTrace,
-  loadAutomationTraces,
-} from "../../../../data/automation_debug";
-import "../../../../components/ha-card";
-import "../../../../components/trace/hat-trace";
+  loadTrace,
+  loadTraces,
+} from "../../../../data/trace";
+import "../../../../components/trace/hat-script-graph";
+import type { NodeInfo } from "../../../../components/trace/hat-graph";
 import { haStyle } from "../../../../resources/styles";
 import { HomeAssistant, Route } from "../../../../types";
 import { configSections } from "../../ha-panel-config";
@@ -27,6 +27,19 @@ import {
 import { formatDateTimeWithSeconds } from "../../../../common/datetime/format_date_time";
 import { repeat } from "lit-html/directives/repeat";
 import { showAlertDialog } from "../../../../dialogs/generic/show-dialog-box";
+import "./ha-automation-trace-path-details";
+import "./ha-automation-trace-timeline";
+import "./ha-automation-trace-config";
+import { classMap } from "lit-html/directives/class-map";
+import { traceTabStyles } from "./styles";
+import {
+  mdiRayEndArrow,
+  mdiRayStartArrow,
+  mdiPencil,
+  mdiRefresh,
+  mdiDownload,
+} from "@mdi/js";
+import "./ha-automation-trace-blueprint-config";
 
 @customElement("ha-automation-trace")
 export class HaAutomationTrace extends LitElement {
@@ -34,13 +47,13 @@ export class HaAutomationTrace extends LitElement {
 
   @property() public automationId!: string;
 
-  @property() public automations!: AutomationEntity[];
+  @property({ attribute: false }) public automations!: AutomationEntity[];
 
-  @property() public isWide?: boolean;
+  @property({ type: Boolean }) public isWide?: boolean;
 
-  @property() public narrow!: boolean;
+  @property({ type: Boolean, reflect: true }) public narrow!: boolean;
 
-  @property() public route!: Route;
+  @property({ attribute: false }) public route!: Route;
 
   @internalProperty() private _entityId?: string;
 
@@ -48,14 +61,42 @@ export class HaAutomationTrace extends LitElement {
 
   @internalProperty() private _runId?: string;
 
+  @internalProperty() private _selected?: NodeInfo;
+
   @internalProperty() private _trace?: AutomationTraceExtended;
 
   @internalProperty() private _logbookEntries?: LogbookEntry[];
+
+  @internalProperty() private _view:
+    | "details"
+    | "config"
+    | "timeline"
+    | "logbook"
+    | "blueprint" = "details";
 
   protected render(): TemplateResult {
     const stateObj = this._entityId
       ? this.hass.states[this._entityId]
       : undefined;
+
+    const trackedNodes = this.shadowRoot!.querySelector(
+      "hat-script-graph"
+    )?.getTrackedNodes();
+
+    const title = stateObj?.attributes.friendly_name || this._entityId;
+
+    const actionButtons = html`
+      <mwc-icon-button label="Refresh" @click=${() => this._loadTraces()}>
+        <ha-svg-icon .path=${mdiRefresh}></ha-svg-icon>
+      </mwc-icon-button>
+      <mwc-icon-button
+        .disabled=${!this._runId}
+        label="Download Trace"
+        @click=${this._downloadTrace}
+      >
+        <ha-svg-icon .path=${mdiDownload}></ha-svg-icon>
+      </mwc-icon-button>
+    `;
 
     return html`
       <hass-tabs-subpage
@@ -65,14 +106,39 @@ export class HaAutomationTrace extends LitElement {
         .backCallback=${() => this._backTapped()}
         .tabs=${configSections.automation}
       >
-        <ha-card
-          .header=${`Trace for ${
-            stateObj?.attributes.friendly_name || this._entityId
-          }`}
-        >
-          <div class="actions">
-            ${this._traces && this._traces.length > 0
-              ? html`
+        ${this.narrow
+          ? html`<span slot="header">
+                ${title}
+              </span>
+              <div slot="toolbar-icon">
+                ${actionButtons}
+              </div>`
+          : ""}
+        <div class="toolbar">
+          ${!this.narrow
+            ? html`<div>
+                ${title}
+                <a
+                  class="linkButton"
+                  href="/config/automation/edit/${this.automationId}"
+                >
+                  <mwc-icon-button label="Edit Automation" tabindex="-1">
+                    <ha-svg-icon .path=${mdiPencil}></ha-svg-icon>
+                  </mwc-icon-button>
+                </a>
+              </div>`
+            : ""}
+          ${this._traces && this._traces.length > 0
+            ? html`
+                <div>
+                  <mwc-icon-button
+                    .disabled=${this._traces[this._traces.length - 1].run_id ===
+                    this._runId}
+                    label="Older trace"
+                    @click=${this._pickOlderTrace}
+                  >
+                    <ha-svg-icon .path=${mdiRayEndArrow}></ha-svg-icon>
+                  </mwc-icon-button>
                   <select .value=${this._runId} @change=${this._pickTrace}>
                     ${repeat(
                       this._traces,
@@ -81,36 +147,122 @@ export class HaAutomationTrace extends LitElement {
                         html`<option value=${trace.run_id}
                           >${formatDateTimeWithSeconds(
                             new Date(trace.timestamp.start),
-                            this.hass.language
+                            this.hass.locale
                           )}</option
                         >`
                     )}
                   </select>
-                `
-              : ""}
-            <button @click=${this._loadTraces}>
-              Refresh
-            </button>
-            <button @click=${this._downloadTrace}>
-              Download
-            </button>
-          </div>
-          <div class="card-content">
-            ${this._traces === undefined
-              ? "Loading…"
-              : this._traces.length === 0
-              ? "No traces found"
-              : this._trace === undefined
-              ? "Loading…"
-              : html`
-                  <hat-trace
-                    .hass=${this.hass}
+                  <mwc-icon-button
+                    .disabled=${this._traces[0].run_id === this._runId}
+                    label="Newer trace"
+                    @click=${this._pickNewerTrace}
+                  >
+                    <ha-svg-icon .path=${mdiRayStartArrow}></ha-svg-icon>
+                  </mwc-icon-button>
+                </div>
+              `
+            : ""}
+          ${!this.narrow ? html`<div>${actionButtons}</div>` : ""}
+        </div>
+
+        ${this._traces === undefined
+          ? html`<div class="container">Loading…</div>`
+          : this._traces.length === 0
+          ? html`<div class="container">No traces found</div>`
+          : this._trace === undefined
+          ? ""
+          : html`
+              <div class="main">
+                <div class="graph">
+                  <hat-script-graph
                     .trace=${this._trace}
-                    .logbookEntries=${this._logbookEntries}
-                  ></hat-trace>
-                `}
-          </div>
-        </ha-card>
+                    .selected=${this._selected?.path}
+                    @graph-node-selected=${this._pickNode}
+                  ></hat-script-graph>
+                </div>
+
+                <div class="info">
+                  <div class="tabs top">
+                    ${[
+                      ["details", "Step Details"],
+                      ["timeline", "Trace Timeline"],
+                      ["logbook", "Related logbook entries"],
+                      ["config", "Automation Config"],
+                    ].map(
+                      ([view, label]) => html`
+                        <button
+                          tabindex="0"
+                          .view=${view}
+                          class=${classMap({ active: this._view === view })}
+                          @click=${this._showTab}
+                        >
+                          ${label}
+                        </button>
+                      `
+                    )}
+                    ${this._trace.blueprint_inputs
+                      ? html`
+                          <button
+                            tabindex="0"
+                            .view=${"blueprint"}
+                            class=${classMap({
+                              active: this._view === "blueprint",
+                            })}
+                            @click=${this._showTab}
+                          >
+                            Blueprint Config
+                          </div>
+                        `
+                      : ""}
+                  </div>
+                  ${this._selected === undefined ||
+                  this._logbookEntries === undefined ||
+                  trackedNodes === undefined
+                    ? ""
+                    : this._view === "details"
+                    ? html`
+                        <ha-automation-trace-path-details
+                          .hass=${this.hass}
+                          .narrow=${this.narrow}
+                          .trace=${this._trace}
+                          .selected=${this._selected}
+                          .logbookEntries=${this._logbookEntries}
+                          .trackedNodes=${trackedNodes}
+                        ></ha-automation-trace-path-details>
+                      `
+                    : this._view === "config"
+                    ? html`
+                        <ha-automation-trace-config
+                          .hass=${this.hass}
+                          .trace=${this._trace}
+                        ></ha-automation-trace-config>
+                      `
+                    : this._view === "logbook"
+                    ? html`
+                        <ha-logbook
+                          .hass=${this.hass}
+                          .entries=${this._logbookEntries}
+                        ></ha-logbook>
+                      `
+                    : this._view === "blueprint"
+                    ? html`
+                        <ha-automation-trace-blueprint-config
+                          .hass=${this.hass}
+                          .trace=${this._trace}
+                        ></ha-automation-trace-blueprint-config>
+                      `
+                    : html`
+                        <ha-automation-trace-timeline
+                          .hass=${this.hass}
+                          .trace=${this._trace}
+                          .logbookEntries=${this._logbookEntries}
+                          .selected=${this._selected}
+                          @value-changed=${this._timelinePathPicked}
+                        ></ha-automation-trace-timeline>
+                      `}
+                </div>
+              </div>
+            `}
       </hass-tabs-subpage>
     `;
   }
@@ -160,12 +312,29 @@ export class HaAutomationTrace extends LitElement {
     }
   }
 
+  private _pickOlderTrace() {
+    const curIndex = this._traces!.findIndex((tr) => tr.run_id === this._runId);
+    this._runId = this._traces![curIndex + 1].run_id;
+    this._selected = undefined;
+  }
+
+  private _pickNewerTrace() {
+    const curIndex = this._traces!.findIndex((tr) => tr.run_id === this._runId);
+    this._runId = this._traces![curIndex - 1].run_id;
+    this._selected = undefined;
+  }
+
   private _pickTrace(ev) {
     this._runId = ev.target.value;
+    this._selected = undefined;
+  }
+
+  private _pickNode(ev) {
+    this._selected = ev.detail;
   }
 
   private async _loadTraces(runId?: string) {
-    this._traces = await loadAutomationTraces(this.hass, this.automationId);
+    this._traces = await loadTraces(this.hass, "automation", this.automationId);
     // Newest will be on top.
     this._traces.reverse();
 
@@ -179,6 +348,7 @@ export class HaAutomationTrace extends LitElement {
       !this._traces.some((trace) => trace.run_id === this._runId)
     ) {
       this._runId = undefined;
+      this._selected = undefined;
 
       // If we came here from a trace passed into the url, clear it.
       if (runId) {
@@ -203,8 +373,9 @@ export class HaAutomationTrace extends LitElement {
   }
 
   private async _loadTrace() {
-    const trace = await loadAutomationTrace(
+    const trace = await loadTrace(
       this.hass,
+      "automation",
       this.automationId,
       this._runId!
     );
@@ -239,19 +410,79 @@ export class HaAutomationTrace extends LitElement {
     aEl.click();
   }
 
+  private _showTab(ev) {
+    this._view = (ev.target as any).view;
+  }
+
+  private _timelinePathPicked(ev) {
+    const path = ev.detail.value;
+    const nodes = this.shadowRoot!.querySelector(
+      "hat-script-graph"
+    )!.getTrackedNodes();
+    if (nodes[path]) {
+      this._selected = nodes[path];
+    }
+  }
+
   static get styles(): CSSResult[] {
     return [
       haStyle,
+      traceTabStyles,
       css`
-        ha-card {
-          max-width: 800px;
-          margin: 24px auto;
+        .toolbar {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          font-size: 20px;
+          height: var(--header-height);
+          padding: 0 16px;
+          background-color: var(--primary-background-color);
+          font-weight: 400;
+          color: var(--app-header-text-color, white);
+          border-bottom: var(--app-header-border-bottom, none);
+          box-sizing: border-box;
         }
 
-        .actions {
-          position: absolute;
-          top: 8px;
-          right: 8px;
+        .toolbar > * {
+          display: flex;
+          align-items: center;
+        }
+
+        :host([narrow]) .toolbar > * {
+          display: contents;
+        }
+
+        .main {
+          height: calc(100% - 56px);
+          display: flex;
+          background-color: var(--card-background-color);
+        }
+
+        :host([narrow]) .main {
+          height: auto;
+          flex-direction: column;
+        }
+
+        .container {
+          padding: 16px;
+        }
+
+        .graph {
+          border-right: 1px solid var(--divider-color);
+          overflow-x: auto;
+          max-width: 50%;
+        }
+        :host([narrow]) .graph {
+          max-width: 100%;
+        }
+
+        .info {
+          flex: 1;
+          background-color: var(--card-background-color);
+        }
+
+        .linkButton {
+          color: var(--primary-text-color);
         }
       `,
     ];

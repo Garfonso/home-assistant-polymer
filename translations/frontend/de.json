@@ -507,7 +507,7 @@
             },
             "automation": {
                 "last_triggered": "Zuletzt ausgelöst",
-                "trigger": "Auslösen"
+                "trigger": "Aktionen ausführen"
             },
             "camera": {
                 "not_available": "Bild nicht verfügbar"
@@ -1130,6 +1130,11 @@
                         "perform_action": "Server {action}",
                         "restart": "Neustarten",
                         "stop": "Stoppen"
+                    },
+                    "types": {
+                        "navigation": "Navigieren",
+                        "reload": "Neu laden",
+                        "server_control": "Server"
                     }
                 },
                 "filter_placeholder": "Entitätsfilter"
@@ -1298,10 +1303,14 @@
                                 "device_id": {
                                     "action": "Aktion",
                                     "extra_fields": {
+                                        "brightness_pct": "Helligkeit",
                                         "code": "Code",
+                                        "humidity": "Luftfeuchtigkeit",
                                         "message": "Nachricht",
+                                        "mode": "Modus",
                                         "position": "Position",
-                                        "title": "Titel"
+                                        "title": "Titel",
+                                        "value": "Wert"
                                     },
                                     "label": "Gerät"
                                 },
@@ -1374,7 +1383,9 @@
                                     "extra_fields": {
                                         "above": "Über",
                                         "below": "Unter",
-                                        "for": "Dauer"
+                                        "for": "Dauer",
+                                        "hvac_mode": "HLK-Modus",
+                                        "preset_mode": "Voreinstellung"
                                     },
                                     "label": "Gerät"
                                 },
@@ -2806,6 +2817,7 @@
                         "server_version": "Serverversion"
                     },
                     "device_info": {
+                        "device_config": "Gerät konfigurieren",
                         "node_ready": "Node Bereit",
                         "node_status": "Node Status",
                         "zwave_info": "Z-Wave Info"
@@ -2817,6 +2829,15 @@
                         "connected": "Verbunden",
                         "connecting": "Verbinden",
                         "unknown": "Unbekannt"
+                    },
+                    "node_config": {
+                        "attribution": "Gerätekonfigurationsparameter und -beschreibungen werden von der {device_database} bereitgestellt",
+                        "battery_device_notice": "Batteriebetriebene Geräte müssen wach sein, um ihre Konfiguration zu aktualisieren. Anweisungen zum Aufwecken des Geräts findest du im Handbuch deines Geräts.",
+                        "error_device_not_found": "Gerät nicht gefunden",
+                        "header": "Z-Wave Gerätekonfiguration",
+                        "introduction": "Verwalten und Anpassen von gerätespezifischen Konfigurationsparametern (Knoten) für das ausgewählte Gerät",
+                        "parameter_is_read_only": "Dieser Parameter ist schreibgeschützt.",
+                        "zwave_js_device_database": "Z-Wave JS Gerätedatenbank"
                     },
                     "node_status": {
                         "alive": "Lebendig",
