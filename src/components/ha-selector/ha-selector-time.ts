@@ -1,11 +1,12 @@
-import { customElement, html, LitElement, property } from "lit-element";
+import { html, LitElement } from "lit";
+import { customElement, property } from "lit/decorators";
+import memoizeOne from "memoize-one";
+import { useAmPm } from "../../common/datetime/use_am_pm";
 import { fireEvent } from "../../common/dom/fire_event";
 import { TimeSelector } from "../../data/selector";
+import { FrontendLocaleData } from "../../data/translation";
 import { HomeAssistant } from "../../types";
 import "../paper-time-input";
-
-const test = new Date().toLocaleString();
-const useAMPM = test.includes("AM") || test.includes("PM");
 
 @customElement("ha-selector-time")
 export class HaTimeSelector extends LitElement {
@@ -19,16 +20,23 @@ export class HaTimeSelector extends LitElement {
 
   @property({ type: Boolean }) public disabled = false;
 
+  private _useAmPmMem = memoizeOne((locale: FrontendLocaleData): boolean =>
+    useAmPm(locale)
+  );
+
   protected render() {
+    const useAMPM = this._useAmPmMem(this.hass.locale);
+
     const parts = this.value?.split(":") || [];
-    const hours = useAMPM ? parts[0] ?? "12" : parts[0] ?? "0";
+    const hours = parts[0];
 
     return html`
       <paper-time-input
         .label=${this.label}
-        .hour=${useAMPM && Number(hours) > 12 ? Number(hours) - 12 : hours}
-        .min=${parts[1] ?? "00"}
-        .sec=${parts[2] ?? "00"}
+        .hour=${hours &&
+        (useAMPM && Number(hours) > 12 ? Number(hours) - 12 : hours)}
+        .min=${parts[1]}
+        .sec=${parts[2]}
         .format=${useAMPM ? 12 : 24}
         .amPm=${useAMPM && (Number(hours) > 12 ? "PM" : "AM")}
         .disabled=${this.disabled}
@@ -42,12 +50,16 @@ export class HaTimeSelector extends LitElement {
 
   private _timeChanged(ev) {
     let value = ev.target.value;
-    if (useAMPM) {
-      let hours = Number(ev.target.hour);
+    const useAMPM = this._useAmPmMem(this.hass.locale);
+    let hours = Number(ev.target.hour || 0);
+    if (value && useAMPM) {
       if (ev.target.amPm === "PM") {
         hours += 12;
       }
-      value = `${hours}:${ev.target.min}:${ev.target.sec}`;
+      value = `${hours}:${ev.target.min || "00"}:${ev.target.sec || "00"}`;
+    }
+    if (value === this.value) {
+      return;
     }
     fireEvent(this, "value-changed", {
       value,

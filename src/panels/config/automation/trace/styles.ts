@@ -1,4 +1,4 @@
-import { css } from "lit-element";
+import { css } from "lit";
 
 export const traceTabStyles = css`
   .tabs {
@@ -22,9 +22,17 @@ export const traceTabStyles = css`
     border-bottom: 2px solid transparent;
     user-select: none;
     background: none;
+    color: var(--primary-text-color);
+    outline: none;
+    transition: background 15ms linear;
   }
 
   .tabs > *.active {
     border-bottom-color: var(--accent-color);
+  }
+
+  .tabs > *:focus,
+  .tabs > *:hover {
+    background: var(--secondary-background-color);
   }
 `;

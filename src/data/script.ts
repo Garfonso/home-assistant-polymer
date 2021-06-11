@@ -112,7 +112,7 @@ export interface ChooseActionChoice {
 
 export interface ChooseAction {
   alias?: string;
-  choose: ChooseActionChoice[];
+  choose: ChooseActionChoice | ChooseActionChoice[] | null;
   default?: Action | Action[];
 }
 
@@ -182,12 +182,9 @@ export const deleteScript = (hass: HomeAssistant, objectId: string) =>
 
 let inititialScriptEditorData: Partial<ScriptConfig> | undefined;
 
-export const showScriptEditor = (
-  el: HTMLElement,
-  data?: Partial<ScriptConfig>
-) => {
+export const showScriptEditor = (data?: Partial<ScriptConfig>) => {
   inititialScriptEditorData = data;
-  navigate(el, "/config/script/edit/new");
+  navigate("/config/script/edit/new");
 };
 
 export const getScriptEditorInitData = () => {

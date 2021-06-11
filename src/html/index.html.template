@@ -51,6 +51,7 @@
       @media (prefers-color-scheme: dark) {
         html {
           background-color: #111111;
+          color: #e1e1e1;
         }
         #ha-init-skeleton::before {
           background-color: #1c1c1c;
@@ -70,6 +71,9 @@
       import("<%= latestAppJS %>");
       window.customPanelJS = "<%= latestCustomPanelJS %>";
       window.latestJS = true;
+      if (!window.globalThis) {
+        window.globalThis = window;
+      }
     </script>
     <script>
     {% for extra_module in extra_modules -%}

@@ -1,12 +1,6 @@
-import {
-  css,
-  customElement,
-  html,
-  LitElement,
-  property,
-  svg,
-} from "lit-element";
-import { classMap } from "lit-html/directives/class-map";
+import { css, html, LitElement, svg } from "lit";
+import { customElement, property } from "lit/decorators";
+import { classMap } from "lit/directives/class-map";
 
 export const BRANCH_HEIGHT = 20;
 export const SPACING = 10;
@@ -171,7 +165,13 @@ export class HatGraph extends LitElement {
         --stroke-clr: var(--stroke-color, var(--secondary-text-color));
         --active-clr: var(--active-color, var(--primary-color));
         --track-clr: var(--track-color, var(--accent-color));
-        --disabled-clr: var(--disabled-color, gray);
+        --hover-clr: var(--hover-color, var(--primary-color));
+        --disabled-clr: var(--disabled-color, var(--disabled-text-color));
+        --default-trigger-color: 3, 169, 244;
+        --rgb-trigger-color: var(--trigger-color, var(--default-trigger-color));
+        --background-clr: var(--background-color, white);
+        --default-icon-clr: var(--icon-color, black);
+        --icon-clr: var(--stroke-clr);
       }
       :host(:focus) {
         outline: none;
@@ -207,12 +207,6 @@ export class HatGraph extends LitElement {
       }
       :host([disabled]) path.line {
         stroke: var(--disabled-clr);
-      }
-      :host(.active) #top path.line {
-        stroke: var(--active-clr);
-      }
-      :host(:focus) #top path.line {
-        stroke: var(--active-clr);
       }
     `;
   }

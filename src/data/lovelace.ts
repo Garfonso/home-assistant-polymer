@@ -19,6 +19,10 @@ export interface LovelacePanelConfig {
 
 export interface LovelaceConfig {
   title?: string;
+  strategy?: {
+    type: string;
+    options?: Record<string, unknown>;
+  };
   views: LovelaceViewConfig[];
   background?: string;
   hideToolbar?: boolean; // IoB
@@ -78,6 +82,10 @@ export interface LovelaceViewConfig {
   index?: number;
   title?: string;
   type?: string;
+  strategy?: {
+    type: string;
+    options?: Record<string, unknown>;
+  };
   badges?: Array<string | LovelaceBadgeConfig>;
   cards?: LovelaceCardConfig[];
   path?: string;
@@ -95,6 +103,7 @@ export interface LovelaceViewElement extends HTMLElement {
   index?: number;
   cards?: Array<LovelaceCard | HuiErrorCard>;
   badges?: LovelaceBadge[];
+  isStrategy: boolean;
   setConfig(config: LovelaceViewConfig): void;
 }
 

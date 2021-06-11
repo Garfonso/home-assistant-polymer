@@ -1,17 +1,16 @@
 import "@material/mwc-button/mwc-button";
 import {
   css,
-  CSSResult,
-  customElement,
+  CSSResultGroup,
   html,
-  internalProperty,
   LitElement,
-  property,
   PropertyValues,
   TemplateResult,
-} from "lit-element";
+} from "lit";
+import { customElement, property, state } from "lit/decorators";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 import "../../../components/ha-analytics";
+import { analyticsLearnMore } from "../../../components/ha-analytics-learn-more";
 import "../../../components/ha-card";
 import "../../../components/ha-checkbox";
 import "../../../components/ha-settings-row";
@@ -27,35 +26,25 @@ import type { HomeAssistant } from "../../../types";
 class ConfigAnalytics extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @internalProperty() private _analyticsDetails?: Analytics;
+  @state() private _analyticsDetails?: Analytics;
 
-  @internalProperty() private _error?: string;
+  @state() private _error?: string;
 
   protected render(): TemplateResult {
-    if (
-      !isComponentLoaded(this.hass, "analytics") ||
-      !this.hass.user?.is_owner ||
-      !this._analyticsDetails?.huuid
-    ) {
-      return html``;
-    }
+    const error = this._error
+      ? this._error
+      : !isComponentLoaded(this.hass, "analytics")
+      ? "Analytics integration not loaded"
+      : undefined;
 
     return html`
-      <ha-card
-        .header=${this.hass.localize(
-          "ui.panel.config.core.section.core.analytics.header"
-        )}
-      >
+      <ha-card header="Analytics">
         <div class="card-content">
-          ${this._error ? html`<div class="error">${this._error}</div>` : ""}
+          ${error ? html`<div class="error">${error}</div>` : ""}
           <p>
-            ${this.hass.localize(
-              "ui.panel.config.core.section.core.analytics.introduction",
-              "link",
-              html`<a href="https://analytics.home-assistant.io" target="_blank"
-                >https://analytics.home-assistant.io</a
-              >`
-            )}
+            Share anonymized information from your installation to help make
+            Home Assistant better and help us convince manufacturers to add
+            local control and privacy-focused features.
           </p>
           <ha-analytics
             @analytics-preferences-changed=${this._preferencesChanged}
@@ -69,6 +58,7 @@ class ConfigAnalytics extends LitElement {
               "ui.panel.config.core.section.core.core_config.save_button"
             )}
           </mwc-button>
+          ${analyticsLearnMore(this.hass)}
         </div>
       </ha-card>
     `;
@@ -109,7 +99,7 @@ class ConfigAnalytics extends LitElement {
     };
   }
 
-  static get styles(): CSSResult[] {
+  static get styles(): CSSResultGroup {
     return [
       haStyle,
       css`
@@ -120,7 +110,14 @@ class ConfigAnalytics extends LitElement {
         ha-settings-row {
           padding: 0;
         }
-      `,
+
+        .card-actions {
+          display: flex;
+          flex-direction: row-reverse;
+          justify-content: space-between;
+          align-items: center;
+        }
+      `, // row-reverse so we tab first to "save"
     ];
   }
 }

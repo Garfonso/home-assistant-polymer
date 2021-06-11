@@ -1,13 +1,8 @@
-import { safeLoad } from "js-yaml";
-import {
-  css,
-  CSSResultArray,
-  html,
-  internalProperty,
-  LitElement,
-  property,
-  query,
-} from "lit-element";
+import { mdiHelpCircle } from "@mdi/js";
+import { ERR_CONNECTION_LOST } from "home-assistant-js-websocket";
+import { load } from "js-yaml";
+import { css, CSSResultGroup, html, LitElement } from "lit";
+import { property, query, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { LocalStorage } from "../../../common/decorators/local-storage";
 import { computeDomain } from "../../../common/entity/compute_domain";
@@ -22,19 +17,25 @@ import "../../../components/ha-service-control";
 import "../../../components/ha-service-picker";
 import "../../../components/ha-yaml-editor";
 import type { HaYamlEditor } from "../../../components/ha-yaml-editor";
+import { forwardHaptic } from "../../../data/haptics";
 import { ServiceAction } from "../../../data/script";
-import { callExecuteScript } from "../../../data/service";
+import {
+  callExecuteScript,
+  serviceCallWillDisconnect,
+} from "../../../data/service";
 import { haStyle } from "../../../resources/styles";
 import "../../../styles/polymer-ha-style";
 import { HomeAssistant } from "../../../types";
 import "../../../util/app-localstorage-document";
+import { documentationUrl } from "../../../util/documentation-url";
+import { showToast } from "../../../util/toast";
 
 class HaPanelDevService extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ type: Boolean }) public narrow!: boolean;
 
-  @internalProperty() private _uiAvailable = true;
+  @state() private _uiAvailable = true;
 
   @LocalStorage("panel-dev-service-state-service-data", true)
   private _serviceData?: ServiceAction = { service: "", target: {}, data: {} };
@@ -156,12 +157,39 @@ class HaPanelDevService extends LitElement {
               outlined
               .expanded=${this._yamlMode}
             >
-              ${this._yamlMode && target
-                ? html`<h3>
-                    ${this.hass.localize(
-                      "ui.panel.developer-tools.tabs.services.accepts_target"
-                    )}
-                  </h3>`
+              ${this._yamlMode
+                ? html` <div class="description">
+                    <h3>
+                      ${target
+                        ? html`
+                            ${this.hass.localize(
+                              "ui.panel.developer-tools.tabs.services.accepts_target"
+                            )}
+                          `
+                        : ""}
+                    </h3>
+                    ${this._serviceData?.service
+                      ? html` <a
+                          href="${documentationUrl(
+                            this.hass,
+                            "/integrations/" +
+                              computeDomain(this._serviceData?.service)
+                          )}"
+                          title="${this.hass.localize(
+                            "ui.components.service-control.integration_doc"
+                          )}"
+                          target="_blank"
+                          rel="noreferrer"
+                        >
+                          <mwc-icon-button>
+                            <ha-svg-icon
+                              path=${mdiHelpCircle}
+                              class="help-icon"
+                            ></ha-svg-icon>
+                          </mwc-icon-button>
+                        </a>`
+                      : ""}
+                  </div>`
                 : ""}
               <table class="attributes">
                 <tr>
@@ -256,9 +284,10 @@ class HaPanelDevService extends LitElement {
       }
       const target = "target" in serviceDomains[domain][service];
       const fields = serviceDomains[domain][service].fields;
-      const result = Object.keys(fields).map((field) => {
-        return { key: field, ...fields[field] };
-      });
+      const result = Object.keys(fields).map((field) => ({
+        key: field,
+        ...fields[field],
+      }));
 
       return {
         target,
@@ -267,11 +296,30 @@ class HaPanelDevService extends LitElement {
     }
   );
 
-  private _callService() {
+  private async _callService() {
     if (!this._serviceData?.service) {
       return;
     }
-    callExecuteScript(this.hass, [this._serviceData]);
+    try {
+      await callExecuteScript(this.hass, [this._serviceData]);
+    } catch (err) {
+      const [domain, service] = this._serviceData.service.split(".", 2);
+      if (
+        err.error?.code === ERR_CONNECTION_LOST &&
+        serviceCallWillDisconnect(domain, service)
+      ) {
+        return;
+      }
+      forwardHaptic("failure");
+      showToast(this, {
+        message:
+          this.hass.localize(
+            "ui.notification_toast.service_call_failed",
+            "service",
+            this._serviceData.service
+          ) + ` ${err.message}`,
+      });
+    }
   }
 
   private _toggleYaml() {
@@ -313,9 +361,9 @@ class HaPanelDevService extends LitElement {
     const example = {};
     fields.forEach((field) => {
       if (field.example) {
-        let value = "";
+        let value: any = "";
         try {
-          value = safeLoad(field.example);
+          value = load(field.example);
         } catch (err) {
           value = field.example;
         }
@@ -326,7 +374,7 @@ class HaPanelDevService extends LitElement {
     this._yamlEditor?.setValue(this._serviceData);
   }
 
-  static get styles(): CSSResultArray {
+  static get styles(): CSSResultGroup {
     return [
       haStyle,
       css`
@@ -393,6 +441,15 @@ class HaPanelDevService extends LitElement {
         .attributes td {
           padding: 4px;
           vertical-align: middle;
+        }
+
+        .help-icon {
+          color: var(--secondary-text-color);
+        }
+        .description {
+          justify-content: space-between;
+          display: flex;
+          align-items: center;
         }
       `,
     ];

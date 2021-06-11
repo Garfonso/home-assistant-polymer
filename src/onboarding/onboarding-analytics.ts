@@ -1,22 +1,11 @@
 import "@material/mwc-button/mwc-button";
-import {
-  css,
-  CSSResult,
-  customElement,
-  html,
-  internalProperty,
-  LitElement,
-  property,
-  TemplateResult,
-} from "lit-element";
+import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators";
 import { fireEvent } from "../common/dom/fire_event";
 import { LocalizeFunc } from "../common/translations/localize";
 import "../components/ha-analytics";
-import {
-  Analytics,
-  getAnalyticsDetails,
-  setAnalyticsPreferences,
-} from "../data/analytics";
+import { analyticsLearnMore } from "../components/ha-analytics-learn-more";
+import { Analytics, setAnalyticsPreferences } from "../data/analytics";
 import { onboardAnalyticsStep } from "../data/onboarding";
 import type { HomeAssistant } from "../types";
 
@@ -26,24 +15,18 @@ class OnboardingAnalytics extends LitElement {
 
   @property() public localize!: LocalizeFunc;
 
-  @internalProperty() private _error?: string;
+  @state() private _error?: string;
 
-  @internalProperty() private _analyticsDetails?: Analytics;
+  @state() private _analyticsDetails: Analytics = {
+    preferences: {},
+  };
 
   protected render(): TemplateResult {
-    if (!this._analyticsDetails?.huuid) {
-      return html``;
-    }
-
     return html`
       <p>
-        ${this.localize(
-          "ui.panel.page-onboarding.analytics.intro",
-          "link",
-          html`<a href="https://analytics.home-assistant.io" target="_blank"
-            >https://analytics.home-assistant.io</a
-          >`
-        )}
+        Share anonymized information from your installation to help make Home
+        Assistant better and help us convince manufacturers to add local control
+        and privacy-focused features.
       </p>
       <ha-analytics
         @analytics-preferences-changed=${this._preferencesChanged}
@@ -53,9 +36,10 @@ class OnboardingAnalytics extends LitElement {
       </ha-analytics>
       ${this._error ? html`<div class="error">${this._error}</div>` : ""}
       <div class="footer">
-        <mwc-button @click=${this._save}>
+        <mwc-button @click=${this._save} .disabled=${!this._analyticsDetails}>
           ${this.localize("ui.panel.page-onboarding.analytics.finish")}
         </mwc-button>
+        ${analyticsLearnMore(this.hass)}
       </div>
     `;
   }
@@ -67,7 +51,6 @@ class OnboardingAnalytics extends LitElement {
         this._save(ev);
       }
     });
-    this._load();
   }
 
   private _preferencesChanged(event: CustomEvent): void {
@@ -94,16 +77,7 @@ class OnboardingAnalytics extends LitElement {
     }
   }
 
-  private async _load() {
-    this._error = undefined;
-    try {
-      this._analyticsDetails = await getAnalyticsDetails(this.hass);
-    } catch (err) {
-      this._error = err.message || err;
-    }
-  }
-
-  static get styles(): CSSResult {
+  static get styles(): CSSResultGroup {
     return css`
       .error {
         color: var(--error-color);
@@ -111,9 +85,18 @@ class OnboardingAnalytics extends LitElement {
 
       .footer {
         margin-top: 16px;
-        text-align: right;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex-direction: row-reverse;
+      }
+
+      a {
+        color: var(--primary-color);
       }
     `;
+
+    // footer is direction reverse to tab to "NEXT" first
   }
 }
 

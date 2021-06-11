@@ -1,5 +1,5 @@
-import { css, customElement, LitElement, property, svg } from "lit-element";
-
+import { css, LitElement, svg } from "lit";
+import { customElement, property } from "lit/decorators";
 import { NODE_SIZE, SPACING } from "./hat-graph";
 
 @customElement("hat-graph-node")
@@ -20,28 +20,18 @@ export class HatGraphNode extends LitElement {
       this.setAttribute("tabindex", "0");
   }
 
-  updated() {
-    const svgEl = this.shadowRoot?.querySelector("svg");
-    if (!svgEl) {
-      return;
-    }
-    const bbox = svgEl.getBBox();
-    const extra_height = this.graphstart ? 2 : 1;
-    const extra_width = SPACING;
-    svgEl.setAttribute("width", `${bbox.width + extra_width}px`);
-    svgEl.setAttribute("height", `${bbox.height + extra_height}px`);
-    svgEl.setAttribute(
-      "viewBox",
-      `${Math.ceil(bbox.x - extra_width / 2)}
-      ${Math.ceil(bbox.y - extra_height / 2)}
-      ${bbox.width + extra_width}
-      ${bbox.height + extra_height}`
-    );
-  }
-
   render() {
+    const height = NODE_SIZE + (this.graphstart ? 2 : SPACING + 1);
+    const width = SPACING + NODE_SIZE;
     return svg`
     <svg
+    width="${width}px"
+    height="${height}px"
+    viewBox="-${Math.ceil(width / 2)} -${
+      this.graphstart
+        ? Math.ceil(height / 2)
+        : Math.ceil((NODE_SIZE + SPACING * 2) / 2)
+    } ${width} ${height}"
     >
       ${
         this.graphstart
@@ -63,6 +53,7 @@ export class HatGraphNode extends LitElement {
         cy="0"
         r="${NODE_SIZE / 2}"
       />
+      }
       ${
         this.badge
           ? svg`
@@ -98,16 +89,6 @@ export class HatGraphNode extends LitElement {
       :host {
         display: flex;
         flex-direction: column;
-        --stroke-clr: var(--stroke-color, var(--secondary-text-color));
-        --active-clr: var(--active-color, var(--primary-color));
-        --track-clr: var(--track-color, var(--accent-color));
-        --hover-clr: var(--hover-color, var(--primary-color));
-        --disabled-clr: var(--disabled-color, var(--disabled-text-color));
-        --default-trigger-color: 3, 169, 244;
-        --rgb-trigger-color: var(--trigger-color, var(--default-trigger-color));
-        --background-clr: var(--background-color, white);
-        --default-icon-clr: var(--icon-color, black);
-        --icon-clr: var(--stroke-clr);
       }
       :host(.track) {
         --stroke-clr: var(--track-clr);
@@ -130,13 +111,11 @@ export class HatGraphNode extends LitElement {
       :host-context([disabled]) {
         --stroke-clr: var(--disabled-clr);
       }
-
       :host([nofocus]):host-context(.active),
       :host([nofocus]):host-context(:focus) {
-        --stroke-clr: var(--active-clr);
+        --circle-clr: var(--active-clr);
         --icon-clr: var(--default-icon-clr);
       }
-
       circle,
       path.connector {
         stroke: var(--stroke-clr);

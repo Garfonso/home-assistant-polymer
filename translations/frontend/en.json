@@ -292,7 +292,7 @@
             "save": "Save",
             "show_more": "Show more information about this",
             "update": "Update",
-            "update_available": "{count, plural,\n  one {Update}\n  other {{count} Updates}\n} pending",
+            "update_available": "{count, plural,\n  one {Update}\n  other {{count} updates}\n} pending",
             "version": "Version",
             "yes": "Yes"
         },
@@ -314,7 +314,7 @@
             "addon_new_version": "New version available",
             "addon_running": "Add-on is running",
             "addon_stopped": "Add-on is stopped",
-            "addons": "Add-ons",
+            "addons": "Installed add-ons",
             "no_addons": "You don't have any add-ons installed yet. Head over to the add-on store to get started!"
         },
         "dialog": {
@@ -366,6 +366,7 @@
         },
         "my": {
             "error": "An unknown error occurred",
+            "error_addon_no_ingress": "The requested add-on does not support ingress",
             "error_addon_not_found": "Add-on not found",
             "faq_link": "My Home Assistant FAQ",
             "not_supported": "This redirect is not supported by your Home Assistant instance. Check the {link} for the supported redirects and the version they where introduced."
@@ -383,8 +384,14 @@
             "create": "Create",
             "create_blocked_not_running": "Creating a snapshot is not possible right now because the system is in {state} state.",
             "create_snapshot": "Create snapshot",
+            "created": "Created",
+            "delete_selected": "Delete selected snapshots",
+            "delete_snapshot_confirm": "delete",
+            "delete_snapshot_text": "Do you want to delete {number} {number, plural,\n  one {snapshot}\n  other {snapshots}\n}?",
+            "delete_snapshot_title": "Delete snapshot",
             "description": "Snapshots allow you to easily backup and restore all data of your Home Assistant instance.",
             "enter_password": "Please enter a password.",
+            "failed_to_delete": "Failed to delete",
             "folder": {
                 "addons/local": "Local add-ons",
                 "homeassistant": "Home Assistant configuration",
@@ -394,14 +401,16 @@
             },
             "folders": "Folders",
             "full_snapshot": "Full snapshot",
-            "name": "Name",
+            "name": "Snapshot name",
             "no_snapshots": "You don't have any snapshots yet.",
             "partial_snapshot": "Partial snapshot",
-            "password": "Password",
+            "password": "Snapshot password",
             "password_protected": "password protected",
             "password_protection": "Password protection",
             "security": "Security",
-            "type": "Type",
+            "select_type": "Select what to restore",
+            "selected": "{number} selected",
+            "type": "Snapshot type",
             "upload_snapshot": "Upload snapshot"
         },
         "store": {
@@ -458,6 +467,7 @@
                 "leave_beta_description": "Get stable updates for Home Assistant, Supervisor and host",
                 "ram_usage": "Supervisor RAM Usage",
                 "reload_supervisor": "Reload Supervisor",
+                "search": "Search",
                 "share_diagnostics": "Share Diagnostics",
                 "share_diagnostics_description": "Share crash reports and diagnostic information.",
                 "share_diagonstics_description": "Would you want to automatically share crash reports and diagnostic information when the Supervisor encounters unexpected errors? {line_break} This will allow us to fix the problems, the information is only accessible to the Home Assistant Core team and will not be shared with others.{line_break} The data does not include any private/sensitive information and you can disable this in settings at any time you want.",
@@ -473,6 +483,7 @@
                 "unhealthy_title": "Your installation is unhealthy",
                 "unsupported_description": "Below is a list of issues found with your installation, click on the links to learn how you can resolve the issues.",
                 "unsupported_reason": {
+                    "apparmor": "AppArmor is not enabled on the host",
                     "container": "Containers known to cause issues",
                     "content-trust": "Content-trust validation is disabled",
                     "dbus": "DBUS",
@@ -560,9 +571,12 @@
             },
             "light": {
                 "brightness": "Brightness",
+                "cold_white_value": "Cold white brightness",
+                "color_brightness": "Color brightness",
                 "color_temperature": "Color temperature",
                 "effect": "Effect",
-                "white_value": "White value"
+                "warm_white_value": "Warm white brightness",
+                "white_value": "White brightness"
             },
             "lock": {
                 "code": "Code",
@@ -706,12 +720,15 @@
                     "text": "Enter the name of the new area.",
                     "title": "Add new area"
                 },
-                "add_new": "Add new area…",
+                "add_new": "Add new area...",
                 "area": "Area",
                 "clear": "Clear",
                 "no_areas": "You don't have any areas",
                 "no_match": "No matching areas found",
                 "show_areas": "Show areas"
+            },
+            "attributes": {
+                "expansion_header": "Attributes"
             },
             "blueprint-picker": {
                 "add_user": "Add user",
@@ -885,6 +902,7 @@
                 }
             },
             "service-control": {
+                "integration_doc": "Integration documentation",
                 "required": "This field is required",
                 "service_data": "Service data",
                 "target": "Targets",
@@ -911,8 +929,11 @@
         },
         "dialogs": {
             "config_entry_system_options": {
-                "enable_new_entities_description": "If disabled, newly discovered entities for {integration} will not be automatically added to Home Assistant.",
+                "enable_new_entities_description": "If newly discovered devices for {integration} should be automatically added.",
                 "enable_new_entities_label": "Enable newly added entities.",
+                "enable_polling_description": "If Home Assistant should automatically poll {integration} entities for updates.",
+                "enable_polling_label": "Enable polling for updates.",
+                "restart_home_assistant": "You need to restart Home Assistant for your changes to take effect.",
                 "title": "System Options for {integration}",
                 "update": "Update"
             },
@@ -1192,7 +1213,22 @@
                 }
             },
             "zha_reconfigure_device": {
-                "heading": "Reconfiguring device"
+                "attribute": "Attribute",
+                "battery_device_warning": "You will need to wake battery powered devices before starting the reconfiguration process. Refer to your device's manual for instructions on how to wake the device.",
+                "bind_header": "Binding",
+                "button_hide": "Hide Details",
+                "button_show": "Show Details",
+                "cluster_header": "Cluster",
+                "configuration_complete": "Device reconfiguration complete.",
+                "configuration_failed": "The device reconfiguration failed. Additional information may be available in the logs.",
+                "configuring_alt": "Configuring",
+                "heading": "Reconfiguring device",
+                "in_progress": "The device is being reconfigured. This may take some time.",
+                "introduction": "Reconfigure a device on your Zigbee network. Use this feature if your device is not functioning correctly.",
+                "min_max_change": "min/max/change",
+                "reporting_header": "Reporting",
+                "run_in_background": "You can close this dialog and the reconfiguration will continue in the background.",
+                "start_reconfiguration": "Start Reconfiguration"
             }
         },
         "duration": {
@@ -1213,6 +1249,14 @@
                 "key_wrong_type": "The provided value for \"{key}\" is not supported by the visual editor. We support ({type_correct}) but received ({type_wrong}).",
                 "no_template_editor_support": "Templates not supported in visual editor",
                 "no_type_provided": "No type provided."
+            },
+            "supervisor": {
+                "ask": "Ask for help",
+                "observer": "Check the Observer",
+                "reboot": "Try a reboot of the host",
+                "system_health": "Check System Health",
+                "title": "Could not load the Supervisor panel!",
+                "wait": "If you just started, make sure you have given the Supervisor enough time to start."
             }
         },
         "login-form": {
@@ -1228,12 +1272,14 @@
             "title": "Notifications"
         },
         "notification_toast": {
-            "connection_lost": "Connection lost. Reconnecting…",
+            "connection_lost": "Connection lost. Reconnecting...",
             "dismiss": "Dismiss",
+            "integration_starting": "Starting {integration}, not everything will be available until it is finished.",
             "service_call_failed": "Failed to call service {service}.",
             "started": "Home Assistant has started!",
             "starting": "Home Assistant is starting, not everything will be available until it is finished.",
-            "triggered": "Triggered {name}"
+            "triggered": "Triggered {name}",
+            "wrapping_up_startup": "Wrapping up startup, not everything will be available until it is finished."
         },
         "panel": {
             "config": {
@@ -1245,7 +1291,8 @@
                     "caption": "Areas",
                     "data_table": {
                         "area": "Area",
-                        "devices": "Devices"
+                        "devices": "Devices",
+                        "entities": "Entities"
                     },
                     "delete": {
                         "confirmation_text": "All devices in this area will become unassigned.",
@@ -1257,8 +1304,10 @@
                         "create": "Create",
                         "default_name": "New Area",
                         "delete": "Delete",
+                        "linked_entities_caption": "Entities",
                         "name": "Name",
                         "name_required": "Name is required",
+                        "no_linked_entities": "There are no entities linked to this area.",
                         "unknown_error": "Unknown error",
                         "update": "Update"
                     },
@@ -1597,7 +1646,7 @@
                         "delete_automation": "Delete automation",
                         "delete_confirm": "Are you sure you want to delete this automation?",
                         "dev_automation": "Debug automation",
-                        "dev_only_editable": "Only automations defined in automations.yaml are debuggable.",
+                        "dev_only_editable": "Only automations that have a unique ID assigned are debuggable.",
                         "duplicate": "Duplicate",
                         "duplicate_automation": "Duplicate automation",
                         "edit_automation": "Edit automation",
@@ -1683,8 +1732,9 @@
                             "title": "Alexa"
                         },
                         "connected": "Connected",
+                        "connecting": "Connecting...",
                         "connection_status": "Cloud connection status",
-                        "fetching_subscription": "Fetching subscription…",
+                        "fetching_subscription": "Fetching subscription...",
                         "google": {
                             "config_documentation": "Configuration documentation",
                             "devices_pin": "Security Devices PIN",
@@ -1711,12 +1761,18 @@
                         "nabu_casa_account": "Nabu Casa Account",
                         "not_connected": "Not Connected",
                         "remote": {
-                            "access_is_being_prepared": "Remote access is being prepared. We will notify you when it's ready.",
+                            "access_is_being_prepared": "Remote control is being prepared. We will notify you when it's ready.",
                             "certificate_info": "Certificate Info",
+                            "connected": "Connected",
                             "info": "Home Assistant Cloud provides a secure remote connection to your instance while away from home.",
                             "instance_is_available": "Your instance is available at",
                             "instance_will_be_available": "Your instance will be available at",
                             "link_learn_how_it_works": "Learn how it works",
+                            "not_connected": "Not Connected",
+                            "remote_enabled": {
+                                "caption": "Automatically connect",
+                                "description": "Enable this option to make sure that your Home Assistant instance is always remotely accessible."
+                            },
                             "title": "Remote Control"
                         },
                         "sign_out": "Sign out",
@@ -1740,7 +1796,7 @@
                             "disable_hook_error_msg": "Failed to disable webhook:",
                             "info": "Anything that is configured to be triggered by a webhook can be given a publicly accessible URL to allow you to send data back to Home Assistant from anywhere, without exposing your instance to the internet.",
                             "link_learn_more": "Learn more about creating webhook-powered automations.",
-                            "loading": "Loading ...",
+                            "loading": "Loading...",
                             "manage": "Manage",
                             "no_hooks_yet": "Looks like you have no webhooks yet. Get started by configuring a ",
                             "no_hooks_yet_link_automation": "webhook automation",
@@ -1864,29 +1920,29 @@
                                 "documentation": "Before you enable this make sure you visit the analytics documentation page {link} to understand what you are sending and how it's stored.",
                                 "header": "Analytics",
                                 "instance_id": "Instance ID: {huuid}",
-                                "introduction": "Share analytics from your instance. This data will be publicly available at {link}",
-                                "learn_more": "Learn more about how your data will be processed.",
+                                "introduction": "Share your installation information to help make Home Assistant better and help us convince manufacturers to add local control and privacy-focused features.",
+                                "learn_more": "How we process your data",
                                 "needs_base": "You need to enable base analytics for this option to be available",
                                 "preference": {
                                     "base": {
-                                        "description": "This includes the instance ID, the version and the installation type",
+                                        "description": "Instance ID, version and installation type.",
                                         "title": "Basic analytics"
                                     },
                                     "diagnostics": {
-                                        "description": "Share crash reports and diagnostic information",
+                                        "description": "Share crash reports when unexpected errors occur.",
                                         "title": "Diagnostics"
                                     },
                                     "statistics": {
-                                        "description": "This includes a count of elements in your installation, for a full list look at the documentation",
+                                        "description": "Total used entities, users and other elements.",
                                         "title": "Usage statistics"
                                     },
                                     "usage_supervisor": {
-                                        "description": "This includes the names and capabilities of your integrations and add-ons",
+                                        "description": "Names, versions and capabilities.",
                                         "title": "Used integrations and add-ons"
                                     },
                                     "usage": {
-                                        "description": "This includes the names of your integrations",
-                                        "title": "Used integrations"
+                                        "description": "Names and version information.",
+                                        "title": "Used Integrations"
                                     }
                                 }
                             },
@@ -2020,7 +2076,8 @@
                     "scripts": "Scripts",
                     "unknown_error": "Unknown error",
                     "unnamed_device": "Unnamed device",
-                    "update": "Update"
+                    "update": "Update",
+                    "update_device_error": "Updating the device failed"
                 },
                 "entities": {
                     "caption": "Entities",
@@ -2127,6 +2184,7 @@
                     "license": "Published under the Apache 2.0 license",
                     "path_configuration": "Path to configuration.yaml: {path}",
                     "server": "server",
+                    "setup_time": "Setup time",
                     "source": "Source:",
                     "system_health_error": "System Health component is not loaded. Add 'system_health:' to configuration.yaml",
                     "system_health": {
@@ -2145,10 +2203,14 @@
                     "caption": "Integrations",
                     "config_entry": {
                         "area": "In {area}",
+                        "check_the_logs": "Check the logs",
+                        "configure": "Configure",
                         "delete": "Delete",
                         "delete_confirm": "Are you sure you want to delete this integration?",
+                        "depends_on_cloud": "Depends on the cloud",
                         "device_unavailable": "Device unavailable",
                         "devices": "{count} {count, plural,\n  one {device}\n  other {devices}\n}",
+                        "disable_error": "Enabling or disabling of the integration failed",
                         "disable_restart_confirm": "Restart Home Assistant to finish disabling this integration",
                         "disable": {
                             "disable_confirm": "Are you sure you want to disable this config entry? Its devices and entities will be disabled.",
@@ -2160,6 +2222,7 @@
                             },
                             "disabled_cause": "Disabled by {cause}"
                         },
+                        "disabled_polling": "Automatic polling for updated data disabled",
                         "documentation": "Documentation",
                         "enable_restart_confirm": "Restart Home Assistant to finish enabling this integration",
                         "entities": "{count} {count, plural,\n  one {entity}\n  other {entities}\n}",
@@ -2169,14 +2232,23 @@
                         "logs": "logs",
                         "manuf": "by {manufacturer}",
                         "no_area": "No Area",
-                        "not_loaded": "Not loaded, check the {logs_link}",
+                        "not_loaded": "Not loaded",
                         "options": "Options",
+                        "provided_by_custom_integration": "Provided by a custom integration",
                         "reload": "Reload",
                         "reload_confirm": "The integration was reloaded",
                         "reload_restart_confirm": "Restart Home Assistant to finish reloading this integration",
                         "rename": "Rename",
                         "restart_confirm": "Restart Home Assistant to finish removing this integration",
                         "services": "{count} {count, plural,\n  one {service}\n  other {services}\n}",
+                        "state": {
+                            "failed_unload": "Failed to unload",
+                            "loaded": "Loaded",
+                            "migration_error": "Migration error",
+                            "not_loaded": "Not loaded",
+                            "setup_error": "Failed to set up",
+                            "setup_retry": "Retrying setup"
+                        },
                         "system_options": "System options",
                         "unnamed_entry": "Unnamed entry"
                     },
@@ -2194,6 +2266,7 @@
                         },
                         "finish": "Finish",
                         "loading_first_time": "Please wait while the integration is being installed",
+                        "next": "Next",
                         "not_all_required_fields": "Not all required fields are filled in.",
                         "not_loaded": "The integration could not be loaded, try to restart Home Assistant.",
                         "pick_flow_step": {
@@ -2205,7 +2278,7 @@
                     "configure": "Configure",
                     "configured": "Configured",
                     "confirm_new": "Do you want to set up {integration}?",
-                    "description": "Manage integrations with services, devices, ...",
+                    "description": "Manage integrations with services or devices",
                     "details": "Integration details",
                     "disable": {
                         "disabled_integrations": "{number} disabled",
@@ -2244,8 +2317,10 @@
                 "logs": {
                     "caption": "Logs",
                     "clear": "Clear",
+                    "custom_integration": "custom integration",
                     "description": "View the Home Assistant logs",
                     "details": "Log Details ({level})",
+                    "error_from_custom_integration": "This error originated from a custom integration.",
                     "level": {
                         "critical": "CRITICAL",
                         "debug": "DEBUG",
@@ -2254,7 +2329,7 @@
                         "warning": "WARNING"
                     },
                     "load_full_log": "Load Full Home Assistant Log",
-                    "loading_log": "Loading error log…",
+                    "loading_log": "Loading error log...",
                     "multiple_messages": "message first occurred at {time} and shows up {counter} times",
                     "no_errors": "No errors have been reported",
                     "no_issues": "There are no new issues!",
@@ -2530,6 +2605,8 @@
                         "add_scene": "Add scene",
                         "delete_confirm": "Are you sure you want to delete this scene?",
                         "delete_scene": "Delete scene",
+                        "duplicate": "Duplicate",
+                        "duplicate_scene": "Duplicate scene",
                         "edit_scene": "Edit scene",
                         "header": "Scene Editor",
                         "headers": {
@@ -2635,7 +2712,7 @@
                             "confirm_restart": "Are you sure you want to restart Home Assistant?",
                             "confirm_stop": "Are you sure you want to stop Home Assistant?",
                             "heading": "Server management",
-                            "introduction": "Control your Home Assistant server… from Home Assistant.",
+                            "introduction": "Control your Home Assistant server... from Home Assistant.",
                             "restart": "Restart",
                             "stop": "Stop"
                         },
@@ -2762,6 +2839,15 @@
                         "manufacturer_code_override": "Manufacturer Code Override",
                         "value": "Value"
                     },
+                    "configuration_page": {
+                        "shortcuts_title": "Shortcuts",
+                        "update_button": "Update Configuration",
+                        "zha_options": {
+                            "default_light_transition": "Default light transition time (seconds)",
+                            "enable_identify_on_join": "Enable identify effect when devices join the network",
+                            "title": "Global Options"
+                        }
+                    },
                     "device_pairing_card": {
                         "CONFIGURED": "Configuration Complete",
                         "CONFIGURED_status_text": "Initializing",
@@ -2848,7 +2934,9 @@
                         "controller_in_inclusion_mode": "Your Z-Wave controller is now in inclusion mode.",
                         "follow_device_instructions": "Follow the directions that came with your device to trigger pairing on the device.",
                         "inclusion_failed": "The node could not be added. Please check the logs for more information.",
-                        "inclusion_finished": "The node has been added. It may take a few minutes for all entities to show up as we finish setting up the node in the background.",
+                        "inclusion_finished": "The node has been added.",
+                        "interview_failed": "The device interview failed. Additional information may be available in the logs.",
+                        "interview_started": "The device is being interviewed. This may take some time.",
                         "introduction": "This wizard will guide you through adding a node to your Z-Wave network.",
                         "secure_inclusion_warning": "Secure devices require additional bandwidth; too many secure devices can slow down your Z-Wave network. We recommend only using secure inclusion for devices that require it, like locks or garage door openers.",
                         "start_inclusion": "Start Inclusion",
@@ -2886,7 +2974,14 @@
                         "node_status": "Node Status",
                         "zwave_info": "Z-Wave Info"
                     },
+                    "logs": {
+                        "log_level": "Log Level",
+                        "log_level_changed": "Log Level changed to: {level}",
+                        "subscribed_to_logs": "Subscribed to Z-Wave JS Log Messages...",
+                        "title": "Z-Wave JS Logs"
+                    },
                     "navigation": {
+                        "logs": "Logs",
                         "network": "Network"
                     },
                     "network_status": {
@@ -2901,6 +2996,9 @@
                         "header": "Z-Wave Device Configuration",
                         "introduction": "Manage and adjust device (node) specific configuration parameters for the selected device",
                         "parameter_is_read_only": "This parameter is read-only.",
+                        "set_param_accepted": "The parameter has been updated.",
+                        "set_param_error": "An error occurred.",
+                        "set_param_queued": "The parameter change has been queued, and will be updated when the device wakes up.",
                         "zwave_js_device_database": "Z-Wave JS Device Database"
                     },
                     "node_status": {
@@ -2909,6 +3007,16 @@
                         "awake": "Awake",
                         "dead": "Dead",
                         "unknown": "Unknown"
+                    },
+                    "reinterview_node": {
+                        "battery_device_warning": "You will need to wake battery powered devices before starting the re-interview. Refer to your device's manual for instructions on how to wake the device.",
+                        "in_progress": "The device is being interviewed. This may take some time.",
+                        "interview_complete": "Device interview complete.",
+                        "interview_failed": "The device interview failed. Additional information may be available in the logs.",
+                        "introduction": "Re-interview a device on your Z-Wave network. Use this feature if your device has missing or incorrect functionality.",
+                        "run_in_background": "You can close this dialog and the interview will continue in the background.",
+                        "start_reinterview": "Start Re-interview",
+                        "title": "Re-interview a Z-Wave Device"
                     },
                     "remove_node": {
                         "cancel_exclusion": "Cancel Exclusion",
@@ -3028,12 +3136,12 @@
                         "count_listeners": " ({count}  listeners)",
                         "data": "Event Data (YAML, optional)",
                         "description": "Fire an event on the event bus.",
-                        "documentation": "Events Documentation.",
+                        "documentation": "Events documentation",
                         "event_fired": "Event {name} fired",
                         "fire_event": "Fire Event",
                         "listen_to_events": "Listen to events",
                         "listening_to": "Listening to",
-                        "notification_event_fired": "Event {type} successful fired!",
+                        "notification_event_fired": "Event {type} successfully fired!",
                         "start_listening": "Start listening",
                         "stop_listening": "Stop listening",
                         "subscribe_to": "Event to subscribe to",
@@ -3060,8 +3168,8 @@
                         "attributes": "Attributes",
                         "copy_id": "Copy ID to clipboard",
                         "current_entities": "Current entities",
-                        "description1": "Set the representation of a device within Home Assistant.",
-                        "description2": "This will not communicate with the actual device.",
+                        "description1": "Set the current state representation of an entity within Home Assistant.",
+                        "description2": "If the entity belongs to a device, there will be no actual communication with that device.",
                         "entity": "Entity",
                         "filter_attributes": "Filter attributes",
                         "filter_entities": "Filter entities",
@@ -3433,7 +3541,7 @@
                         "duplicate": "Duplicate card",
                         "edit": "Edit",
                         "header": "Card Configuration",
-                        "move": "Move to View",
+                        "move": "Move to view",
                         "move_after": "Move card after",
                         "move_before": "Move card before",
                         "options": "More options",
@@ -3891,12 +3999,12 @@
                 },
                 "refresh_tokens": {
                     "confirm_delete": "Are you sure you want to delete the refresh token for {name}?",
-                    "created_at": "Created at {date}",
+                    "created_at": "Created {date}",
                     "current_token_tooltip": "Unable to delete current refresh token",
                     "delete_failed": "Failed to delete the refresh token.",
                     "description": "Each refresh token represents a login session. Refresh tokens will be automatically removed when you click log out. The following refresh tokens are currently active for your account.",
                     "header": "Refresh Tokens",
-                    "last_used": "Last used at {date} from {location}",
+                    "last_used": "Last used {date} from {location}",
                     "not_used": "Has never been used",
                     "token_title": "Refresh token for {clientId}"
                 },
@@ -3917,6 +4025,17 @@
                     "link_promo": "Learn about themes",
                     "primary_color": "Primary color",
                     "reset": "Reset"
+                },
+                "time_format": {
+                    "description": "Choose how times are formatted.",
+                    "dropdown_label": "Time format",
+                    "formats": {
+                        "12": "12 hours (AM/PM)",
+                        "24": "24 hours",
+                        "language": "Auto (use language setting)",
+                        "system": "Use system locale"
+                    },
+                    "header": "Time Format"
                 },
                 "vibrate": {
                     "description": "Enable or disable vibration on this device when controlling devices.",

@@ -13,19 +13,10 @@ import "@polymer/paper-item/paper-icon-item";
 import "@polymer/paper-listbox/paper-listbox";
 import "@polymer/paper-tooltip/paper-tooltip";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
-import {
-  css,
-  CSSResult,
-  customElement,
-  html,
-  internalProperty,
-  LitElement,
-  property,
-  query,
-  TemplateResult,
-} from "lit-element";
-import { classMap } from "lit-html/directives/class-map";
-import { styleMap } from "lit-html/directives/style-map";
+import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import { customElement, property, state, query } from "lit/decorators";
+import { classMap } from "lit/directives/class-map";
+import { styleMap } from "lit/directives/style-map";
 import memoize from "memoize-one";
 import type { HASSDomEvent } from "../../../common/dom/fire_event";
 import { computeDomain } from "../../../common/entity/compute_domain";
@@ -101,31 +92,29 @@ export class HaConfigEntities extends SubscribeMixin(LitElement) {
 
   @property() public route!: Route;
 
-  @internalProperty() private _entities?: EntityRegistryEntry[];
+  @state() private _entities?: EntityRegistryEntry[];
 
-  @internalProperty() private _devices?: DeviceRegistryEntry[];
+  @state() private _devices?: DeviceRegistryEntry[];
 
-  @internalProperty() private _areas: AreaRegistryEntry[] = [];
+  @state() private _areas: AreaRegistryEntry[] = [];
 
-  @internalProperty() private _stateEntities: StateEntity[] = [];
+  @state() private _stateEntities: StateEntity[] = [];
 
   @property() public _entries?: ConfigEntry[];
 
-  @internalProperty() private _showDisabled = false;
+  @state() private _showDisabled = false;
 
-  @internalProperty() private _showUnavailable = true;
+  @state() private _showUnavailable = true;
 
-  @internalProperty() private _showReadOnly = true;
+  @state() private _showReadOnly = true;
 
-  @internalProperty() private _filter = "";
+  @state() private _filter = "";
 
-  @internalProperty() private _numHiddenEntities = 0;
+  @state() private _numHiddenEntities = 0;
 
-  @internalProperty() private _searchParms = new URLSearchParams(
-    window.location.search
-  );
+  @state() private _searchParms = new URLSearchParams(window.location.search);
 
-  @internalProperty() private _selectedEntities: string[] = [];
+  @state() private _selectedEntities: string[] = [];
 
   @query("hass-tabs-subpage-data-table", true)
   private _dataTable!: HaTabsSubpageDataTable;
@@ -314,9 +303,7 @@ export class HaConfigEntities extends SubscribeMixin(LitElement) {
         }
       }
 
-      entities.forEach((entity) => {
-        return entity;
-      });
+      entities.forEach((entity) => entity);
 
       let filteredEntities = showReadOnly
         ? entities.concat(stateEntities)
@@ -404,10 +391,18 @@ export class HaConfigEntities extends SubscribeMixin(LitElement) {
   public constructor() {
     super();
     window.addEventListener("location-changed", () => {
-      this._searchParms = new URLSearchParams(window.location.search);
+      if (
+        window.location.search.substring(1) !== this._searchParms.toString()
+      ) {
+        this._searchParms = new URLSearchParams(window.location.search);
+      }
     });
     window.addEventListener("popstate", () => {
-      this._searchParms = new URLSearchParams(window.location.search);
+      if (
+        window.location.search.substring(1) !== this._searchParms.toString()
+      ) {
+        this._searchParms = new URLSearchParams(window.location.search);
+      }
     });
   }
 
@@ -636,8 +631,8 @@ export class HaConfigEntities extends SubscribeMixin(LitElement) {
     loadEntityEditorDialog();
   }
 
-  protected updated(changedProps): void {
-    super.updated(changedProps);
+  public willUpdate(changedProps): void {
+    super.willUpdate(changedProps);
     const oldHass = changedProps.get("hass");
     let changed = false;
     if (!this.hass || !this._entities) {
@@ -663,6 +658,10 @@ export class HaConfigEntities extends SubscribeMixin(LitElement) {
           entity_id: entityId,
           platform: computeDomain(entityId),
           disabled_by: null,
+          area_id: null,
+          config_entry_id: null,
+          device_id: null,
+          icon: null,
           readonly: true,
           selectable: false,
         });
@@ -838,14 +837,14 @@ export class HaConfigEntities extends SubscribeMixin(LitElement) {
     if (
       this._activeFilters(this._searchParms, this.hass.localize, this._entries)
     ) {
-      navigate(this, window.location.pathname, true);
+      navigate(window.location.pathname, { replace: true });
     }
     this._showDisabled = true;
     this._showReadOnly = true;
     this._showUnavailable = true;
   }
 
-  static get styles(): CSSResult[] {
+  static get styles(): CSSResultGroup {
     return [
       haStyle,
       css`

@@ -1,22 +1,20 @@
-import "../components/ha-card";
 import "@material/mwc-button";
 import {
   css,
-  CSSResultArray,
-  customElement,
+  CSSResultGroup,
   html,
   LitElement,
-  property,
   PropertyValues,
   TemplateResult,
-} from "lit-element";
+} from "lit";
+import { customElement, property } from "lit/decorators";
+import { atLeastVersion } from "../common/config/version";
+import { applyThemesOnElement } from "../common/dom/apply_themes_on_element";
+import "../components/ha-card";
+import "../resources/ha-style";
+import { haStyle } from "../resources/styles";
 import { HomeAssistant } from "../types";
 import "./hass-subpage";
-import "../resources/ha-style";
-import "../resources/roboto";
-import { haStyle } from "../resources/styles";
-import { applyThemesOnElement } from "../common/dom/apply_themes_on_element";
-import { atLeastVersion } from "../common/config/version";
 
 @customElement("supervisor-error-screen")
 class SupervisorErrorScreen extends LitElement {
@@ -41,22 +39,14 @@ class SupervisorErrorScreen extends LitElement {
 
   protected render(): TemplateResult {
     return html`
-      <div class="toolbar">
-        <ha-icon-button-arrow-prev
-          .hass=${this.hass}
-          @click=${this._handleBack}
-        ></ha-icon-button-arrow-prev>
-      </div>
-      <div class="content">
-        <div class="title">
-          ${this.hass.localize("ui.panel.error.supervisor.title")}
-        </div>
+      <hass-subpage
+        .hass=${this.hass}
+        .header=${this.hass.localize("ui.errors.supervisor.title")}
+      >
         <ha-card header="Troubleshooting">
           <div class="card-content">
             <ol>
-              <li>
-                ${this.hass.localize("ui.panel.error.supervisor.wait")}
-              </li>
+              <li>${this.hass.localize("ui.errors.supervisor.wait")}</li>
               <li>
                 <a
                   class="supervisor_error-link"
@@ -64,17 +54,13 @@ class SupervisorErrorScreen extends LitElement {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  ${this.hass.localize("ui.panel.error.supervisor.observer")}
+                  ${this.hass.localize("ui.errors.supervisor.observer")}
                 </a>
               </li>
-              <li>
-                ${this.hass.localize("ui.panel.error.supervisor.reboot")}
-              </li>
+              <li>${this.hass.localize("ui.errors.supervisor.reboot")}</li>
               <li>
                 <a href="/config/info" target="_parent">
-                  ${this.hass.localize(
-                    "ui.panel.error.supervisor.system_health"
-                  )}
+                  ${this.hass.localize("ui.errors.supervisor.system_health")}
                 </a>
               </li>
               <li>
@@ -83,19 +69,19 @@ class SupervisorErrorScreen extends LitElement {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  ${this.hass.localize("ui.panel.error.supervisor.ask")}
+                  ${this.hass.localize("ui.errors.supervisor.ask")}
                 </a>
               </li>
             </ol>
           </div>
         </ha-card>
-      </div>
+      </hass-subpage>
     `;
   }
 
   private _applyTheme() {
     let themeName: string;
-    let options: Partial<HomeAssistant["selectedTheme"]> | undefined;
+    let themeSettings: Partial<HomeAssistant["selectedTheme"]> | undefined;
 
     if (atLeastVersion(this.hass.config.version, 0, 114)) {
       themeName =
@@ -104,9 +90,9 @@ class SupervisorErrorScreen extends LitElement {
           ? this.hass.themes.default_dark_theme!
           : this.hass.themes.default_theme);
 
-      options = this.hass.selectedTheme;
-      if (themeName === "default" && options?.dark === undefined) {
-        options = {
+      themeSettings = this.hass.selectedTheme;
+      if (themeName === "default" && themeSettings?.dark === undefined) {
+        themeSettings = {
           ...this.hass.selectedTheme,
           dark: this.hass.themes.darkMode,
         };
@@ -121,54 +107,21 @@ class SupervisorErrorScreen extends LitElement {
       this.parentElement,
       this.hass.themes,
       themeName,
-      options
+      themeSettings
     );
   }
 
-  private _handleBack(): void {
-    history.back();
-  }
-
-  static get styles(): CSSResultArray {
+  static get styles(): CSSResultGroup {
     return [
       haStyle,
       css`
-        .toolbar {
-          display: flex;
-          align-items: center;
-          font-size: 20px;
-          height: var(--header-height);
-          padding: 0 16px;
-          pointer-events: none;
-          background-color: var(--app-header-background-color);
-          font-weight: 400;
-          box-sizing: border-box;
-        }
-        ha-icon-button-arrow-prev {
-          pointer-events: auto;
-        }
-        .content {
-          color: var(--primary-text-color);
-          display: flex;
-          padding: 16px;
-          align-items: center;
-          justify-content: center;
-          flex-direction: column;
-        }
-        .title {
-          font-size: 24px;
-          font-weight: 400;
-          line-height: 32px;
-          padding-bottom: 16px;
-        }
-
         a {
           color: var(--mdc-theme-primary);
         }
 
         ha-card {
           width: 600px;
-          margin: 16px;
+          margin: auto;
           padding: 8px;
         }
         @media all and (max-width: 500px) {

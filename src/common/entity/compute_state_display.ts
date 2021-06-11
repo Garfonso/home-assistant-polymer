@@ -1,6 +1,6 @@
 import { HassEntity } from "home-assistant-js-websocket";
 import { UNAVAILABLE, UNKNOWN } from "../../data/entity";
-import { FrontendTranslationData } from "../../data/translation";
+import { FrontendLocaleData } from "../../data/translation";
 import { formatDate } from "../datetime/format_date";
 import { formatDateTime } from "../datetime/format_date_time";
 import { formatTime } from "../datetime/format_time";
@@ -11,7 +11,7 @@ import { computeStateDomain } from "./compute_state_domain";
 export const computeStateDisplay = (
   localize: LocalizeFunc,
   stateObj: HassEntity,
-  locale: FrontendTranslationData,
+  locale: FrontendLocaleData,
   state?: string
 ): string => {
   const compareState = state !== undefined ? state : stateObj.state;
@@ -68,8 +68,12 @@ export const computeStateDisplay = (
     }
   }
 
-  // `counter` and `number` domains do not have a unit of measurement but should still use `formatNumber`
-  if (domain === "counter" || domain === "number") {
+  // `counter` `number` and `input_number` domains do not have a unit of measurement but should still use `formatNumber`
+  if (
+    domain === "counter" ||
+    domain === "number" ||
+    domain === "input_number"
+  ) {
     return formatNumber(compareState, locale);
   }
 

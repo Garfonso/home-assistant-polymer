@@ -149,7 +149,7 @@
                     },
                     "ingress": {
                         "description": "Tento doplnok používa vniknutie na bezpečné vloženie svojho rozhrania do Home Assistant.",
-                        "title": "vniknutie"
+                        "title": "Vniknutie"
                     },
                     "label": {
                         "apparmor": "apparmor",
@@ -1121,7 +1121,7 @@
                     "picker": {
                         "create_area": "Vytvoriť oblasť",
                         "header": "Register oblastí",
-                        "integrations_page": "Stránka Integrácie",
+                        "integrations_page": "Stránka Integrácií",
                         "introduction": "Oblasti sa používajú na usporiadanie zariadení. Tieto informácie sa použijú v službe Home Assistant, aby vám pomohli pri organizovaní rozhrania, povolení a integrácií s inými systémami.",
                         "introduction2": "Ak chcete umiestniť zariadenia do oblasti, pomocou odkazu nižšie prejdite na stránku integrácií a potom kliknite na nakonfigurovanú integráciu a prejdite na karty zariadení.",
                         "no_areas": "Vyzerá to, že ešte nemáte žiadne oblasti!"
@@ -1151,7 +1151,7 @@
                             "delete_confirm": "Ste si istý odstránením ? ",
                             "duplicate": "Duplikovať",
                             "header": "Akcie",
-                            "introduction": "Akcie, ktoré vykoná Home Assistant, sa aktivujú po spustení automatizácie. \n\n [Viac informácií o akciách.](https://home-assistant.io/docs/automation/action/)",
+                            "introduction": "Akcie predstavujú činnosti, ktoré Home Assistant vykoná po spustení automatizácie.",
                             "learn_more": "Získajte viac informácií o akciách",
                             "name": "Akcia",
                             "type_select": "Typ akcie",
@@ -1850,7 +1850,8 @@
                     }
                 },
                 "integration_panel_move": {
-                    "link_integration_page": "stránka integrácie"
+                    "link_integration_page": "stránka integrácií",
+                    "missing_zha": "Chýba vám konfiguračný panel ZHA? Bol presunutý do položky ZHA na {integrations_page}."
                 },
                 "integrations": {
                     "add_integration": "Pridať integráciu",
@@ -1918,7 +1919,7 @@
                         "show_disabled": "Zobraziť vypnuté integrácie"
                     },
                     "discovered": "Objavené",
-                    "home_assistant_website": "Home Assistant webová stránka",
+                    "home_assistant_website": "webovej stránke Home Assistant",
                     "ignore": {
                         "confirm_delete_ignore": "Potom, ako bude integrácia automaticky objavená (discovered), sa opäť ukáže medzi objavenými (discovered) integráciami.  Môže to chvíľu trvať, alebo vyžadovať reštart.",
                         "confirm_delete_ignore_title": "Prestať ignorovať {name} ?",
@@ -1937,7 +1938,7 @@
                     "none_found": "Nenašli sa žiadne integrácie",
                     "none_found_detail": "Upravte kritériá vyhľadávania.",
                     "note_about_integrations": "Nie všetky integrácie je možné nakonfigurovať pomocou používateľského rozhrania.",
-                    "note_about_website_reference": "Viac informácií je k dispozícii na",
+                    "note_about_website_reference": "Viac informácií je k dispozícii na ",
                     "reconfigure": "Prekonfigurovať",
                     "search": "Vyhľadať integrácie"
                 },
@@ -2116,7 +2117,7 @@
                         "device_tracker_intro": "Vyberte zariadenia, ktoré patria tejto osobe.",
                         "device_tracker_pick": "Vyberte zariadenie na sledovanie",
                         "device_tracker_picked": "Sledovať zariadenie",
-                        "link_integrations_page": "Stránka Integrácie",
+                        "link_integrations_page": "Stránka Integrácií",
                         "link_presence_detection_integrations": "Integrácie detekcie prítomnosti",
                         "linked_user": "Prepojený používateľa",
                         "name": "Meno",

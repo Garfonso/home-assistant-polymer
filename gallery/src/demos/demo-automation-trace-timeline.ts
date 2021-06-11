@@ -1,11 +1,5 @@
-import {
-  customElement,
-  html,
-  css,
-  LitElement,
-  TemplateResult,
-  property,
-} from "lit-element";
+import { html, css, LitElement, TemplateResult } from "lit";
+import { customElement, property } from "lit/decorators";
 import "../../../src/components/ha-card";
 import "../../../src/components/trace/hat-script-graph";
 import "../../../src/components/trace/hat-trace-timeline";
@@ -17,7 +11,7 @@ import { DemoTrace } from "../data/traces/types";
 const traces: DemoTrace[] = [
   mockDemoTrace({ state: "running" }),
   mockDemoTrace({ state: "debugged" }),
-  mockDemoTrace({ state: "stopped", script_execution: "failed_condition" }),
+  mockDemoTrace({ state: "stopped", script_execution: "failed_conditions" }),
   mockDemoTrace({ state: "stopped", script_execution: "failed_single" }),
   mockDemoTrace({ state: "stopped", script_execution: "failed_max_runs" }),
   mockDemoTrace({ state: "stopped", script_execution: "finished" }),

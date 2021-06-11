@@ -1,13 +1,5 @@
-import {
-  css,
-  CSSResult,
-  customElement,
-  html,
-  internalProperty,
-  LitElement,
-  property,
-  TemplateResult,
-} from "lit-element";
+import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators";
 import { atLeastVersion } from "../../../src/common/config/version";
 import { fireEvent } from "../../../src/common/dom/fire_event";
 import "../../../src/components/buttons/ha-progress-button";
@@ -39,6 +31,7 @@ import "../components/supervisor-metric";
 import { hassioStyle } from "../resources/hassio-style";
 
 const UNSUPPORTED_REASON_URL = {
+  apparmor: "/more-info/unsupported/apparmor",
   container: "/more-info/unsupported/container",
   dbus: "/more-info/unsupported/dbus",
   docker_configuration: "/more-info/unsupported/docker_configuration",
@@ -66,7 +59,7 @@ class HassioSupervisorInfo extends LitElement {
 
   @property({ attribute: false }) public supervisor!: Supervisor;
 
-  @internalProperty() private _metrics?: HassioStats;
+  @state() private _metrics?: HassioStats;
 
   protected render(): TemplateResult | void {
     const metrics = [
@@ -263,18 +256,18 @@ class HassioSupervisorInfo extends LitElement {
         title: this.supervisor.localize("system.supervisor.warning"),
         text: html`${this.supervisor.localize("system.supervisor.beta_warning")}
           <br />
-          <b>
-            ${this.supervisor.localize("system.supervisor.beta_backup")}
-          </b>
+          <b> ${this.supervisor.localize("system.supervisor.beta_backup")} </b>
           <br /><br />
           ${this.supervisor.localize("system.supervisor.beta_release_items")}
-          <li>Home Assistant Core</li>
-          <li>Home Assistant Supervisor</li>
-          <li>Home Assistant Operating System</li>
+          <ul>
+            <li>Home Assistant Core</li>
+            <li>Home Assistant Supervisor</li>
+            <li>Home Assistant Operating System</li>
+          </ul>
           <br />
-          ${this.supervisor.localize("system.supervisor.join_beta_action")}`,
+          ${this.supervisor.localize("system.supervisor.beta_join_confirm")}`,
         confirmText: this.supervisor.localize(
-          "system.supervisor.beta_join_confirm"
+          "system.supervisor.join_beta_action"
         ),
         dismissText: this.supervisor.localize("common.cancel"),
       });
@@ -503,7 +496,7 @@ class HassioSupervisorInfo extends LitElement {
     }
   }
 
-  static get styles(): CSSResult[] {
+  static get styles(): CSSResultGroup {
     return [
       haStyle,
       hassioStyle,

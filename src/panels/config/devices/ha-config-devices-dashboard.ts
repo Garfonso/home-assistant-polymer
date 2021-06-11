@@ -2,16 +2,8 @@ import "@material/mwc-list/mwc-list-item";
 import type { RequestSelectedDetail } from "@material/mwc-list/mwc-list-item";
 import { mdiCancel, mdiFilterVariant, mdiPlus } from "@mdi/js";
 import "@polymer/paper-tooltip/paper-tooltip";
-import {
-  css,
-  CSSResult,
-  customElement,
-  html,
-  internalProperty,
-  LitElement,
-  property,
-  TemplateResult,
-} from "lit-element";
+import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { HASSDomEvent } from "../../../common/dom/fire_event";
 import { computeStateDomain } from "../../../common/entity/compute_state_domain";
@@ -68,15 +60,37 @@ export class HaConfigDeviceDashboard extends LitElement {
 
   @property() public route!: Route;
 
-  @internalProperty() private _searchParms = new URLSearchParams(
-    window.location.search
-  );
+  @state() private _searchParms = new URLSearchParams(window.location.search);
 
-  @internalProperty() private _showDisabled = false;
+  @state() private _showDisabled = false;
 
-  @internalProperty() private _filter = "";
+  @state() private _filter = "";
 
-  @internalProperty() private _numHiddenDevices = 0;
+  @state() private _numHiddenDevices = 0;
+
+  private _ignoreLocationChange = false;
+
+  public constructor() {
+    super();
+    window.addEventListener("location-changed", () => {
+      if (this._ignoreLocationChange) {
+        this._ignoreLocationChange = false;
+        return;
+      }
+      if (
+        window.location.search.substring(1) !== this._searchParms.toString()
+      ) {
+        this._searchParms = new URLSearchParams(window.location.search);
+      }
+    });
+    window.addEventListener("popstate", () => {
+      if (
+        window.location.search.substring(1) !== this._searchParms.toString()
+      ) {
+        this._searchParms = new URLSearchParams(window.location.search);
+      }
+    });
+  }
 
   private _activeFilters = memoizeOne(
     (
@@ -88,10 +102,6 @@ export class HaConfigDeviceDashboard extends LitElement {
       filters.forEach((value, key) => {
         switch (key) {
           case "config_entry": {
-            // If we are requested to show the devices for a given config entry,
-            // also show the disabled ones by default.
-            this._showDisabled = true;
-
             const configEntry = entries.find(
               (entry) => entry.entry_id === value
             );
@@ -128,7 +138,6 @@ export class HaConfigDeviceDashboard extends LitElement {
     ) => {
       // Some older installations might have devices pointing at invalid entryIDs
       // So we guard for that.
-
       let outputDevices: DeviceRowData[] = devices;
 
       const deviceLookup: { [deviceId: string]: DeviceRegistryEntry } = {};
@@ -179,33 +188,31 @@ export class HaConfigDeviceDashboard extends LitElement {
         outputDevices = outputDevices.filter((device) => !device.disabled_by);
       }
 
-      outputDevices = outputDevices.map((device) => {
-        return {
-          ...device,
-          name: computeDeviceName(
-            device,
-            this.hass,
-            deviceEntityLookup[device.id]
-          ),
-          model: device.model || "<unknown>",
-          manufacturer: device.manufacturer || "<unknown>",
-          area: device.area_id ? areaLookup[device.area_id].name : undefined,
-          integration: device.config_entries.length
-            ? device.config_entries
-                .filter((entId) => entId in entryLookup)
-                .map(
-                  (entId) =>
-                    localize(`component.${entryLookup[entId].domain}.title`) ||
-                    entryLookup[entId].domain
-                )
-                .join(", ")
-            : "No integration",
-          battery_entity: [
-            this._batteryEntity(device.id, deviceEntityLookup),
-            this._batteryChargingEntity(device.id, deviceEntityLookup),
-          ],
-        };
-      });
+      outputDevices = outputDevices.map((device) => ({
+        ...device,
+        name: computeDeviceName(
+          device,
+          this.hass,
+          deviceEntityLookup[device.id]
+        ),
+        model: device.model || "<unknown>",
+        manufacturer: device.manufacturer || "<unknown>",
+        area: device.area_id ? areaLookup[device.area_id].name : undefined,
+        integration: device.config_entries.length
+          ? device.config_entries
+              .filter((entId) => entId in entryLookup)
+              .map(
+                (entId) =>
+                  localize(`component.${entryLookup[entId].domain}.title`) ||
+                  entryLookup[entId].domain
+              )
+              .join(", ")
+          : "No integration",
+        battery_entity: [
+          this._batteryEntity(device.id, deviceEntityLookup),
+          this._batteryChargingEntity(device.id, deviceEntityLookup),
+        ],
+      }));
 
       this._numHiddenDevices = startLength - outputDevices.length;
       return { devicesOutput: outputDevices, filteredDomains: filterDomains };
@@ -224,14 +231,12 @@ export class HaConfigDeviceDashboard extends LitElement {
               filterable: true,
               direction: "asc",
               grows: true,
-              template: (name, device: DataTableRowData) => {
-                return html`
-                  ${name}
-                  <div class="secondary">
-                    ${device.area} | ${device.integration}
-                  </div>
-                `;
-              },
+              template: (name, device: DataTableRowData) => html`
+                ${name}
+                <div class="secondary">
+                  ${device.area} | ${device.integration}
+                </div>
+              `,
             },
           }
         : {
@@ -329,14 +334,14 @@ export class HaConfigDeviceDashboard extends LitElement {
     }
   );
 
-  public constructor() {
-    super();
-    window.addEventListener("location-changed", () => {
-      this._searchParms = new URLSearchParams(window.location.search);
-    });
-    window.addEventListener("popstate", () => {
-      this._searchParms = new URLSearchParams(window.location.search);
-    });
+  public willUpdate(changedProps) {
+    if (changedProps.has("_searchParms")) {
+      if (this._searchParms.get("config_entry")) {
+        // If we are requested to show the devices for a given config entry,
+        // also show the disabled ones by default.
+        this._showDisabled = true;
+      }
+    }
   }
 
   protected render(): TemplateResult {
@@ -449,7 +454,8 @@ export class HaConfigDeviceDashboard extends LitElement {
 
   private _handleRowClicked(ev: HASSDomEvent<RowClickedEvent>) {
     const deviceId = ev.detail.id;
-    navigate(this, `/config/devices/device/${deviceId}`);
+    this._ignoreLocationChange = true;
+    navigate(`/config/devices/device/${deviceId}`);
   }
 
   private _showDisabledChanged(ev: CustomEvent<RequestSelectedDetail>) {
@@ -467,12 +473,12 @@ export class HaConfigDeviceDashboard extends LitElement {
     if (
       this._activeFilters(this.entries, this._searchParms, this.hass.localize)
     ) {
-      navigate(this, window.location.pathname, true);
+      navigate(window.location.pathname, { replace: true });
     }
     this._showDisabled = true;
   }
 
-  static get styles(): CSSResult[] {
+  static get styles(): CSSResultGroup {
     return [
       css`
         ha-button-menu {
