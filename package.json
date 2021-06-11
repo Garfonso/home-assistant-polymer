@@ -241,11 +241,6 @@
     "lit-element": "3.0.0-rc.2"
   },
   "main": "src/home-assistant.js",
-  "husky": {
-    "hooks": {
-      "pre-commit": "lint-staged"
-    }
-  },
   "prettier": {
     "trailingComma": "es5",
     "arrowParens": "always"
