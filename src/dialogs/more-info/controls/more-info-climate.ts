@@ -185,7 +185,7 @@ class MoreInfoClimate extends LitElement {
                   .map(
                     (mode) => html`
                       <paper-item item-name=${mode}>
-                        ${hass.localize(`component.climate.state._.${mode}`)}
+                        ${hass.localize(`component.climate.state._.${mode}`) || mode} <!--iob: Add unsupported modes in clear text -->
                       </paper-item>
                     `
                   )}
