@@ -379,7 +379,6 @@ class HUIRoot extends LitElement {
                                 "ui.panel.lovelace.unused_entities.title"
                               )}</span
                             >
-                              ` /* IoB */ }
                             <ha-svg-icon
                               slot="graphic"
                               .path=${mdiShape}
@@ -387,6 +386,7 @@ class HUIRoot extends LitElement {
                           </mwc-list-item>
                         `
                       : ""}
+                    ` /* IoB */ }
                     ${(this.hass.panels.lovelace?.config as LovelacePanelConfig)
                       ?.mode === "yaml"
                       ? html`
