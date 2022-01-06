@@ -120,7 +120,7 @@ gulp.task(
             isStatsBuild: false,
           }),
         ],
-        handler(resolve)
+        doneHandler(resolve)
       )
     )
 );
