@@ -5,6 +5,7 @@ const env = require("../env");
 
 require("./clean.js");
 require("./translations.js");
+require("./locale-data.js");
 require("./gen-icons-json.js");
 require("./gather-static.js");
 require("./compress.js");
@@ -26,7 +27,8 @@ gulp.task(
       "gen-icons-json",
       "gen-pages-dev",
       "gen-index-app-dev",
-      "build-translations"
+      "build-translations",
+      "build-locale-data"
     ),
     "copy-static-app",
     env.useWDS()
@@ -45,11 +47,11 @@ gulp.task(
     },
     "clean",
     "translations-enable-merge-backend", // IoB - includes backend translation in frontend files.
-    gulp.parallel("gen-icons-json", "build-translations"),
+    gulp.parallel("gen-icons-json", "build-translations", "build-locale-data"),
     "copy-static-app",
     env.useRollup() ? "rollup-prod-app" : "webpack-prod-app",
-    ...// Don't compress running tests
-    (env.isTest() ? [] : ["compress-app"]),
+    // Don't compress running tests
+    ...(env.isTest() ? [] : ["compress-app"]),
     gulp.parallel(
       "gen-pages-prod",
       "gen-index-app-prod",
@@ -72,7 +74,8 @@ gulp.task(
       "gen-icons-json",
       "gen-pages-dev",
       "gen-index-app-dev",
-      "build-translations"
+      "build-translations",
+      "build-locale-data"
     ),
     "copy-static-app",
     "webpack-dev-app"

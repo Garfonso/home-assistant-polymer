@@ -1,19 +1,19 @@
-import { html, LitElement, TemplateResult } from "lit";
 import { sanitizeUrl } from "@braintree/sanitize-url";
+import { html, LitElement, TemplateResult } from "lit";
+import { customElement, property, state } from "lit/decorators";
+import { navigate } from "../../src/common/navigate";
 import {
   createSearchParam,
   extractSearchParamsObject,
 } from "../../src/common/url/search-params";
+import { Supervisor } from "../../src/data/supervisor/supervisor";
 import "../../src/layouts/hass-error-screen";
 import {
   ParamType,
   Redirect,
   Redirects,
 } from "../../src/panels/my/ha-panel-my";
-import { navigate } from "../../src/common/navigate";
 import { HomeAssistant, Route } from "../../src/types";
-import { Supervisor } from "../../src/data/supervisor/supervisor";
-import { customElement, property, state } from "lit/decorators";
 
 const REDIRECTS: Redirects = {
   supervisor: {
@@ -26,10 +26,16 @@ const REDIRECTS: Redirects = {
     redirect: "/hassio/system",
   },
   supervisor_snapshots: {
-    redirect: "/hassio/snapshots",
+    redirect: "/hassio/backups",
+  },
+  supervisor_backups: {
+    redirect: "/hassio/backups",
   },
   supervisor_store: {
     redirect: "/hassio/store",
+  },
+  supervisor_addons: {
+    redirect: "/hassio/dashboard",
   },
   supervisor_addon: {
     redirect: "/hassio/addon",
@@ -84,7 +90,7 @@ class HassioMyRedirect extends LitElement {
     let url: string;
     try {
       url = this._createRedirectUrl(redirect);
-    } catch (err) {
+    } catch (err: any) {
       this._error = this.supervisor.localize("my.error");
       return;
     }

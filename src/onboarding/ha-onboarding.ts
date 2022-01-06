@@ -12,8 +12,8 @@ import { HASSDomEvent } from "../common/dom/fire_event";
 import { extractSearchParamsObject } from "../common/url/search-params";
 import { subscribeOne } from "../common/util/subscribe-one";
 import { AuthUrlSearchParams, hassUrl } from "../data/auth";
-import { fetchDiscoveryInformation } from "../data/discovery";
 import {
+  fetchInstallationType,
   fetchOnboardingOverview,
   OnboardingResponses,
   OnboardingStep,
@@ -58,7 +58,7 @@ declare global {
 class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
   @property({ attribute: false }) public hass?: HomeAssistant;
 
-  public translationFragment = "page-onboarding";
+  @property() public translationFragment = "page-onboarding";
 
   @state() private _loading = false;
 
@@ -84,12 +84,12 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
             </onboarding-create-user>`
           : ""}
         ${this._supervisor
-          ? html`<onboarding-restore-snapshot
+          ? html`<onboarding-restore-backup
               .localize=${this.localize}
               .restoring=${this._restoring}
-              @restoring=${this._restoringSnapshot}
+              @restoring=${this._restoringBackup}
             >
-            </onboarding-restore-snapshot>`
+            </onboarding-restore-backup>`
           : ""}
       `;
     }
@@ -124,7 +124,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
   protected firstUpdated(changedProps: PropertyValues) {
     super.firstUpdated(changedProps);
     this._fetchOnboardingSteps();
-    this._fetchDiscoveryInformation();
+    this._fetchInstallationType();
     import("./onboarding-integrations");
     import("./onboarding-core-config");
     registerServiceWorker(this, false);
@@ -133,17 +133,13 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
       import("./particles");
     }
     if (matchMedia("(prefers-color-scheme: dark)").matches) {
-      applyThemesOnElement(
-        document.documentElement,
-        {
-          default_theme: "default",
-          default_dark_theme: null,
-          themes: {},
-          darkMode: false,
-        },
-        "default",
-        { dark: true }
-      );
+      applyThemesOnElement(document.documentElement, {
+        default_theme: "default",
+        default_dark_theme: null,
+        themes: {},
+        darkMode: true,
+        theme: "default",
+      });
     }
   }
 
@@ -164,25 +160,25 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
     return this._steps ? this._steps.find((stp) => !stp.done) : undefined;
   }
 
-  private _restoringSnapshot() {
+  private _restoringBackup() {
     this._restoring = true;
   }
 
-  private async _fetchDiscoveryInformation(): Promise<void> {
+  private async _fetchInstallationType(): Promise<void> {
     try {
-      const response = await fetchDiscoveryInformation();
+      const response = await fetchInstallationType();
       this._supervisor = [
         "Home Assistant OS",
         "Home Assistant Supervised",
       ].includes(response.installation_type);
       if (this._supervisor) {
         // Only load if we have supervisor
-        import("./onboarding-restore-snapshot");
+        import("./onboarding-restore-backup");
       }
-    } catch (err) {
+    } catch (err: any) {
       // eslint-disable-next-line no-console
       console.error(
-        "Something went wrong loading onboarding-restore-snapshot",
+        "Something went wrong loading onboarding-restore-backup",
         err
       );
     }
@@ -216,7 +212,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
       }
 
       this._steps = steps;
-    } catch (err) {
+    } catch (err: any) {
       alert("Something went wrong loading onboarding, try refreshing");
     }
   }
@@ -236,7 +232,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
           authCode: result.auth_code,
         });
         await this._connectHass(auth);
-      } catch (err) {
+      } catch (err: any) {
         alert("Ah snap, something went wrong!");
         location.reload();
       } finally {
@@ -248,7 +244,8 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
       this._loading = true;
 
       // Determine if oauth redirect has been provided
-      const externalAuthParams = extractSearchParamsObject() as AuthUrlSearchParams;
+      const externalAuthParams =
+        extractSearchParamsObject() as AuthUrlSearchParams;
       const authParams =
         externalAuthParams.client_id && externalAuthParams.redirect_uri
           ? externalAuthParams
@@ -270,7 +267,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
           client_id: authParams.client_id!,
           redirect_uri: authParams.redirect_uri!,
         });
-      } catch (err) {
+      } catch (err: any) {
         this.hass!.connection.close();
         await this.hass!.auth.revoke();
 

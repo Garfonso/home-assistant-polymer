@@ -2,6 +2,7 @@
 import { PolymerElement } from "@polymer/polymer/polymer-element";
 import dynamicContentUpdater from "../common/dom/dynamic_content_updater";
 import { stateCardType } from "../common/entity/state_card_type";
+import "./state-card-button";
 import "./state-card-climate";
 import "./state-card-configurator";
 import "./state-card-cover";
@@ -14,6 +15,7 @@ import "./state-card-media_player";
 import "./state-card-number";
 import "./state-card-scene";
 import "./state-card-script";
+import "./state-card-select";
 import "./state-card-timer";
 import "./state-card-toggle";
 import "./state-card-vacuum";

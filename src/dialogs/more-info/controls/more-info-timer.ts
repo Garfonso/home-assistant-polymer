@@ -17,11 +17,6 @@ class MoreInfoTimer extends LitElement {
     }
 
     return html`
-      <ha-attributes
-        .hass=${this.hass}
-        .stateObj=${this.stateObj}
-        extra-filters="remaining"
-      ></ha-attributes>
       <div class="actions">
         ${this.stateObj.state === "idle" || this.stateObj.state === "paused"
           ? html`
@@ -32,31 +27,27 @@ class MoreInfoTimer extends LitElement {
           : ""}
         ${this.stateObj.state === "active"
           ? html`
-              <mwc-button
-                .action=${"pause"}
-                @click="${this._handleActionClick}"
-              >
+              <mwc-button .action=${"pause"} @click=${this._handleActionClick}>
                 ${this.hass!.localize("ui.card.timer.actions.pause")}
               </mwc-button>
             `
           : ""}
         ${this.stateObj.state === "active" || this.stateObj.state === "paused"
           ? html`
-              <mwc-button
-                .action=${"cancel"}
-                @click="${this._handleActionClick}"
-              >
+              <mwc-button .action=${"cancel"} @click=${this._handleActionClick}>
                 ${this.hass!.localize("ui.card.timer.actions.cancel")}
               </mwc-button>
-              <mwc-button
-                .action=${"finish"}
-                @click="${this._handleActionClick}"
-              >
+              <mwc-button .action=${"finish"} @click=${this._handleActionClick}>
                 ${this.hass!.localize("ui.card.timer.actions.finish")}
               </mwc-button>
             `
           : ""}
       </div>
+      <ha-attributes
+        .hass=${this.hass}
+        .stateObj=${this.stateObj}
+        extra-filters="remaining"
+      ></ha-attributes>
     `;
   }
 

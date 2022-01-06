@@ -5,7 +5,7 @@ import { slugify } from "../../../../common/string/slugify";
 import { computeRTLDirection } from "../../../../common/util/compute_rtl";
 import { createCloseHeading } from "../../../../components/ha-dialog";
 import "../../../../components/ha-formfield";
-import "../../../../components/ha-icon-input";
+import "../../../../components/ha-icon-picker";
 import "../../../../components/ha-switch";
 import type { HaSwitch } from "../../../../components/ha-switch";
 import {
@@ -74,7 +74,7 @@ export class DialogLovelaceDashboardDetail extends LitElement {
     return html`
       <ha-dialog
         open
-        @closed="${this._close}"
+        @closed=${this._close}
         scrimClickAction
         escapeKeyAction
         .heading=${createCloseHeading(
@@ -118,13 +118,13 @@ export class DialogLovelaceDashboardDetail extends LitElement {
                     )}
                     dialogInitialFocus
                   ></paper-input>
-                  <ha-icon-input
+                  <ha-icon-picker
                     .value=${this._icon}
                     @value-changed=${this._iconChanged}
                     .label=${this.hass.localize(
                       "ui.panel.config.lovelace.dashboards.detail.icon"
                     )}
-                  ></ha-icon-input>
+                  ></ha-icon-picker>
                   ${!this._params.dashboard && this.hass.userData?.showAdvanced
                     ? html`
                         <paper-input
@@ -205,7 +205,7 @@ export class DialogLovelaceDashboardDetail extends LitElement {
           : ""}
         <mwc-button
           slot="primaryAction"
-          @click="${this._updateDashboard}"
+          @click=${this._updateDashboard}
           .disabled=${urlInvalid || titleInvalid || this._submitting}
         >
           ${this._params.urlPath
@@ -285,14 +285,15 @@ export class DialogLovelaceDashboardDetail extends LitElement {
       if (this._params!.dashboard) {
         await this._params!.updateDashboard(values);
       } else {
-        (values as LovelaceDashboardCreateParams).url_path = this._urlPath.trim();
+        (values as LovelaceDashboardCreateParams).url_path =
+          this._urlPath.trim();
         (values as LovelaceDashboardCreateParams).mode = "storage";
         await this._params!.createDashboard(
           values as LovelaceDashboardCreateParams
         );
       }
       this._close();
-    } catch (err) {
+    } catch (err: any) {
       this._error = err?.message || "Unknown error";
     } finally {
       this._submitting = false;

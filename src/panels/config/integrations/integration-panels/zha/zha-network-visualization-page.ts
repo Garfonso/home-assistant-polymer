@@ -1,32 +1,30 @@
-import { css, CSSResultGroup, html, LitElement, PropertyValues } from "lit";
-
 import "@material/mwc-button";
+import { css, CSSResultGroup, html, LitElement, PropertyValues } from "lit";
+import { customElement, property, query, state } from "lit/decorators";
+import {
+  Edge,
+  EdgeOptions,
+  Network,
+  Node,
+} from "vis-network/peer/esm/vis-network";
 import { navigate } from "../../../../../common/navigate";
+import "../../../../../common/search/search-input";
+import "../../../../../components/device/ha-device-picker";
+import "../../../../../components/ha-button-menu";
+import "../../../../../components/ha-checkbox";
+import type { HaCheckbox } from "../../../../../components/ha-checkbox";
+import "../../../../../components/ha-formfield";
+import { DeviceRegistryEntry } from "../../../../../data/device_registry";
 import {
   fetchDevices,
   refreshTopology,
   ZHADevice,
 } from "../../../../../data/zha";
 import "../../../../../layouts/hass-tabs-subpage";
-import type { HomeAssistant, Route } from "../../../../../types";
-import {
-  Network,
-  Edge,
-  Node,
-  EdgeOptions,
-} from "vis-network/peer/esm/vis-network";
-import "../../../../../common/search/search-input";
-import "../../../../../components/device/ha-device-picker";
-import "../../../../../components/ha-button-menu";
-import "../../../../../components/ha-svg-icon";
 import { PolymerChangedEvent } from "../../../../../polymer-types";
+import type { HomeAssistant, Route } from "../../../../../types";
 import { formatAsPaddedHex } from "./functions";
-import { DeviceRegistryEntry } from "../../../../../data/device_registry";
-import "../../../../../components/ha-checkbox";
-import type { HaCheckbox } from "../../../../../components/ha-checkbox";
 import { zhaTabs } from "./zha-config-dashboard";
-import { customElement, property, query, state } from "lit/decorators";
-import "../../../../../components/ha-formfield";
 
 @customElement("zha-network-visualization-page")
 export class ZHANetworkVisualizationPage extends LitElement {
@@ -143,6 +141,7 @@ export class ZHANetworkVisualizationPage extends LitElement {
           ? html`
               <div slot="header">
                 <search-input
+                  .hass=${this.hass}
                   no-label-float
                   no-underline
                   class="header"
@@ -159,6 +158,7 @@ export class ZHANetworkVisualizationPage extends LitElement {
         <div class="header">
           ${!this.narrow
             ? html`<search-input
+                .hass=${this.hass}
                 no-label-float
                 no-underline
                 @value-changed=${this._handleSearchChange}
@@ -174,7 +174,7 @@ export class ZHANetworkVisualizationPage extends LitElement {
             .label=${this.hass.localize(
               "ui.panel.config.zha.visualization.zoom_label"
             )}
-            .deviceFilter=${(device) => this._filterDevices(device)}
+            .deviceFilter=${this._filterDevices}
             @value-changed=${this._onZoomToDevice}
           ></ha-device-picker>
           <div class="controls">
@@ -225,19 +225,19 @@ export class ZHANetworkVisualizationPage extends LitElement {
       });
       if (device.neighbors && device.neighbors.length > 0) {
         device.neighbors.forEach((neighbor) => {
-          const idx = edges.findIndex(function (e) {
-            return device.ieee === e.to && neighbor.ieee === e.from;
-          });
+          const idx = edges.findIndex(
+            (e) => device.ieee === e.to && neighbor.ieee === e.from
+          );
           if (idx === -1) {
             edges.push({
               from: device.ieee,
               to: neighbor.ieee,
               label: neighbor.lqi + "",
-              color: this._getLQI(neighbor.lqi),
+              color: this._getLQI(parseInt(neighbor.lqi)),
             });
           } else {
             edges[idx].color = this._getLQI(
-              (parseInt(edges[idx].label!) + neighbor.lqi) / 2
+              (parseInt(edges[idx].label!) + parseInt(neighbor.lqi)) / 2
             );
             edges[idx].label += "/" + neighbor.lqi;
           }
@@ -360,7 +360,7 @@ export class ZHANetworkVisualizationPage extends LitElement {
     await refreshTopology(this.hass);
   }
 
-  private _filterDevices(device: DeviceRegistryEntry): boolean {
+  private _filterDevices = (device: DeviceRegistryEntry): boolean => {
     if (!this.hass) {
       return false;
     }
@@ -372,7 +372,7 @@ export class ZHANetworkVisualizationPage extends LitElement {
       }
     }
     return false;
-  }
+  };
 
   private _handleCheckboxChange(ev: Event) {
     this._autoZoom = (ev.target as HaCheckbox).checked;

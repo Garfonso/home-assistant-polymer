@@ -2,6 +2,8 @@ import { html, css, LitElement, TemplateResult } from "lit";
 import "../../../src/components/ha-formfield";
 import "../../../src/components/ha-switch";
 
+import { classMap } from "lit/directives/class-map";
+import { customElement, property, state } from "lit/decorators";
 import { IntegrationManifest } from "../../../src/data/integration";
 
 import { provideHass } from "../../../src/fake_data/provide_hass";
@@ -15,8 +17,6 @@ import type {
 } from "../../../src/panels/config/integrations/ha-config-integrations";
 import { DeviceRegistryEntry } from "../../../src/data/device_registry";
 import { EntityRegistryEntry } from "../../../src/data/entity_registry";
-import { classMap } from "lit/directives/class-map";
-import { customElement, property, state } from "lit/decorators";
 
 const createConfigEntry = (
   title: string,
@@ -187,6 +187,7 @@ const createEntityRegistryEntries = (
     device_id: "mock-device-id",
     area_id: null,
     disabled_by: null,
+    entity_category: null,
     entity_id: "binary_sensor.updater",
     name: null,
     icon: null,
@@ -205,12 +206,14 @@ const createDeviceRegistryEntries = (
     model: "Mock Device",
     name: "Tag Reader",
     sw_version: null,
+    hw_version: "1.0.0",
     id: "mock-device-id",
     identifiers: [],
     via_device_id: null,
     area_id: null,
     name_by_user: null,
     disabled_by: null,
+    configuration_url: null,
   },
 ];
 

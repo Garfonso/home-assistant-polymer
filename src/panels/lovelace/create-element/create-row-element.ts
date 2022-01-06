@@ -24,6 +24,7 @@ const ALWAYS_LOADED_TYPES = new Set([
   "call-service",
 ]);
 const LAZY_LOAD_TYPES = {
+  "button-entity": () => import("../entity-rows/hui-button-entity-row"),
   "climate-entity": () => import("../entity-rows/hui-climate-entity-row"),
   "cover-entity": () => import("../entity-rows/hui-cover-entity-row"),
   "group-entity": () => import("../entity-rows/hui-group-entity-row"),
@@ -37,6 +38,7 @@ const LAZY_LOAD_TYPES = {
   "input-text-entity": () => import("../entity-rows/hui-input-text-entity-row"),
   "lock-entity": () => import("../entity-rows/hui-lock-entity-row"),
   "number-entity": () => import("../entity-rows/hui-number-entity-row"),
+  "select-entity": () => import("../entity-rows/hui-select-entity-row"),
   "timer-entity": () => import("../entity-rows/hui-timer-entity-row"),
   conditional: () => import("../special-rows/hui-conditional-row"),
   "weather-entity": () => import("../entity-rows/hui-weather-entity-row"),
@@ -52,6 +54,7 @@ const DOMAIN_TO_ELEMENT_TYPE = {
   _domain_not_found: "text",
   alert: "toggle",
   automation: "toggle",
+  button: "button",
   climate: "climate",
   cover: "cover",
   fan: "toggle",
@@ -68,6 +71,7 @@ const DOMAIN_TO_ELEMENT_TYPE = {
   remote: "toggle",
   scene: "scene",
   script: "script",
+  select: "select",
   sensor: "sensor",
   timer: "timer",
   switch: "toggle",

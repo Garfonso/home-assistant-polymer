@@ -1,3 +1,4 @@
+import { mdiClose } from "@mdi/js";
 import "@polymer/paper-input/paper-input";
 import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
 import { customElement, property } from "lit/decorators";
@@ -23,25 +24,27 @@ export class HuiInputListEditor extends LitElement {
       ${this.value.map(
         (listEntry, index) => html`
           <paper-input
-            label="${this.inputLabel}"
+            label=${this.inputLabel}
             .value=${listEntry}
             .configValue=${"entry"}
             .index=${index}
             @value-changed=${this._valueChanged}
             @blur=${this._consolidateEntries}
+            @keydown=${this._handleKeyDown}
             ><ha-icon-button
               slot="suffix"
               class="clear-button"
-              icon="hass:close"
+              .path=${mdiClose}
               no-ripple
               @click=${this._removeEntry}
+              .label=${this.hass!.localize("ui.common.clear")}
               >Clear</ha-icon-button
             ></paper-input
           >
         `
       )}
       <paper-input
-        label="${this.inputLabel}"
+        label=${this.inputLabel}
         @change=${this._addEntry}
       ></paper-input>
     `;
@@ -68,6 +71,13 @@ export class HuiInputListEditor extends LitElement {
     fireEvent(this, "value-changed", {
       value: newEntries,
     });
+  }
+
+  private _handleKeyDown(ev: KeyboardEvent) {
+    if (ev.key === "Enter") {
+      ev.stopPropagation();
+      this._consolidateEntries(ev);
+    }
   }
 
   private _consolidateEntries(ev: Event): void {
