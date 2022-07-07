@@ -1,25 +1,10 @@
 import {
-  mdiAlertCircleOutline,
   mdiEye,
   mdiGauge,
   mdiThermometer,
   mdiWaterPercent,
-  mdiWeatherCloudy,
-  mdiWeatherFog,
-  mdiWeatherHail,
-  mdiWeatherLightning,
-  mdiWeatherLightningRainy,
-  mdiWeatherNight,
-  mdiWeatherPartlyCloudy,
-  mdiWeatherPouring,
-  mdiWeatherRainy,
-  mdiWeatherSnowy,
-  mdiWeatherSnowyRainy,
-  mdiWeatherSunny,
   mdiWeatherWindy,
-  mdiWeatherWindyVariant,
 } from "@mdi/js";
-import { HassEntity } from "home-assistant-js-websocket";
 import {
   css,
   CSSResultGroup,
@@ -36,34 +21,19 @@ import "../../../components/ha-svg-icon";
 import {
   getWeatherUnit,
   getWind,
-  getWeatherStateIcon,
-  weatherStateIsImage,
-} from "../../../data/weather"; //IoB adds last two
+  isForecastHourly,
+  WeatherEntity,
+  weatherIcons,
+  getWeatherStateIcon, /* iob needed below */
+  weatherStateIsImage, /* iob needed below */
+} from "../../../data/weather";
 import { HomeAssistant } from "../../../types";
-
-const weatherIcons = {
-  "clear-night": mdiWeatherNight,
-  cloudy: mdiWeatherCloudy,
-  exceptional: mdiAlertCircleOutline,
-  fog: mdiWeatherFog,
-  hail: mdiWeatherHail,
-  lightning: mdiWeatherLightning,
-  "lightning-rainy": mdiWeatherLightningRainy,
-  partlycloudy: mdiWeatherPartlyCloudy,
-  pouring: mdiWeatherPouring,
-  rainy: mdiWeatherRainy,
-  snowy: mdiWeatherSnowy,
-  "snowy-rainy": mdiWeatherSnowyRainy,
-  sunny: mdiWeatherSunny,
-  windy: mdiWeatherWindy,
-  "windy-variant": mdiWeatherWindyVariant,
-};
 
 @customElement("more-info-weather")
 class MoreInfoWeather extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public stateObj?: HassEntity;
+  @property() public stateObj?: WeatherEntity;
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (changedProps.has("stateObj")) {
@@ -89,21 +59,26 @@ class MoreInfoWeather extends LitElement {
 
     // for IoB weather icon.
     const isImage = weatherStateIsImage(this.stateObj.state);
+    const hourly = isForecastHourly(this.stateObj.attributes.forecast);
 
     return html`
-      <div class="flex">
-        <ha-svg-icon .path=${mdiThermometer}></ha-svg-icon>
-        <div class="main">
-          ${this.hass.localize("ui.card.weather.attributes.temperature")}
-        </div>
-        <div>
-          ${formatNumber(
-            this.stateObj.attributes.temperature,
-            this.hass.locale
-          )}
-          ${getWeatherUnit(this.hass, "temperature")}
-        </div>
-      </div>
+      ${this._showValue(this.stateObj.attributes.temperature)
+        ? html`
+            <div class="flex">
+              <ha-svg-icon .path=${mdiThermometer}></ha-svg-icon>
+              <div class="main">
+                ${this.hass.localize("ui.card.weather.attributes.temperature")}
+              </div>
+              <div>
+                ${formatNumber(
+                  this.stateObj.attributes.temperature!,
+                  this.hass.locale
+                )}
+                ${getWeatherUnit(this.hass, this.stateObj, "temperature")}
+              </div>
+            </div>
+          `
+        : ""}
       ${this._showValue(this.stateObj.attributes.pressure)
         ? html`
             <div class="flex">
@@ -113,10 +88,10 @@ class MoreInfoWeather extends LitElement {
               </div>
               <div>
                 ${formatNumber(
-                  this.stateObj.attributes.pressure,
+                  this.stateObj.attributes.pressure!,
                   this.hass.locale
                 )}
-                ${getWeatherUnit(this.hass, "pressure")}
+                ${getWeatherUnit(this.hass, this.stateObj, "pressure")}
               </div>
             </div>
           `
@@ -130,7 +105,7 @@ class MoreInfoWeather extends LitElement {
               </div>
               <div>
                 ${formatNumber(
-                  this.stateObj.attributes.humidity,
+                  this.stateObj.attributes.humidity!,
                   this.hass.locale
                 )}
                 %
@@ -148,7 +123,8 @@ class MoreInfoWeather extends LitElement {
               <div>
                 ${getWind(
                   this.hass,
-                  this.stateObj.attributes.wind_speed,
+                  this.stateObj,
+                  this.stateObj.attributes.wind_speed!,
                   this.stateObj.attributes.wind_bearing
                 )}
               </div>
@@ -164,10 +140,10 @@ class MoreInfoWeather extends LitElement {
               </div>
               <div>
                 ${formatNumber(
-                  this.stateObj.attributes.visibility,
+                  this.stateObj.attributes.visibility!,
                   this.hass.locale
                 )}
-                ${getWeatherUnit(this.hass, "length")}
+                ${getWeatherUnit(this.hass, this.stateObj, "visibility")}
               </div>
             </div>
           `
@@ -177,63 +153,72 @@ class MoreInfoWeather extends LitElement {
             <div class="section">
               ${this.hass.localize("ui.card.weather.forecast")}:
             </div>
-            ${this.stateObj.attributes.forecast.map(
-              (item) => html`
-                <div class="flex">
-                  <!-- // IoB weather icon from URL - change below in ha-svg-icon is IoB, too. -->
-                  ${item.condition
-                    ? isImage
-                      ? html`
+            <!-- // IoB weather icon from URL following below -> need to add isImage condition in forecast here. -->
+            ${this.stateObj.attributes.forecast.map((item) =>
+              this._showValue(item.templow) || this._showValue(item.temperature)
+                ? html`<div class="flex">
+                    ${item.condition
+                      ? isImage 
+                        ? html`
                           <div
-                            class="icon-image"
+                            class="icon-image" 
                             style="min-width: 32px; min-height: 32px;"
                           >
                             ${getWeatherStateIcon(
-                              item.condition,
-                              this,
-                              false,
-                              this.hass.auth.accessToken
+                                item.condition, 
+                                this,
+                                false,
+                                this.hass.auth.accessToken
+                            )}
+                          </div>
+                        `    
+                        : html`
+                            <ha-svg-icon
+                              .path=${weatherIcons[item.condition]}
+                            ></ha-svg-icon>
+                          `
+                    : ""}
+                    ${hourly
+                      ? html`
+                          <div class="main">
+                            ${formatTimeWeekday(
+                              new Date(item.datetime),
+                              this.hass.locale
                             )}
                           </div>
                         `
                       : html`
-                          <ha-svg-icon
-                            .path=${weatherIcons[item.condition]}
-                          ></ha-svg-icon>
-                        `
-                    : ""}
-                  ${!this._showValue(item.templow)
-                    ? html`
-                        <div class="main">
-                          ${formatTimeWeekday(
-                            new Date(item.datetime),
-                            this.hass.locale
-                          )}
-                        </div>
-                      `
-                    : ""}
-                  ${this._showValue(item.templow)
-                    ? html`
-                        <div class="main">
-                          ${formatDateWeekday(
-                            new Date(item.datetime),
-                            this.hass.locale
-                          )}
-                        </div>
-                        <div class="templow">
-                          ${formatNumber(item.templow, this.hass.locale)}
-                          ${getWeatherUnit(this.hass, "temperature")}
-                        </div>
-                      `
-                    : ""}
-                  <div class="temp">
-                    ${this._showValue(item.temperature)
-                      ? `${formatNumber(item.temperature, this.hass.locale)}
-                    ${getWeatherUnit(this.hass, "temperature")}`
-                      : ""}
-                  </div>
-                </div>
-              `
+                          <div class="main">
+                            ${formatDateWeekday(
+                              new Date(item.datetime),
+                              this.hass.locale
+                            )}
+                          </div>
+                        `}
+                    <div class="templow">
+                      ${this._showValue(item.templow)
+                        ? `${formatNumber(item.templow!, this.hass.locale)}
+                          ${getWeatherUnit(
+                            this.hass,
+                            this.stateObj!,
+                            "temperature"
+                          )}`
+                        : hourly
+                        ? ""
+                        : "—"}
+                    </div>
+                    <div class="temp">
+                      ${this._showValue(item.temperature)
+                        ? `${formatNumber(item.temperature!, this.hass.locale)}
+                        ${getWeatherUnit(
+                          this.hass,
+                          this.stateObj!,
+                          "temperature"
+                        )}`
+                        : "—"}
+                    </div>
+                  </div>`
+                : ""
             )}
           `
         : ""}
@@ -251,6 +236,7 @@ class MoreInfoWeather extends LitElement {
     return css`
       ha-svg-icon {
         color: var(--paper-item-icon-color);
+        margin-left: 8px;
       }
       .section {
         margin: 16px 0 8px 0;
@@ -286,7 +272,7 @@ class MoreInfoWeather extends LitElement {
     `;
   }
 
-  private _showValue(item: string): boolean {
+  private _showValue(item: number | string | undefined): boolean {
     return typeof item !== "undefined" && item !== null;
   }
 }

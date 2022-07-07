@@ -6,13 +6,15 @@ import { navigate } from "../common/navigate";
 import { HomeAssistant, ServiceCallResponse } from "../types";
 
 export const SCENE_IGNORED_DOMAINS = [
-  "sensor",
   "binary_sensor",
-  "device_tracker",
-  "person",
-  "persistent_notification",
+  "button",
   "configuration",
+  "device_tracker",
   "image_processing",
+  "input_button",
+  "persistent_notification",
+  "person",
+  "sensor",
   "sun",
   "weather",
   "zone",
@@ -45,10 +47,15 @@ export interface SceneConfig {
   name: string;
   icon?: string;
   entities: SceneEntities;
+  metadata?: SceneMetaData;
 }
 
 export interface SceneEntities {
   [entityId: string]: string | { state: string; [key: string]: any };
+}
+
+export interface SceneMetaData {
+  [entityId: string]: { entity_only?: boolean | undefined };
 }
 
 export const activateScene = (

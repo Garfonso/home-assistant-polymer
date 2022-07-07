@@ -158,6 +158,7 @@ export const buttonLinkStyle = css`
     text-align: left;
     text-decoration: underline;
     cursor: pointer;
+    outline: none;
   }
 `;
 
@@ -184,6 +185,8 @@ export const haStyle = css`
 
   app-toolbar {
     height: var(--header-height);
+    border-bottom: var(--app-header-border-bottom);
+    box-sizing: border-box;
   }
 
   app-header div[sticky] {

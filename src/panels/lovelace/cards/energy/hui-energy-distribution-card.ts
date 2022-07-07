@@ -43,6 +43,8 @@ class HuiEnergyDistrubutionCard
 
   @state() private _data?: EnergyData;
 
+  protected hassSubscribeRequiredHostProps = ["_config"];
+
   public setConfig(config: EnergyDistributionCardConfig): void {
     this._config = config;
   }
@@ -204,7 +206,7 @@ class HuiEnergyDistrubutionCard
     let homeHighCarbonCircumference: number | undefined;
 
     // This fallback is used in the demo
-    let electricityMapUrl = "https://www.electricitymap.org";
+    let electricityMapUrl = "https://app.electricitymap.org";
 
     if (this._data.co2SignalEntity && this._data.fossilEnergyConsumption) {
       // Calculate high carbon consumption
@@ -274,7 +276,7 @@ class HuiEnergyDistrubutionCard
                           ? formatNumber(lowCarbonEnergy, this.hass.locale, {
                               maximumFractionDigits: 1,
                             })
-                          : "-"}
+                          : "—"}
                         kWh
                       </a>
                       <svg width="80" height="30">
@@ -313,7 +315,11 @@ class HuiEnergyDistrubutionCard
                         ${formatNumber(gasUsage || 0, this.hass.locale, {
                           maximumFractionDigits: 1,
                         })}
-                        ${getEnergyGasUnit(this.hass, prefs) || "m³"}
+                        ${getEnergyGasUnit(
+                          this.hass,
+                          prefs,
+                          this._data.statsMetadata
+                        ) || "m³"}
                       </div>
                       <svg width="80" height="30">
                         <path d="M40 0 v30" id="gas" />
@@ -483,8 +489,8 @@ class HuiEnergyDistrubutionCard
                       <ha-svg-icon
                         class="small"
                         .path=${mdiArrowUp}
-                      ></ha-svg-icon>
-                      ${formatNumber(totalBatteryOut || 0, this.hass.locale, {
+                      ></ha-svg-icon
+                      >${formatNumber(totalBatteryOut || 0, this.hass.locale, {
                         maximumFractionDigits: 1,
                       })}
                       kWh</span

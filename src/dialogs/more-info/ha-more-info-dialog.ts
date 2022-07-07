@@ -107,7 +107,7 @@ export class MoreInfoDialog extends LitElement {
       <ha-dialog
         open
         @closed=${this.closeDialog}
-        .heading=${true}
+        .heading=${name}
         hideActions
         data-domain=${domain}
       >
@@ -167,6 +167,7 @@ export class MoreInfoDialog extends LitElement {
                     .label=${this.hass.localize(
                       "ui.dialogs.more_info_control.details"
                     )}
+                    dialogInitialFocus
                   ></mwc-tab>
                   <mwc-tab
                     .label=${this.hass.localize(
@@ -177,7 +178,7 @@ export class MoreInfoDialog extends LitElement {
               `
             : ""}
         </div>
-        <div class="content">
+        <div class="content" tabindex="-1" dialogInitialFocus>
           ${cache(
             this._currTabIndex === 0
               ? html`
@@ -305,7 +306,7 @@ export class MoreInfoDialog extends LitElement {
   }
 
   private _gotoSettings() {
-    replaceDialog();
+    replaceDialog(this);
     showEntityEditorDialog(this, {
       entity_id: this._entityId!,
     });
@@ -348,7 +349,9 @@ export class MoreInfoDialog extends LitElement {
           flex-shrink: 0;
           display: block;
         }
-
+        .content {
+          outline: none;
+        }
         @media all and (max-width: 450px), all and (max-height: 500px) {
           ha-header-bar {
             --mdc-theme-primary: var(--app-header-background-color);

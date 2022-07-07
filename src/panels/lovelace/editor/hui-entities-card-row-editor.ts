@@ -126,6 +126,7 @@ export class HuiEntitiesCardRowEditor extends LitElement {
         )}
       </div>
       <ha-entity-picker
+        class="add-entity"
         .hass=${this.hass}
         @value-changed=${this._addEntity}
       ></ha-entity-picker>
@@ -226,7 +227,7 @@ export class HuiEntitiesCardRowEditor extends LitElement {
     const index = (ev.target as any).index;
     const newConfigEntities = this.entities!.concat();
 
-    if (value === "") {
+    if (value === "" || value === undefined) {
       newConfigEntities.splice(index, 1);
     } else {
       newConfigEntities[index] = {
@@ -253,6 +254,17 @@ export class HuiEntitiesCardRowEditor extends LitElement {
     return [
       sortableStyles,
       css`
+        ha-entity-picker {
+          margin-top: 8px;
+        }
+        .add-entity {
+          display: block;
+          margin-left: 31px;
+          margin-right: 71px;
+          margin-inline-start: 31px;
+          margin-inline-end: 71px;
+          direction: var(--direction);
+        }
         .entity {
           display: flex;
           align-items: center;
@@ -261,6 +273,9 @@ export class HuiEntitiesCardRowEditor extends LitElement {
         .entity .handle {
           padding-right: 8px;
           cursor: move;
+          padding-inline-end: 8px;
+          padding-inline-start: initial;
+          direction: var(--direction);
         }
 
         .entity ha-entity-picker {

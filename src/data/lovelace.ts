@@ -132,9 +132,9 @@ export interface CallServiceActionConfig extends BaseActionConfig {
   action: "call-service";
   service: string;
   target?: HassServiceTarget;
-  service_data?: {
-    [key: string]: any;
-  };
+  // "service_data" is kept for backwards compatibility. Replaced by "data".
+  service_data?: Record<string, unknown>;
+  data?: Record<string, unknown>;
 }
 
 export interface NavigateActionConfig extends BaseActionConfig {
@@ -160,6 +160,7 @@ export interface CustomActionConfig extends BaseActionConfig {
 }
 
 export interface BaseActionConfig {
+  action: string;
   confirmation?: ConfirmationRestrictionConfig;
 }
 

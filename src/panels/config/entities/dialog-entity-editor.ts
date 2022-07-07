@@ -74,7 +74,9 @@ export class DialogEntityEditor extends LitElement {
     return html`
       <ha-dialog
         open
-        .heading=${true}
+        .heading=${stateObj
+          ? computeStateName(stateObj)
+          : entry?.name || entityId}
         hideActions
         @closed=${this.closeDialog}
         @close-dialog=${this.closeDialog}
@@ -113,6 +115,7 @@ export class DialogEntityEditor extends LitElement {
               .label=${this.hass.localize(
                 "ui.dialogs.entity_registry.settings"
               )}
+              dialogInitialFocus
             >
             </mwc-tab>
             ${Object.entries(this._extraTabs).map(
@@ -217,7 +220,7 @@ export class DialogEntityEditor extends LitElement {
   }
 
   private _openMoreInfo(): void {
-    replaceDialog();
+    replaceDialog(this);
     fireEvent(this, "hass-more-info", {
       entityId: this._params!.entity_id,
     });

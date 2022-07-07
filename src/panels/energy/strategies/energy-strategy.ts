@@ -36,7 +36,7 @@ export class EnergyStrategy {
       }
       view.cards!.push({
         type: "markdown",
-        content: `An error occured while fetching your energy preferences: ${err.message}.`,
+        content: `An error occurred while fetching your energy preferences: ${err.message}.`,
       });
       return view;
     }
@@ -59,6 +59,11 @@ export class EnergyStrategy {
         view_layout: { position: "sidebar" },
       });
     }
+
+    view.cards!.push({
+      type: "energy-compare",
+      collection_key: "energy_dashboard",
+    });
 
     // Only include if we have a grid source.
     if (hasGrid) {

@@ -13,6 +13,7 @@ export interface ConfigEntry {
     | "not_loaded"
     | "failed_unload";
   supports_options: boolean;
+  supports_remove_device: boolean;
   supports_unload: boolean;
   pref_disable_new_entities: boolean;
   pref_disable_polling: boolean;
@@ -33,8 +34,24 @@ export const ERROR_STATES: ConfigEntry["state"][] = [
   "setup_retry",
 ];
 
-export const getConfigEntries = (hass: HomeAssistant) =>
-  hass.callApi<ConfigEntry[]>("GET", "config/config_entries/entry");
+export const getConfigEntries = (
+  hass: HomeAssistant,
+  filters?: { type?: "helper" | "integration"; domain?: string }
+): Promise<ConfigEntry[]> => {
+  const params: any = {};
+  if (filters) {
+    if (filters.type) {
+      params.type_filter = filters.type;
+    }
+    if (filters.domain) {
+      params.domain = filters.domain;
+    }
+  }
+  return hass.callWS<ConfigEntry[]>({
+    type: "config_entries/get",
+    ...params,
+  });
+};
 
 export const updateConfigEntry = (
   hass: HomeAssistant,

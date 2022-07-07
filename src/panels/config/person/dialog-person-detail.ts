@@ -1,12 +1,11 @@
 import "@material/mwc-button";
-import "@polymer/paper-input/paper-input";
 import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
 import { property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
-import { computeRTLDirection } from "../../../common/util/compute_rtl";
 import "../../../components/entity/ha-entities-picker";
 import { createCloseHeading } from "../../../components/ha-dialog";
 import "../../../components/ha-formfield";
+import "../../../components/ha-textfield";
 import "../../../components/ha-picture-upload";
 import type { HaPictureUpload } from "../../../components/ha-picture-upload";
 import { adminChangePassword } from "../../../data/auth";
@@ -120,17 +119,17 @@ class DialogPersonDetail extends LitElement {
         <div>
           ${this._error ? html` <div class="error">${this._error}</div> ` : ""}
           <div class="form">
-            <paper-input
+            <ha-textfield
               dialogInitialFocus
               .value=${this._name}
-              @value-changed=${this._nameChanged}
+              @input=${this._nameChanged}
               label=${this.hass!.localize("ui.panel.config.person.detail.name")}
               error-message=${this.hass!.localize(
                 "ui.panel.config.person.detail.name_error_msg"
               )}
               required
               auto-validate
-            ></paper-input>
+            ></ha-textfield>
             <ha-picture-upload
               .hass=${this.hass}
               .value=${this._picture}
@@ -159,7 +158,6 @@ class DialogPersonDetail extends LitElement {
                     .label=${this.hass.localize(
                       "ui.panel.config.person.detail.local_only"
                     )}
-                    .dir=${computeRTLDirection(this.hass)}
                   >
                     <ha-switch
                       .checked=${this._localOnly}
@@ -171,7 +169,6 @@ class DialogPersonDetail extends LitElement {
                     .label=${this.hass.localize(
                       "ui.panel.config.person.detail.admin"
                     )}
-                    .dir=${computeRTLDirection(this.hass)}
                   >
                     <ha-switch
                       .disabled=${this._user.system_generated ||
@@ -277,9 +274,9 @@ class DialogPersonDetail extends LitElement {
     this._params = undefined;
   }
 
-  private _nameChanged(ev: PolymerChangedEvent<string>) {
+  private _nameChanged(ev) {
     this._error = undefined;
-    this._name = ev.detail.value;
+    this._name = ev.target.value;
   }
 
   private _adminChanged(ev): void {
@@ -460,8 +457,12 @@ class DialogPersonDetail extends LitElement {
         .form {
           padding-bottom: 24px;
         }
-        ha-picture-upload {
+        ha-picture-upload,
+        ha-textfield {
           display: block;
+        }
+        ha-picture-upload {
+          margin-top: 16px;
         }
         ha-formfield {
           display: block;
