@@ -303,10 +303,10 @@ class HUIRoot extends LitElement {
                         </ha-tabs>
                       `
                     : html`<div main-title>${this.config.title}</div>`}
-                  ${/* IoB */ this._hideToolbar
+                  ${/* IoB - if no toolbar, only notification button is rendered. */ this._hideToolbar
                     ? this.renderNotificationButton(true)
                     : html`
-                      <!-- Enabled for IoB -->
+                      <!-- Enabled for IoB - if toolbar, all is normal, but we still need notification button here -->
                       ${this.renderNotificationButton(false) /* voice button already is in menu. */}
                   ${!this.narrow
                     ? html`
@@ -500,7 +500,7 @@ class HUIRoot extends LitElement {
                         </ha-button-menu>
                       `
                     : ""}
-                ` /* IoB */ }      
+                ` /* IoB - here is the end of the "hideToolbar" if. Important! */ }      
                 </app-toolbar>
               `}
           ${this._editMode
