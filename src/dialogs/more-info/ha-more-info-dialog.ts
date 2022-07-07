@@ -253,7 +253,7 @@ export class MoreInfoDialog extends LitElement {
   }
 
   private _computeShowHistoryComponent(entityId) {
-    // IoB prevent history for weahter:
+    // IoB prevent history for weather:
     const domain = computeDomain(entityId);
     if (domain === "weather") {
       const stateObj = this.hass.states[entityId];

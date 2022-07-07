@@ -460,8 +460,8 @@ const getWeatherStateSVG = (
 
 // IoB
 export const weatherStateIsImage = (state: string): boolean => {
-  const imageRexExt = /.+\.png|\.svg|\.jpg|\.jpeg/i;
-  return imageRexExt.test(state);
+  const imageRegExt = /.+\.png|\.svg|\.jpg|\.jpeg/i;
+  return imageRegExt.test(state);
 };
 
 export const getWeatherStateIcon = (

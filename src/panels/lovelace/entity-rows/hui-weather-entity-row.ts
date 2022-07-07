@@ -73,7 +73,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
       stateObj.state,
       this,
       false,
-      this.hass.auth.accessToken
+      this.hass.auth.accessToken /* iob */
     );
 
     return html`
