@@ -386,7 +386,6 @@ class HUIRoot extends LitElement {
                           </mwc-list-item>
                         `
                       : ""}
-                    ` /* IoB */ }
                     ${(this.hass.panels.lovelace?.config as LovelacePanelConfig)
                       ?.mode === "yaml"
                       ? html`
@@ -446,6 +445,7 @@ class HUIRoot extends LitElement {
                       </mwc-list-item>
                     </a>
                   </ha-button-menu>
+                ` /* IoB */ }
                 </app-toolbar>
               `}
           ${this._editMode
