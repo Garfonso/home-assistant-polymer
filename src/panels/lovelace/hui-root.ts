@@ -104,7 +104,6 @@ class HUIRoot extends LitElement {
   // IoB
   private _conversation = memoizeOne(
     (_components) =>
-      "webkitSpeechRecognition" in window && // IoB
       isComponentLoaded(this.hass, "conversation")
   );
   // endIoB
@@ -308,7 +307,7 @@ class HUIRoot extends LitElement {
                     ? this.renderNotificationButton(true)
                     : html`
                       <!-- Enabled for IoB -->
-                      ${this.renderNotificationButton(true)}
+                      ${this.renderNotificationButton()}
                   ${!this.narrow
                     ? html`
                         <ha-icon-button
