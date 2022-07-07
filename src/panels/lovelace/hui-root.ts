@@ -307,7 +307,7 @@ class HUIRoot extends LitElement {
                     ? this.renderNotificationButton(true)
                     : html`
                       <!-- Enabled for IoB -->
-                      ${this.renderNotificationButton()}
+                      ${this.renderNotificationButton(false) /* voice button already is in menu. */}
                   ${!this.narrow
                     ? html`
                         <ha-icon-button
