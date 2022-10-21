@@ -1,3 +1,9 @@
+import type { HassEntity } from "home-assistant-js-websocket";
+import { computeStateDomain } from "../common/entity/compute_state_domain";
+import { UiAction } from "../panels/lovelace/components/hui-action-editor";
+import type { DeviceRegistryEntry } from "./device_registry";
+import type { EntitySources } from "./entity_sources";
+
 export type Selector =
   | ActionSelector
   | AddonSelector
@@ -6,22 +12,27 @@ export type Selector =
   | BooleanSelector
   | ColorRGBSelector
   | ColorTempSelector
+  | ConfigEntrySelector
   | DateSelector
   | DateTimeSelector
   | DeviceSelector
   | DurationSelector
   | EntitySelector
+  | FileSelector
   | IconSelector
   | LocationSelector
   | MediaSelector
+  | NavigationSelector
   | NumberSelector
   | ObjectSelector
   | SelectSelector
+  | StateSelector
   | StringSelector
   | TargetSelector
   | TemplateSelector
   | ThemeSelector
-  | TimeSelector;
+  | TimeSelector
+  | UiActionSelector;
 
 export interface ActionSelector {
   // eslint-disable-next-line @typescript-eslint/ban-types
@@ -35,18 +46,22 @@ export interface AddonSelector {
   };
 }
 
+export interface SelectorDevice {
+  integration?: DeviceSelector["device"]["integration"];
+  manufacturer?: DeviceSelector["device"]["manufacturer"];
+  model?: DeviceSelector["device"]["model"];
+}
+
+export interface SelectorEntity {
+  integration?: EntitySelector["entity"]["integration"];
+  domain?: EntitySelector["entity"]["domain"];
+  device_class?: EntitySelector["entity"]["device_class"];
+}
+
 export interface AreaSelector {
   area: {
-    entity?: {
-      integration?: EntitySelector["entity"]["integration"];
-      domain?: EntitySelector["entity"]["domain"];
-      device_class?: EntitySelector["entity"]["device_class"];
-    };
-    device?: {
-      integration?: DeviceSelector["device"]["integration"];
-      manufacturer?: DeviceSelector["device"]["manufacturer"];
-      model?: DeviceSelector["device"]["model"];
-    };
+    entity?: SelectorEntity;
+    device?: SelectorDevice;
     multiple?: boolean;
   };
 }
@@ -54,6 +69,7 @@ export interface AreaSelector {
 export interface AttributeSelector {
   attribute: {
     entity_id?: string;
+    hide_attributes?: readonly string[];
   };
 }
 
@@ -74,6 +90,12 @@ export interface ColorTempSelector {
   };
 }
 
+export interface ConfigEntrySelector {
+  config_entry: {
+    integration?: string;
+  };
+}
+
 export interface DateSelector {
   // eslint-disable-next-line @typescript-eslint/ban-types
   date: {};
@@ -89,10 +111,7 @@ export interface DeviceSelector {
     integration?: string;
     manufacturer?: string;
     model?: string;
-    entity?: {
-      domain?: EntitySelector["entity"]["domain"];
-      device_class?: EntitySelector["entity"]["device_class"];
-    };
+    entity?: SelectorEntity;
     multiple?: boolean;
   };
 }
@@ -106,11 +125,17 @@ export interface DurationSelector {
 export interface EntitySelector {
   entity: {
     integration?: string;
-    domain?: string | string[];
+    domain?: string | readonly string[];
     device_class?: string;
     multiple?: boolean;
     include_entities?: string[];
     exclude_entities?: string[];
+  };
+}
+
+export interface FileSelector {
+  file: {
+    accept: string;
   };
 }
 
@@ -149,6 +174,11 @@ export interface MediaSelectorValue {
   };
 }
 
+export interface NavigationSelector {
+  // eslint-disable-next-line @typescript-eslint/ban-types
+  navigation: {};
+}
+
 export interface NumberSelector {
   number: {
     min?: number;
@@ -167,6 +197,7 @@ export interface ObjectSelector {
 export interface SelectOption {
   value: string;
   label: string;
+  disabled?: boolean;
 }
 
 export interface SelectSelector {
@@ -174,7 +205,14 @@ export interface SelectSelector {
     multiple?: boolean;
     custom_value?: boolean;
     mode?: "list" | "dropdown";
-    options: string[] | SelectOption[];
+    options: readonly string[] | readonly SelectOption[];
+  };
+}
+
+export interface StateSelector {
+  state: {
+    entity_id?: string;
+    attribute?: string;
   };
 }
 
@@ -196,21 +234,14 @@ export interface StringSelector {
       | "datetime-local"
       | "color";
     suffix?: string;
+    autofill?: string;
   };
 }
 
 export interface TargetSelector {
   target: {
-    entity?: {
-      integration?: EntitySelector["entity"]["integration"];
-      domain?: EntitySelector["entity"]["domain"];
-      device_class?: EntitySelector["entity"]["device_class"];
-    };
-    device?: {
-      integration?: DeviceSelector["device"]["integration"];
-      manufacturer?: DeviceSelector["device"]["manufacturer"];
-      model?: DeviceSelector["device"]["model"];
-    };
+    entity?: SelectorEntity;
+    device?: SelectorDevice;
   };
 }
 
@@ -227,3 +258,75 @@ export interface TimeSelector {
   // eslint-disable-next-line @typescript-eslint/ban-types
   time: {};
 }
+
+export interface UiActionSelector {
+  "ui-action": {
+    actions?: UiAction[];
+  };
+}
+
+export const filterSelectorDevices = (
+  filterDevice: SelectorDevice,
+  device: DeviceRegistryEntry,
+  deviceIntegrationLookup: Record<string, string[]> | undefined
+): boolean => {
+  const {
+    manufacturer: filterManufacturer,
+    model: filterModel,
+    integration: filterIntegration,
+  } = filterDevice;
+
+  if (filterManufacturer && device.manufacturer !== filterManufacturer) {
+    return false;
+  }
+
+  if (filterModel && device.model !== filterModel) {
+    return false;
+  }
+
+  if (filterIntegration && deviceIntegrationLookup) {
+    if (!deviceIntegrationLookup?.[device.id]?.includes(filterIntegration)) {
+      return false;
+    }
+  }
+  return true;
+};
+
+export const filterSelectorEntities = (
+  filterEntity: SelectorEntity,
+  entity: HassEntity,
+  entitySources?: EntitySources
+): boolean => {
+  const {
+    domain: filterDomain,
+    device_class: filterDeviceClass,
+    integration: filterIntegration,
+  } = filterEntity;
+
+  if (filterDomain) {
+    const entityDomain = computeStateDomain(entity);
+    if (
+      Array.isArray(filterDomain)
+        ? !filterDomain.includes(entityDomain)
+        : entityDomain !== filterDomain
+    ) {
+      return false;
+    }
+  }
+
+  if (
+    filterDeviceClass &&
+    entity.attributes.device_class !== filterDeviceClass
+  ) {
+    return false;
+  }
+
+  if (
+    filterIntegration &&
+    entitySources?.[entity.entity_id]?.domain !== filterIntegration
+  ) {
+    return false;
+  }
+
+  return true;
+};

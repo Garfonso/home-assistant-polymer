@@ -1,15 +1,16 @@
-import type { ActionDetail } from "@material/mwc-list";
-import "@material/mwc-list/mwc-list-item";
+import { RequestSelectedDetail } from "@material/mwc-list/mwc-list-item";
 import { mdiDotsVertical, mdiRefresh } from "@mdi/js";
 import { HassEntities } from "home-assistant-js-websocket";
 import { css, html, LitElement, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
+import { shouldHandleRequestSelectedEvent } from "../../../common/mwc/handle-request-selected-event";
 import "../../../components/ha-alert";
 import "../../../components/ha-bar";
 import "../../../components/ha-button-menu";
 import "../../../components/ha-card";
+import "../../../components/ha-check-list-item";
 import "../../../components/ha-metric";
 import { extractApiErrorMessage } from "../../../data/hassio/common";
 import {
@@ -23,13 +24,11 @@ import {
   checkForEntityUpdates,
   filterUpdateEntitiesWithInstall,
 } from "../../../data/update";
-import {
-  showAlertDialog,
-  showConfirmationDialog,
-} from "../../../dialogs/generic/show-dialog-box";
+import { showAlertDialog } from "../../../dialogs/generic/show-dialog-box";
 import "../../../layouts/hass-subpage";
 import type { HomeAssistant } from "../../../types";
 import "../dashboard/ha-config-updates";
+import { showJoinBetaDialog } from "./updates/show-dialog-join-beta";
 
 @customElement("ha-config-section-updates")
 class HaConfigSectionUpdates extends LitElement {
@@ -45,9 +44,7 @@ class HaConfigSectionUpdates extends LitElement {
     super.firstUpdated(changedProps);
 
     if (isComponentLoaded(this.hass, "hassio")) {
-      fetchHassioSupervisorInfo(this.hass).then((data) => {
-        this._supervisorInfo = data;
-      });
+      this._refreshSupervisorInfo();
     }
   }
 
@@ -72,20 +69,23 @@ class HaConfigSectionUpdates extends LitElement {
             .path=${mdiRefresh}
             @click=${this._checkUpdates}
           ></ha-icon-button>
-          <ha-button-menu corner="BOTTOM_START" @action=${this._handleAction}>
+          <ha-button-menu corner="BOTTOM_START" multi>
             <ha-icon-button
               slot="trigger"
               .label=${this.hass.localize("ui.common.menu")}
               .path=${mdiDotsVertical}
             ></ha-icon-button>
-            <mwc-list-item id="skipped">
-              ${this._showSkipped
-                ? this.hass.localize("ui.panel.config.updates.hide_skipped")
-                : this.hass.localize("ui.panel.config.updates.show_skipped")}
-            </mwc-list-item>
+            <ha-check-list-item
+              left
+              @request-selected=${this._toggleSkipped}
+              .selected=${this._showSkipped}
+            >
+              ${this.hass.localize("ui.panel.config.updates.show_skipped")}
+            </ha-check-list-item>
             ${this._supervisorInfo?.channel !== "dev"
               ? html`
-                  <mwc-list-item id="beta">
+                  <li divider role="separator"></li>
+                  <mwc-list-item @request-selected=${this._toggleBeta}>
                     ${this._supervisorInfo?.channel === "stable"
                       ? this.hass.localize("ui.panel.config.updates.join_beta")
                       : this.hass.localize(
@@ -122,48 +122,43 @@ class HaConfigSectionUpdates extends LitElement {
     `;
   }
 
-  private _handleAction(ev: CustomEvent<ActionDetail>) {
-    switch (ev.detail.index) {
-      case 0:
-        this._showSkipped = !this._showSkipped;
-        break;
-      case 1:
-        this._toggleBeta();
-        break;
+  private async _refreshSupervisorInfo() {
+    this._supervisorInfo = await fetchHassioSupervisorInfo(this.hass);
+  }
+
+  private _toggleSkipped(ev: CustomEvent<RequestSelectedDetail>): void {
+    if (ev.detail.source !== "property") {
+      return;
+    }
+
+    this._showSkipped = !this._showSkipped;
+  }
+
+  private async _toggleBeta(
+    ev: CustomEvent<RequestSelectedDetail>
+  ): Promise<void> {
+    if (!shouldHandleRequestSelectedEvent(ev)) {
+      return;
+    }
+
+    if (this._supervisorInfo!.channel === "stable") {
+      showJoinBetaDialog(this, {
+        join: async () => this._setChannel("beta"),
+      });
+    } else {
+      this._setChannel("stable");
     }
   }
 
-  private async _toggleBeta(): Promise<void> {
-    if (this._supervisorInfo!.channel === "stable") {
-      const confirmed = await showConfirmationDialog(this, {
-        title: this.hass.localize("ui.dialogs.join_beta_channel.title"),
-        text: html`${this.hass.localize("ui.dialogs.join_beta_channel.warning")}
-          <br />
-          <b> ${this.hass.localize("ui.dialogs.join_beta_channel.backup")} </b>
-          <br /><br />
-          ${this.hass.localize("ui.dialogs.join_beta_channel.release_items")}
-          <ul>
-            <li>Home Assistant Core</li>
-            <li>Home Assistant Supervisor</li>
-            <li>Home Assistant Operating System</li>
-          </ul>
-          <br />
-          ${this.hass.localize("ui.dialogs.join_beta_channel.confirm")}`,
-        confirmText: this.hass.localize("ui.panel.config.updates.join_beta"),
-        dismissText: this.hass.localize("ui.common.cancel"),
-      });
-
-      if (!confirmed) {
-        return;
-      }
-    }
-
+  private async _setChannel(
+    channel: SupervisorOptions["channel"]
+  ): Promise<void> {
     try {
-      const data: Partial<SupervisorOptions> = {
-        channel: this._supervisorInfo!.channel === "stable" ? "beta" : "stable",
-      };
-      await setSupervisorOption(this.hass, data);
+      await setSupervisorOption(this.hass, {
+        channel,
+      });
       await reloadSupervisor(this.hass);
+      await this._refreshSupervisorInfo();
     } catch (err: any) {
       showAlertDialog(this, {
         text: extractApiErrorMessage(err),
@@ -205,6 +200,9 @@ class HaConfigSectionUpdates extends LitElement {
 
     .no-updates {
       padding: 16px;
+    }
+    li[divider] {
+      border-bottom-color: var(--divider-color);
     }
   `;
 }

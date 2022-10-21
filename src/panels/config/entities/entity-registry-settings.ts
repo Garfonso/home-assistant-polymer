@@ -19,7 +19,10 @@ import { computeDomain } from "../../../common/entity/compute_domain";
 import { domainIcon } from "../../../common/entity/domain_icon";
 import { supportsFeature } from "../../../common/entity/supports-feature";
 import { stringCompare } from "../../../common/string/compare";
-import { LocalizeFunc } from "../../../common/translations/localize";
+import {
+  LocalizeFunc,
+  LocalizeKeys,
+} from "../../../common/translations/localize";
 import "../../../components/ha-alert";
 import "../../../components/ha-area-picker";
 import "../../../components/ha-expansion-panel";
@@ -32,6 +35,7 @@ import type { HaSwitch } from "../../../components/ha-switch";
 import "../../../components/ha-textfield";
 import {
   CameraPreferences,
+  CAMERA_ORIENTATIONS,
   CAMERA_SUPPORT_STREAM,
   fetchCameraPrefs,
   STREAM_TYPE_HLS,
@@ -53,6 +57,7 @@ import {
   updateDeviceRegistryEntry,
 } from "../../../data/device_registry";
 import {
+  EntityRegistryEntry,
   EntityRegistryEntryUpdateParams,
   ExtEntityRegistryEntry,
   fetchEntityRegistry,
@@ -65,11 +70,11 @@ import {
   showAlertDialog,
   showConfirmationDialog,
 } from "../../../dialogs/generic/show-dialog-box";
+import { showMoreInfoDialog } from "../../../dialogs/more-info/show-ha-more-info-dialog";
 import { SubscribeMixin } from "../../../mixins/subscribe-mixin";
 import { haStyle } from "../../../resources/styles";
 import type { HomeAssistant } from "../../../types";
 import { showDeviceRegistryDetailDialog } from "../devices/device-registry-detail/show-dialog-device-registry-detail";
-import { showEntityEditorDialog } from "./show-dialog-entity-editor";
 
 const OVERRIDE_DEVICE_CLASSES = {
   cover: [
@@ -105,9 +110,18 @@ const OVERRIDE_DEVICE_CLASSES = {
   ],
 };
 
-const OVERRIDE_SENSOR_UNITS = {
+const OVERRIDE_NUMBER_UNITS = {
   temperature: ["°C", "°F", "K"],
+};
+
+const OVERRIDE_SENSOR_UNITS = {
+  distance: ["cm", "ft", "in", "km", "m", "mi", "mm", "yd"],
+  precipitation_intensity: ["in/d", "in/h", "mm/d", "mm/h"],
   pressure: ["hPa", "Pa", "kPa", "bar", "cbar", "mbar", "mmHg", "inHg", "psi"],
+  speed: ["ft/s", "in/d", "in/h", "km/h", "kn", "m/s", "mm/d", "mm/h", "mph"],
+  temperature: ["°C", "°F", "K"],
+  volume: ["fl. oz.", "ft³", "gal", "L", "mL", "m³"],
+  weight: ["g", "kg", "lb", "mg", "oz", "µg"],
 };
 
 const OVERRIDE_WEATHER_UNITS = {
@@ -124,7 +138,7 @@ const SWITCH_AS_DOMAINS = ["cover", "fan", "light", "lock", "siren"];
 export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public entry!: ExtEntityRegistryEntry;
+  @property({ type: Object }) public entry!: ExtEntityRegistryEntry;
 
   @state() private _name!: string;
 
@@ -138,9 +152,9 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
 
   @state() private _areaId?: string | null;
 
-  @state() private _disabledBy!: string | null;
+  @state() private _disabledBy!: EntityRegistryEntry["disabled_by"];
 
-  @state() private _hiddenBy!: string | null;
+  @state() private _hiddenBy!: EntityRegistryEntry["hidden_by"];
 
   @state() private _device?: DeviceRegistryEntry;
 
@@ -188,7 +202,7 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
     super.firstUpdated(changedProps);
     if (this.entry.config_entry_id) {
       getConfigEntries(this.hass, {
-        type: "helper",
+        type: ["helper"],
         domain: this.entry.platform,
       }).then((entries) => {
         this._helperConfigEntry = entries.find(
@@ -235,7 +249,7 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
       }
     }
 
-    if (domain === "sensor") {
+    if (domain === "number" || domain === "sensor") {
       const stateObj: HassEntity | undefined =
         this.hass.states[this.entry.entity_id];
       this._unit_of_measurement = stateObj?.attributes?.unit_of_measurement;
@@ -310,6 +324,7 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
           @input=${this._nameChanged}
         ></ha-textfield>
         <ha-icon-picker
+          .hass=${this.hass}
           .value=${this._icon}
           @value-changed=${this._iconChanged}
           .label=${this.hass.localize("ui.dialogs.entity_registry.editor.icon")}
@@ -356,6 +371,31 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
                     <mwc-list-item .value=${entry.deviceClass}>
                       ${entry.label}
                     </mwc-list-item>
+                  `
+                )}
+              </ha-select>
+            `
+          : ""}
+        ${domain === "number" &&
+        this._deviceClass &&
+        stateObj?.attributes.unit_of_measurement &&
+        OVERRIDE_NUMBER_UNITS[this._deviceClass]?.includes(
+          stateObj?.attributes.unit_of_measurement
+        )
+          ? html`
+              <ha-select
+                .label=${this.hass.localize(
+                  "ui.dialogs.entity_registry.editor.unit_of_measurement"
+                )}
+                .value=${stateObj.attributes.unit_of_measurement}
+                naturalMenuWidth
+                fixedMenuPosition
+                @selected=${this._unitChanged}
+                @closed=${stopPropagation}
+              >
+                ${OVERRIDE_NUMBER_UNITS[this._deviceClass].map(
+                  (unit: string) => html`
+                    <mwc-list-item .value=${unit}>${unit}</mwc-list-item>
                   `
                 )}
               </ha-select>
@@ -551,12 +591,12 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
               <ha-settings-row>
                 <span slot="heading"
                   >${this.hass.localize(
-                    "ui.dialogs.entity_registry.editor.preload_stream"
+                    "ui.dialogs.entity_registry.editor.stream.preload_stream"
                   )}</span
                 >
                 <span slot="description"
                   >${this.hass.localize(
-                    "ui.dialogs.entity_registry.editor.preload_stream_description"
+                    "ui.dialogs.entity_registry.editor.stream.preload_stream_description"
                   )}</span
                 >
                 <ha-switch
@@ -564,6 +604,38 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
                   @change=${this._handleCameraPrefsChanged}
                 >
                 </ha-switch>
+              </ha-settings-row>
+              <ha-settings-row>
+                <span slot="heading"
+                  >${this.hass.localize(
+                    "ui.dialogs.entity_registry.editor.stream.stream_orientation"
+                  )}</span
+                >
+                <span slot="description"
+                  >${this.hass.localize(
+                    "ui.dialogs.entity_registry.editor.stream.stream_orientation_description"
+                  )}</span
+                >
+                <ha-select
+                  .label=${this.hass.localize(
+                    "ui.dialogs.entity_registry.editor.stream.stream_orientation"
+                  )}
+                  naturalMenuWidth
+                  fixedMenuPosition
+                  @selected=${this._handleCameraOrientationChanged}
+                  @closed=${stopPropagation}
+                >
+                  ${CAMERA_ORIENTATIONS.map((num) => {
+                    const localizeStr =
+                      "ui.dialogs.entity_registry.editor.stream.stream_orientation_" +
+                      num.toString();
+                    return html`
+                      <mwc-list-item value=${num}>
+                        ${this.hass.localize(localizeStr as LocalizeKeys)}
+                      </mwc-list-item>
+                    `;
+                  })}
+                </ha-select>
               </ha-settings-row>
             `
           : ""}
@@ -601,9 +673,10 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
                 name="hiddendisabled"
                 value="enabled"
                 .checked=${!this._hiddenBy && !this._disabledBy}
-                .disabled=${(this._hiddenBy && this._hiddenBy !== "user") ||
-                this._device?.disabled_by ||
-                (this._disabledBy &&
+                .disabled=${(this._hiddenBy !== null &&
+                  this._hiddenBy !== "user") ||
+                !!this._device?.disabled_by ||
+                (this._disabledBy !== null &&
                   this._disabledBy !== "user" &&
                   this._disabledBy !== "integration")}
                 @change=${this._viewStatusChanged}
@@ -805,6 +878,20 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
     }
   }
 
+  private async _handleCameraOrientationChanged(ev) {
+    try {
+      this._cameraPrefs = await updateCameraPrefs(
+        this.hass,
+        this.entry.entity_id,
+        {
+          orientation: ev.currentTarget.value,
+        }
+      );
+    } catch (err: any) {
+      showAlertDialog(this, { text: err.message });
+    }
+  }
+
   private _viewStatusChanged(ev: CustomEvent): void {
     switch ((ev.target as any).value) {
       case "enabled":
@@ -840,9 +927,16 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
       name: this._name.trim() || null,
       icon: this._icon.trim() || null,
       area_id: this._areaId || null,
-      device_class: this._deviceClass || null,
       new_entity_id: this._entityId.trim(),
     };
+
+    // Only update device class if changed by user
+    if (
+      this._deviceClass !==
+      (this.entry.device_class || this.entry.original_device_class)
+    ) {
+      params.device_class = this._deviceClass;
+    }
 
     const stateObj: HassEntity | undefined =
       this.hass.states[this.entry.entity_id];
@@ -861,10 +955,10 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
       params.hidden_by = this._hiddenBy;
     }
     if (
-      domain === "sensor" &&
+      (domain === "number" || domain === "sensor") &&
       stateObj?.attributes?.unit_of_measurement !== this._unit_of_measurement
     ) {
-      params.options_domain = "sensor";
+      params.options_domain = domain;
       params.options = { unit_of_measurement: this._unit_of_measurement };
     }
     if (
@@ -946,8 +1040,9 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
           if (!entity) {
             return;
           }
-          showEntityEditorDialog(parent, {
-            entity_id: entity.entity_id,
+          showMoreInfoDialog(parent, {
+            entityId: entity.entity_id,
+            tab: "settings",
           });
         });
       }, "entity_registry_updated");
@@ -1015,21 +1110,17 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
         .container {
           padding: 20px 24px;
         }
-        .form {
-          margin-bottom: 53px;
-        }
         .buttons {
-          position: absolute;
-          bottom: 0;
-          width: 100%;
           box-sizing: border-box;
-          border-top: 1px solid
-            var(--mdc-dialog-scroll-divider-color, rgba(0, 0, 0, 0.12));
           display: flex;
+          padding: 24px;
+          padding-top: 16px;
           justify-content: space-between;
-          padding: 8px;
-          padding-bottom: max(env(safe-area-inset-bottom), 8px);
+          padding-bottom: max(env(safe-area-inset-bottom), 24px);
           background-color: var(--mdc-theme-surface, #fff);
+          border-top: 1px solid var(--divider-color);
+          position: sticky;
+          bottom: 0px;
         }
         ha-select {
           width: 100%;

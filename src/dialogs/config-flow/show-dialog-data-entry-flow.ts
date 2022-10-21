@@ -10,17 +10,17 @@ import {
   DataEntryFlowStepMenu,
   DataEntryFlowStepProgress,
 } from "../../data/data_entry_flow";
-import { IntegrationManifest } from "../../data/integration";
-import { HomeAssistant } from "../../types";
+import type { IntegrationManifest } from "../../data/integration";
+import type { SupportedBrandHandler } from "../../data/supported_brands";
+import type { HomeAssistant } from "../../types";
 
 export interface FlowHandlers {
   integrations: string[];
   helpers: string[];
+  supportedBrands: Record<string, SupportedBrandHandler>;
 }
 export interface FlowConfig {
   loadDevicesAndAreas: boolean;
-
-  getFlowHandlers?: (hass: HomeAssistant) => Promise<FlowHandlers>;
 
   createFlow(hass: HomeAssistant, handler: string): Promise<DataEntryFlowStep>;
 
@@ -59,7 +59,7 @@ export interface FlowConfig {
     hass: HomeAssistant,
     step: DataEntryFlowStepForm,
     field: HaFormSchema
-  ): string;
+  ): TemplateResult | string;
 
   renderShowFormStepFieldError(
     hass: HomeAssistant,

@@ -6,7 +6,10 @@ export const computeInitialHaFormData = (
 ): Record<string, any> => {
   const data = {};
   schema.forEach((field) => {
-    if (field.description?.suggested_value) {
+    if (
+      field.description?.suggested_value !== undefined &&
+      field.description?.suggested_value !== null
+    ) {
       data[field.name] = field.description.suggested_value;
     } else if ("default" in field) {
       data[field.name] = field.default;
@@ -47,6 +50,7 @@ export const computeInitialHaFormData = (
         "text" in selector ||
         "addon" in selector ||
         "attribute" in selector ||
+        "file" in selector ||
         "icon" in selector ||
         "theme" in selector
       ) {

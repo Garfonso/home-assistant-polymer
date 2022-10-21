@@ -21,6 +21,7 @@ import "@polymer/paper-item/paper-icon-item";
 import type { PaperIconItemElement } from "@polymer/paper-item/paper-icon-item";
 import "@polymer/paper-item/paper-item";
 import "@polymer/paper-listbox/paper-listbox";
+import { UnsubscribeFunc } from "home-assistant-js-websocket";
 import {
   css,
   CSSResult,
@@ -44,8 +45,11 @@ import {
   PersistentNotification,
   subscribeNotifications,
 } from "../data/persistent_notification";
+import { subscribeRepairsIssueRegistry } from "../data/repairs";
 import { updateCanInstall, UpdateEntity } from "../data/update";
+import { SubscribeMixin } from "../mixins/subscribe-mixin";
 import { actionHandler } from "../panels/lovelace/common/directives/action-handler-directive";
+import { loadSortable, SortableInstance } from "../resources/sortable.ondemand";
 import { haStyleScrollbar } from "../resources/styles";
 import type { HomeAssistant, PanelInfo, Route } from "../types";
 import "./ha-icon";
@@ -174,10 +178,8 @@ const computePanels = memoizeOne(
   }
 );
 
-let Sortable;
-
 @customElement("ha-sidebar")
-class HaSidebar extends LitElement {
+class HaSidebar extends SubscribeMixin(LitElement) {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ type: Boolean, reflect: true }) public narrow!: boolean;
@@ -192,6 +194,8 @@ class HaSidebar extends LitElement {
 
   @state() private _updatesCount = 0;
 
+  @state() private _issuesCount = 0;
+
   @state() private _renderEmptySortable = false;
 
   private _mouseLeaveTimeout?: number;
@@ -199,6 +203,8 @@ class HaSidebar extends LitElement {
   private _tooltipHideTimeout?: number;
 
   private _recentKeydownActiveUntil = 0;
+
+  private sortableStyleLoaded = false;
 
   // @ts-ignore
   @LocalStorage("sidebarPanelOrder", true, {
@@ -212,7 +218,19 @@ class HaSidebar extends LitElement {
   })
   private _hiddenPanels: string[] = [];
 
-  private _sortable?;
+  private _sortable?: SortableInstance;
+
+  public hassSubscribe(): UnsubscribeFunc[] {
+    return this.hass.user?.is_admin
+      ? [
+          subscribeRepairsIssueRegistry(this.hass.connection!, (repairs) => {
+            this._issuesCount = repairs.issues.filter(
+              (issue) => !issue.ignored
+            ).length;
+          }),
+        ]
+      : [];
+  }
 
   protected render() {
     if (!this.hass) {
@@ -238,6 +256,7 @@ class HaSidebar extends LitElement {
       changedProps.has("alwaysExpand") ||
       changedProps.has("_externalConfig") ||
       changedProps.has("_updatesCount") ||
+      changedProps.has("_issuesCount") ||
       changedProps.has("_notifications") ||
       changedProps.has("editMode") ||
       changedProps.has("_renderEmptySortable") ||
@@ -500,7 +519,7 @@ class HaSidebar extends LitElement {
   }
 
   private _renderConfiguration(title: string | null) {
-    return html` <a
+    return html`<a
       class="configuration-container"
       role="option"
       href="/config"
@@ -511,17 +530,20 @@ class HaSidebar extends LitElement {
     >
       <paper-icon-item class="configuration" role="option">
         <ha-svg-icon slot="item-icon" .path=${mdiCog}></ha-svg-icon>
-        ${!this.alwaysExpand && this._updatesCount > 0
+        ${!this.alwaysExpand &&
+        (this._updatesCount > 0 || this._issuesCount > 0)
           ? html`
               <span class="configuration-badge" slot="item-icon">
-                ${this._updatesCount}
+                ${this._updatesCount + this._issuesCount}
               </span>
             `
           : ""}
         <span class="item-text">${title}</span>
-        ${this.alwaysExpand && this._updatesCount > 0
+        ${this.alwaysExpand && (this._updatesCount > 0 || this._issuesCount > 0)
           ? html`
-              <span class="configuration-badge">${this._updatesCount}</span>
+              <span class="configuration-badge"
+                >${this._updatesCount + this._issuesCount}</span
+              >
             `
           : ""}
       </paper-icon-item>
@@ -639,36 +661,36 @@ class HaSidebar extends LitElement {
   }
 
   private async _activateEditMode() {
-    if (!Sortable) {
-      const [sortableImport, sortStylesImport] = await Promise.all([
-        import("sortablejs/modular/sortable.core.esm"),
-        import("../resources/ha-sortable-style"),
-      ]);
-
-      const style = document.createElement("style");
-      style.innerHTML = (sortStylesImport.sortableStyles as CSSResult).cssText;
-      this.shadowRoot!.appendChild(style);
-
-      Sortable = sortableImport.Sortable;
-      Sortable.mount(sortableImport.OnSpill);
-      Sortable.mount(sortableImport.AutoScroll());
-    }
-
-    await this.updateComplete;
-
-    this._createSortable();
+    await Promise.all([this._loadSortableStyle(), this._createSortable()]);
   }
 
-  private _createSortable() {
-    this._sortable = new Sortable(this.shadowRoot!.getElementById("sortable"), {
-      animation: 150,
-      fallbackClass: "sortable-fallback",
-      dataIdAttr: "data-panel",
-      handle: "paper-icon-item",
-      onSort: async () => {
-        this._panelOrder = this._sortable.toArray();
-      },
-    });
+  private async _loadSortableStyle() {
+    if (this.sortableStyleLoaded) return;
+
+    const sortStylesImport = await import("../resources/ha-sortable-style");
+
+    const style = document.createElement("style");
+    style.innerHTML = (sortStylesImport.sortableStyles as CSSResult).cssText;
+    this.shadowRoot!.appendChild(style);
+
+    this.sortableStyleLoaded = true;
+    await this.updateComplete;
+  }
+
+  private async _createSortable() {
+    const Sortable = await loadSortable();
+    this._sortable = new Sortable(
+      this.shadowRoot!.getElementById("sortable")!,
+      {
+        animation: 150,
+        fallbackClass: "sortable-fallback",
+        dataIdAttr: "data-panel",
+        handle: "paper-icon-item",
+        onSort: async () => {
+          this._panelOrder = this._sortable!.toArray();
+        },
+      }
+    );
   }
 
   private _deactivateEditMode() {

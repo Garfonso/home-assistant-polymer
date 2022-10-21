@@ -1,5 +1,5 @@
 import { html, LitElement, TemplateResult } from "lit";
-import { ComboBoxLitRenderer } from "lit-vaadin-helpers";
+import { ComboBoxLitRenderer } from "@vaadin/combo-box/lit";
 import { customElement, property, query, state } from "lit/decorators";
 import { isComponentLoaded } from "../common/config/is_component_loaded";
 import { fireEvent } from "../common/dom/fire_event";
@@ -84,20 +84,20 @@ class HaAddonPicker extends LitElement {
       } else {
         showAlertDialog(this, {
           title: this.hass.localize(
-            "ui.componencts.addon-picker.error.no_supervisor.title"
+            "ui.components.addon-picker.error.no_supervisor.title"
           ),
           text: this.hass.localize(
-            "ui.componencts.addon-picker.error.no_supervisor.description"
+            "ui.components.addon-picker.error.no_supervisor.description"
           ),
         });
       }
     } catch (err: any) {
       showAlertDialog(this, {
         title: this.hass.localize(
-          "ui.componencts.addon-picker.error.fetch_addons.title"
+          "ui.components.addon-picker.error.fetch_addons.title"
         ),
         text: this.hass.localize(
-          "ui.componencts.addon-picker.error.fetch_addons.description"
+          "ui.components.addon-picker.error.fetch_addons.description"
         ),
       });
     }

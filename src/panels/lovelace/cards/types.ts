@@ -1,6 +1,6 @@
-import { StatisticType } from "../../../data/history";
+import { StatisticType } from "../../../data/recorder";
 import { ActionConfig, LovelaceCardConfig } from "../../../data/lovelace";
-import { FullCalendarView } from "../../../types";
+import { FullCalendarView, TranslationDict } from "../../../types";
 import { Condition } from "../common/validate-condition";
 import { HuiImage } from "../components/hui-image";
 import { LovelaceElementConfig } from "../elements/types";
@@ -14,7 +14,7 @@ import { LovelaceHeaderFooterConfig } from "../header-footer/types";
 export interface AlarmPanelCardConfig extends LovelaceCardConfig {
   entity: string;
   name?: string;
-  states?: string[];
+  states?: readonly (keyof TranslationDict["ui"]["card"]["alarm_control_panel"])[];
   theme?: string;
 }
 
@@ -265,6 +265,7 @@ export interface MapCardConfig extends LovelaceCardConfig {
   type: "map";
   title?: string;
   aspect_ratio?: string;
+  auto_fit?: boolean;
   default_zoom?: number;
   entities?: Array<EntityConfig | string>;
   hours_to_show?: number;
@@ -410,7 +411,7 @@ export interface WeatherForecastCardConfig extends LovelaceCardConfig {
   name?: string;
   show_current?: boolean;
   show_forecast?: boolean;
-  secondary_info_attribute?: string;
+  secondary_info_attribute?: keyof TranslationDict["ui"]["card"]["weather"]["attributes"];
   theme?: string;
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
@@ -470,4 +471,13 @@ export interface EnergyFlowCardConfig extends LovelaceCardConfig {
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
   double_tap_action?: ActionConfig;
+}
+
+export interface TileCardConfig extends LovelaceCardConfig {
+  entity: string;
+  name?: string;
+  icon?: string;
+  color?: string;
+  tap_action?: ActionConfig;
+  icon_tap_action?: ActionConfig;
 }

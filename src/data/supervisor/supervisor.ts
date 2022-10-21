@@ -1,7 +1,10 @@
 import { Connection, getCollection } from "home-assistant-js-websocket";
 import { Store } from "home-assistant-js-websocket/dist/store";
-import { LocalizeFunc } from "../../common/translations/localize";
-import { HomeAssistant } from "../../types";
+import {
+  FlattenObjectKeys,
+  LocalizeFunc,
+} from "../../common/translations/localize";
+import { HomeAssistant, TranslationDict } from "../../types";
 import { HassioAddonsInfo } from "../hassio/addon";
 import { HassioHassOSInfo, HassioHostInfo } from "../hassio/host";
 import { NetworkInfo } from "../hassio/network";
@@ -57,6 +60,8 @@ export interface SupervisorEvent {
   [key: string]: any;
 }
 
+export type SupervisorKeys = FlattenObjectKeys<TranslationDict["supervisor"]>;
+
 export interface Supervisor {
   host: HassioHostInfo;
   supervisor: HassioSupervisorInfo;
@@ -67,7 +72,7 @@ export interface Supervisor {
   os: HassioHassOSInfo;
   addon: HassioAddonsInfo;
   store: SupervisorStore;
-  localize: LocalizeFunc;
+  localize: LocalizeFunc<SupervisorKeys>;
 }
 
 export const supervisorApiWsRequest = <T>(

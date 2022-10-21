@@ -1,4 +1,5 @@
 import "@material/mwc-button/mwc-button";
+import { RequestSelectedDetail } from "@material/mwc-list/mwc-list-item-base";
 import "@polymer/paper-item/paper-icon-item";
 import "@polymer/paper-tooltip/paper-tooltip";
 import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
@@ -6,6 +7,7 @@ import { customElement, property, query, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 import { dynamicElement } from "../../../common/dom/dynamic-element-directive";
+import { shouldHandleRequestSelectedEvent } from "../../../common/mwc/handle-request-selected-event";
 import "../../../components/ha-circular-progress";
 import "../../../components/ha-dialog";
 import { getConfigFlowHandlers } from "../../../data/config_flow";
@@ -17,6 +19,7 @@ import { createInputNumber } from "../../../data/input_number";
 import { createInputSelect } from "../../../data/input_select";
 import { createInputText } from "../../../data/input_text";
 import { domainToName } from "../../../data/integration";
+import { createSchedule } from "../../../data/schedule";
 import { createTimer } from "../../../data/timer";
 import { showConfigFlowDialog } from "../../../dialogs/config-flow/show-dialog-config-flow";
 import { haStyleDialog } from "../../../resources/styles";
@@ -30,6 +33,7 @@ import "./forms/ha-input_datetime-form";
 import "./forms/ha-input_number-form";
 import "./forms/ha-input_select-form";
 import "./forms/ha-input_text-form";
+import "./forms/ha-schedule-form";
 import "./forms/ha-timer-form";
 import type { ShowDialogHelperDetailParams } from "./show-dialog-helper-detail";
 
@@ -42,6 +46,7 @@ const HELPERS = {
   input_select: createInputSelect,
   counter: createCounter,
   timer: createTimer,
+  schedule: createSchedule,
 };
 
 @customElement("dialog-helper-detail")
@@ -71,7 +76,7 @@ export class DialogHelperDetail extends LitElement {
     this._opened = true;
     await this.updateComplete;
     Promise.all([
-      getConfigFlowHandlers(this.hass, "helper"),
+      getConfigFlowHandlers(this.hass, ["helper"]),
       // Ensure the titles are loaded before we render the flows.
       this.hass.loadBackendTranslation("title", undefined, true),
     ]).then(([flows]) => {
@@ -81,11 +86,15 @@ export class DialogHelperDetail extends LitElement {
 
   public closeDialog(): void {
     this._opened = false;
-    this._error = "";
+    this._error = undefined;
+    this._domain = undefined;
     this._params = undefined;
   }
 
   protected render(): TemplateResult {
+    if (!this._opened) {
+      return html``;
+    }
     let content: TemplateResult;
 
     if (this._domain) {
@@ -189,7 +198,7 @@ export class DialogHelperDetail extends LitElement {
 
     return html`
       <ha-dialog
-        .open=${this._opened}
+        open
         @closed=${this.closeDialog}
         class=${classMap({ "button-left": !this._domain })}
         scrimClickAction
@@ -229,7 +238,10 @@ export class DialogHelperDetail extends LitElement {
     }
   }
 
-  private _domainPicked(ev: Event): void {
+  private _domainPicked(ev: CustomEvent<RequestSelectedDetail>): void {
+    if (!shouldHandleRequestSelectedEvent(ev)) {
+      return;
+    }
     const domain = (ev.currentTarget! as any).domain;
 
     if (domain in HELPERS) {
