@@ -2,8 +2,9 @@ import { isComponentLoaded } from "../../common/config/is_component_loaded";
 import { computeDomain } from "../../common/entity/compute_domain";
 import { CONTINUOUS_DOMAINS } from "../../data/logbook";
 import { HomeAssistant } from "../../types";
+import {weatherStateIsImage} from "../../data/weather";  //IoB
 
-export const DOMAINS_NO_INFO = ["camera", "configurator"];
+export const DOMAINS_NO_INFO = ["camera", "configurator", "weather"]; // IoB add weather here
 /**
  * Entity domains that should be editable *if* they have an id present;
  * {@see shouldShowEditIcon}.
@@ -60,9 +61,18 @@ export const DOMAINS_MORE_INFO_NO_HISTORY = ["camera", "configurator"];
 export const computeShowHistoryComponent = (
   hass: HomeAssistant,
   entityId: string
-) =>
-  isComponentLoaded(hass, "history") &&
-  !DOMAINS_MORE_INFO_NO_HISTORY.includes(computeDomain(entityId));
+) => {
+  // IoB prevent history for weather:
+  const domain = computeDomain(entityId);
+  if (domain === "weather") {
+    const stateObj = hass.states[entityId];
+    if (stateObj && weatherStateIsImage(stateObj.state)) {
+      return false;
+    }
+  }
+  return isComponentLoaded(hass, "history") &&
+      !DOMAINS_MORE_INFO_NO_HISTORY.includes(computeDomain(entityId));
+}
 
 export const computeShowLogBookComponent = (
   hass: HomeAssistant,
