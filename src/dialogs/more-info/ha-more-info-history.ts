@@ -39,11 +39,12 @@ export class MoreInfoHistory extends LitElement {
             <div class="title">
               ${this.hass.localize("ui.dialogs.more_info_control.history")}
             </div>
-            <a href=${this._showMoreHref} @click=${this._close}
+            <!-- IoB disable this link.. doesn't lead anywhere. -->
+            <!--a href=${this._showMoreHref} @click=${this._close}
               >${this.hass.localize(
-                "ui.dialogs.more_info_control.show_more"
-              )}</a
-            >
+              "ui.dialogs.more_info_control.show_more"
+            )}</a 
+            -->
           </div>
           <state-history-charts
             up-to-now
