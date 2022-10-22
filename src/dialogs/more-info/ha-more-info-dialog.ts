@@ -228,7 +228,8 @@ export class MoreInfoDialog extends LitElement {
       tabs.push("history");
     }
 
-    if (isAdmin) {
+    if (false && isAdmin) {
+      // IoB deactivate settings stuff for now.
       tabs.push("settings");
       tabs.push("related");
     }
