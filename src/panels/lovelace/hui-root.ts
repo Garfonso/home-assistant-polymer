@@ -282,7 +282,6 @@ class HUIRoot extends LitElement {
                           .hass=${this.hass}
                           .narrow=${this.narrow}
                         ></ha-menu-button -->
-                        ""
                       `}
                   ${curViewConfig?.subview
                     ? html`<div main-title>${curViewConfig.title}</div>`
