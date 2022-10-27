@@ -87,7 +87,8 @@ export class HomeAssistantMain extends LitElement {
           .disableSwipe=${disableSwipe}
           .swipeOpen=${!disableSwipe}
           .persistent=${!this.narrow &&
-        this.hass.dockedSidebar !== "always_hidden"}
+          this.hass.dockedSidebar !== "always_hidden"}
+          @app-drawer-transitioned=${this._drawerTransitioned}
         >
           <ha-sidebar
             .hass=${hass}
@@ -186,6 +187,13 @@ export class HomeAssistantMain extends LitElement {
     // Make app-drawer adjust to a potential LTR/RTL change
     if (oldHass && oldHass.language !== this.hass!.language) {
       this.drawer._resetPosition();
+    }
+  }
+
+  private _drawerTransitioned(ev: CustomEvent) {
+    const drawer = ev.currentTarget as AppDrawerElement;
+    if (!drawer.opened) {
+      this._sidebarEditMode = false;
     }
   }
 

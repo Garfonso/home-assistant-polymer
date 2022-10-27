@@ -1,15 +1,20 @@
 import { mdiHelp } from "@mdi/js";
+import { HassEntity } from "home-assistant-js-websocket";
 import { css, CSSResultGroup, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
 import { computeRgbColor } from "../../../common/color/compute-color";
-import { DOMAINS_TOGGLE, STATES_OFF } from "../../../common/const";
+import { DOMAINS_TOGGLE } from "../../../common/const";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { computeStateDisplay } from "../../../common/entity/compute_state_display";
+import { stateActive } from "../../../common/entity/state_active";
+import { stateColorCss } from "../../../common/entity/state_color";
 import { stateIconPath } from "../../../common/entity/state_icon_path";
 import "../../../components/ha-card";
 import "../../../components/tile/ha-tile-icon";
+import "../../../components/tile/ha-tile-image";
 import "../../../components/tile/ha-tile-info";
+import { cameraUrlWithWidthHeight } from "../../../data/camera";
 import { ActionHandlerEvent } from "../../../data/lovelace";
 import { HomeAssistant } from "../../../types";
 import { actionHandler } from "../common/directives/action-handler-directive";
@@ -85,6 +90,21 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
     handleAction(this, this.hass!, config, "tap");
   }
 
+  private _getImageUrl(entity: HassEntity): string | undefined {
+    const entityPicture =
+      entity.attributes.entity_picture_local ||
+      entity.attributes.entity_picture;
+
+    if (!entityPicture) return undefined;
+
+    let imageUrl = this.hass!.hassUrl(entityPicture);
+    if (computeDomain(entity.entity_id) === "camera") {
+      imageUrl = cameraUrlWithWidthHeight(imageUrl, 80, 80);
+    }
+
+    return imageUrl;
+  }
+
   render() {
     if (!this._config || !this.hass) {
       return html``;
@@ -116,22 +136,43 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
       this.hass.locale
     );
 
-    const iconStyle = {};
-    if (this._config.color && !STATES_OFF.includes(entity.state)) {
-      iconStyle["--main-color"] = computeRgbColor(this._config.color);
-    }
+    const style = {
+      "--tile-color": this._config.color
+        ? stateActive(entity)
+          ? computeRgbColor(this._config.color)
+          : undefined
+        : stateColorCss(entity),
+    };
+
+    const imageUrl = this._config.show_entity_picture
+      ? this._getImageUrl(entity)
+      : undefined;
 
     return html`
-      <ha-card style=${styleMap(iconStyle)}>
+      <ha-card style=${styleMap(style)}>
         <div class="tile">
-          <ha-tile-icon
-            .icon=${icon}
-            .iconPath=${iconPath}
-            role="button"
-            tabindex="0"
-            @action=${this._handleIconAction}
-            .actionHandler=${actionHandler()}
-          ></ha-tile-icon>
+          ${imageUrl
+            ? html`
+                <ha-tile-image
+                  class="icon"
+                  .imageUrl=${imageUrl}
+                  role="button"
+                  tabindex="0"
+                  @action=${this._handleIconAction}
+                  .actionHandler=${actionHandler()}
+                ></ha-tile-image>
+              `
+            : html`
+                <ha-tile-icon
+                  class="icon"
+                  .icon=${icon}
+                  .iconPath=${iconPath}
+                  role="button"
+                  tabindex="0"
+                  @action=${this._handleIconAction}
+                  .actionHandler=${actionHandler()}
+                ></ha-tile-icon>
+              `}
           <ha-tile-info
             .primary=${name}
             .secondary=${stateDisplay}
@@ -148,8 +189,8 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
   static get styles(): CSSResultGroup {
     return css`
       :host {
-        --main-color: var(--rgb-disabled-color);
-        --tap-padding: 6px;
+        --tile-color: var(--rgb-disabled-color);
+        --tile-tap-padding: 6px;
       }
       ha-card {
         height: 100%;
@@ -158,46 +199,46 @@ export class HuiTileCard extends LitElement implements LovelaceCard {
         background: rgba(var(--rgb-disabled-color), 0.1);
       }
       .tile {
-        padding: calc(12px - var(--tap-padding));
+        padding: calc(12px - var(--tile-tap-padding));
         display: flex;
         flex-direction: row;
         align-items: center;
       }
-      ha-tile-icon {
-        padding: var(--tap-padding);
+      .icon {
+        padding: var(--tile-tap-padding);
         flex: none;
-        margin-right: calc(12px - 2 * var(--tap-padding));
-        margin-inline-end: calc(12px - 2 * var(--tap-padding));
+        margin-right: calc(12px - 2 * var(--tile-tap-padding));
+        margin-inline-end: calc(12px - 2 * var(--tile-tap-padding));
         margin-inline-start: initial;
         direction: var(--direction);
-        --color: var(--main-color);
+        --color: var(--tile-color);
         transition: transform 180ms ease-in-out;
       }
       [role="button"] {
         cursor: pointer;
       }
-      ha-tile-icon[role="button"]:focus {
+      .icon[role="button"]:focus {
         outline: none;
       }
-      ha-tile-icon[role="button"]:focus-visible {
+      .icon[role="button"]:focus-visible {
         transform: scale(1.2);
       }
-      ha-tile-icon[role="button"]:active {
+      .icon[role="button"]:active {
         transform: scale(1.2);
       }
       ha-tile-info {
-        padding: var(--tap-padding);
+        padding: var(--tile-tap-padding);
         flex: 1;
         min-width: 0;
         min-height: 40px;
-        border-radius: calc(var(--ha-card-border-radius, 12px) - 2px);
+        border-radius: calc(var(--ha-card-border-radius, 10px) - 2px);
         transition: background-color 180ms ease-in-out;
       }
       ha-tile-info:focus {
         outline: none;
       }
       ha-tile-info:focus-visible {
-        background-color: rgba(var(--main-color), 0.1);
+        background-color: rgba(var(--tile-color), 0.1);
       }
     `;
   }

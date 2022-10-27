@@ -92,6 +92,7 @@ export class HaForm extends LitElement implements HaFormElement {
                   schema: item,
                   data: getValue(this.data, item),
                   label: this._computeLabel(item, this.data),
+                  helper: this._computeHelper(item),
                   disabled: this.disabled,
                   hass: this.hass,
                   computeLabel: this.computeLabel,
@@ -154,14 +155,10 @@ export class HaForm extends LitElement implements HaFormElement {
 
   static get styles(): CSSResultGroup {
     return css`
-      .root {
-        margin-bottom: -24px;
-        overflow: clip visible;
-      }
       .root > * {
         display: block;
       }
-      .root > *:not([own-margin]) {
+      .root > *:not([own-margin]):not(:last-child) {
         margin-bottom: 24px;
       }
       ha-alert[own-margin] {
