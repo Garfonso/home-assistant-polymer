@@ -36,6 +36,8 @@ export class MoreInfoHistory extends LitElement {
 
   private _showMoreHref = "";
 
+  private _statNames?: Record<string, string>;
+
   private _throttleGetStateHistory = throttle(() => {
     this._getStateHistory();
   }, 10000);
@@ -63,6 +65,7 @@ export class MoreInfoHistory extends LitElement {
                 .isLoadingData=${!this._statistics}
                 .statisticsData=${this._statistics}
                 .statTypes=${statTypes}
+                .names=${this._statNames}
               ></statistics-chart>`
             : html`<state-history-charts
                 up-to-now
@@ -114,13 +117,14 @@ export class MoreInfoHistory extends LitElement {
       computeDomain(this.entityId) === "sensor"
     ) {
       const metadata = await getStatisticMetadata(this.hass, [this.entityId]);
+      this._statNames = { [this.entityId]: "" };
       if (metadata.length) {
         this._statistics = await fetchStatistics(
           this.hass!,
           subHours(new Date(), 24),
           undefined,
           [this.entityId],
-          "hour"
+          "5minute"
         );
         return;
       }
