@@ -1,6 +1,6 @@
 // To use comlink under ES5
-import { expose } from "comlink";
 import "proxy-polyfill";
+import { expose } from "comlink";
 import type {
   ClonedDataTableColumnData,
   DataTableRowData,
@@ -55,18 +55,23 @@ const sortData = (
       ? b[column.valueColumn || sortColumn][column.filterKey]
       : b[column.valueColumn || sortColumn];
 
-    if (typeof valA === "string") {
-      valA = valA.toUpperCase();
-    }
-    if (typeof valB === "string") {
-      valB = valB.toUpperCase();
+    if (column.type === "numeric") {
+      valA = isNaN(valA) ? undefined : Number(valA);
+      valB = isNaN(valB) ? undefined : Number(valB);
+    } else {
+      if (typeof valA === "string") {
+        valA = valA.toUpperCase();
+      }
+      if (typeof valB === "string") {
+        valB = valB.toUpperCase();
+      }
     }
 
-    // Ensure "undefined" is always sorted to the bottom
-    if (valA === undefined && valB !== undefined) {
+    // Ensure "undefined" and "null" are always sorted to the bottom
+    if (valA == null && valB != null) {
       return 1;
     }
-    if (valB === undefined && valA !== undefined) {
+    if (valB == null && valA != null) {
       return -1;
     }
 

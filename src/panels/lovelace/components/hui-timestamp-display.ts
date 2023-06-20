@@ -1,4 +1,4 @@
-import { html, LitElement, PropertyValues, TemplateResult } from "lit";
+import { html, LitElement, PropertyValues, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { formatDate } from "../../../common/datetime/format_date";
 import { formatDateTime } from "../../../common/datetime/format_date_time";
@@ -46,9 +46,9 @@ class HuiTimestampDisplay extends LitElement {
     this._clearInterval();
   }
 
-  protected render(): TemplateResult {
+  protected render() {
     if (!this.ts || !this.hass) {
-      return html``;
+      return nothing;
     }
 
     if (isNaN(this.ts.getTime())) {
@@ -103,7 +103,7 @@ class HuiTimestampDisplay extends LitElement {
   }
 
   private _updateRelative(): void {
-    if (this.ts && this.hass!.localize) {
+    if (this.ts && this.hass?.localize) {
       this._relative =
         this._format === "relative"
           ? relativeTime(this.ts, this.hass!.locale)

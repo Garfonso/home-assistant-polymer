@@ -13,7 +13,7 @@ import {
   startOfToday,
 } from "date-fns/esm";
 import { UnsubscribeFunc } from "home-assistant-js-websocket";
-import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import memoizeOne from "memoize-one";
@@ -34,9 +34,9 @@ import "../../../../components/chart/ha-chart-base";
 import "../../../../components/ha-card";
 import { EnergyData, getEnergyDataCollection } from "../../../../data/energy";
 import {
+  getStatisticLabel,
   Statistics,
   StatisticsMetaData,
-  getStatisticLabel,
 } from "../../../../data/recorder";
 import { FrontendLocaleData } from "../../../../data/translation";
 import { SubscribeMixin } from "../../../../mixins/subscribe-mixin";
@@ -83,9 +83,9 @@ export class HuiEnergyUsageGraphCard
     this._config = config;
   }
 
-  protected render(): TemplateResult {
+  protected render() {
     if (!this.hass || !this._config) {
-      return html``;
+      return nothing;
     }
 
     return html`
@@ -99,6 +99,7 @@ export class HuiEnergyUsageGraphCard
           })}"
         >
           <ha-chart-base
+            .hass=${this.hass}
             .data=${this._chartData}
             .options=${this._createOptions(
               this._start,
@@ -147,6 +148,9 @@ export class HuiEnergyUsageGraphCard
       const options: ChartOptions = {
         parsing: false,
         animation: false,
+        interaction: {
+          mode: "x",
+        },
         scales: {
           x: {
             type: "time",
@@ -161,9 +165,6 @@ export class HuiEnergyUsageGraphCard
               maxRotation: 0,
               sampleSize: 5,
               autoSkipPadding: 20,
-              major: {
-                enabled: true,
-              },
               font: (context) =>
                 context.tick && context.tick.major
                   ? ({ weight: "bold" } as any)
@@ -203,8 +204,6 @@ export class HuiEnergyUsageGraphCard
         },
         plugins: {
           tooltip: {
-            mode: "x",
-            intersect: true,
             position: "nearest",
             filter: (val) => val.formattedValue !== "0",
             callbacks: {
@@ -264,13 +263,10 @@ export class HuiEnergyUsageGraphCard
             },
           },
         },
-        hover: {
-          mode: "nearest",
-        },
         elements: {
           bar: { borderWidth: 1.5, borderRadius: 4 },
           point: {
-            hitRadius: 5,
+            hitRadius: 50,
           },
         },
         // @ts-expect-error
@@ -448,20 +444,20 @@ export class HuiEnergyUsageGraphCard
     const data: ChartDataset<"bar", ScatterDataPoint[]>[] = [];
 
     const combinedData: {
-      to_grid?: { [statId: string]: { [start: string]: number } };
-      to_battery?: { [statId: string]: { [start: string]: number } };
-      from_grid?: { [statId: string]: { [start: string]: number } };
-      used_grid?: { [statId: string]: { [start: string]: number } };
-      used_solar?: { [statId: string]: { [start: string]: number } };
-      used_battery?: { [statId: string]: { [start: string]: number } };
+      to_grid?: { [statId: string]: { [start: number]: number } };
+      to_battery?: { [statId: string]: { [start: number]: number } };
+      from_grid?: { [statId: string]: { [start: number]: number } };
+      used_grid?: { [statId: string]: { [start: number]: number } };
+      used_solar?: { [statId: string]: { [start: number]: number } };
+      used_battery?: { [statId: string]: { [start: number]: number } };
     } = {};
 
     const summedData: {
-      to_grid?: { [start: string]: number };
-      from_grid?: { [start: string]: number };
-      to_battery?: { [start: string]: number };
-      from_battery?: { [start: string]: number };
-      solar?: { [start: string]: number };
+      to_grid?: { [start: number]: number };
+      from_grid?: { [start: number]: number };
+      to_battery?: { [start: number]: number };
+      from_battery?: { [start: number]: number };
+      solar?: { [start: number]: number };
     } = {};
 
     Object.entries(statIdsByCat).forEach(([key, statIds]) => {
@@ -473,8 +469,8 @@ export class HuiEnergyUsageGraphCard
         "from_battery",
       ].includes(key);
       const add = !["solar", "from_battery"].includes(key);
-      const totalStats: { [start: string]: number } = {};
-      const sets: { [statId: string]: { [start: string]: number } } = {};
+      const totalStats: { [start: number]: number } = {};
+      const sets: { [statId: string]: { [start: number]: number } } = {};
       statIds!.forEach((id) => {
         const stats = statistics[id];
         if (!stats) {
@@ -482,16 +478,11 @@ export class HuiEnergyUsageGraphCard
         }
 
         const set = {};
-        let prevValue: number;
         stats.forEach((stat) => {
-          if (stat.sum === null) {
+          if (stat.change === null || stat.change === undefined) {
             return;
           }
-          if (prevValue === undefined) {
-            prevValue = stat.sum;
-            return;
-          }
-          const val = stat.sum - prevValue;
+          const val = stat.change;
           // Get total of solar and to grid to calculate the solar energy used
           if (sum) {
             totalStats[stat.start] =
@@ -500,7 +491,6 @@ export class HuiEnergyUsageGraphCard
           if (add && !(stat.start in set)) {
             set[stat.start] = val;
           }
-          prevValue = stat.sum;
         });
         sets[id] = set;
       });
@@ -606,9 +596,8 @@ export class HuiEnergyUsageGraphCard
         // Process chart data.
         for (const key of uniqueKeys) {
           const value = source[key] || 0;
-          const date = new Date(key);
           points.push({
-            x: date.getTime(),
+            x: Number(key),
             y:
               value && ["to_grid", "to_battery"].includes(type)
                 ? -1 * value

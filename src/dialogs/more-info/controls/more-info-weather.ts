@@ -11,10 +11,10 @@ import {
   html,
   LitElement,
   PropertyValues,
-  TemplateResult,
+  nothing,
 } from "lit";
 import { customElement, property } from "lit/decorators";
-import { formatDateWeekday } from "../../../common/datetime/format_date";
+import { formatDateWeekdayDay } from "../../../common/datetime/format_date";
 import { formatTimeWeekday } from "../../../common/datetime/format_time";
 import { formatNumber } from "../../../common/number/format_number";
 import "../../../components/ha-svg-icon";
@@ -52,9 +52,9 @@ class MoreInfoWeather extends LitElement {
     return false;
   }
 
-  protected render(): TemplateResult {
+  protected render() {
     if (!this.hass || !this.stateObj) {
-      return html``;
+      return nothing;
     }
 
     // for IoB weather icon.
@@ -189,7 +189,7 @@ class MoreInfoWeather extends LitElement {
                         `
                       : html`
                           <div class="main">
-                            ${formatDateWeekday(
+                            ${formatDateWeekdayDay(
                               new Date(item.datetime),
                               this.hass.locale
                             )}

@@ -4,7 +4,7 @@ import {
   html,
   LitElement,
   PropertyValues,
-  TemplateResult,
+  nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
@@ -13,7 +13,7 @@ import { computeStateDisplay } from "../../../common/entity/compute_state_displa
 import { computeStateName } from "../../../common/entity/compute_state_name";
 import { formatNumber } from "../../../common/number/format_number";
 import "../../../components/entity/state-badge";
-import { UNAVAILABLE_STATES } from "../../../data/entity";
+import { isUnavailableState } from "../../../data/entity";
 import { ActionHandlerEvent } from "../../../data/lovelace";
 import {
   getSecondaryWeatherAttribute,
@@ -50,9 +50,9 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
     return hasConfigOrEntityChanged(this, changedProps);
   }
 
-  protected render(): TemplateResult {
+  protected render() {
     if (!this.hass || !this._config) {
-      return html``;
+      return nothing;
     }
 
     const stateObj = this.hass.states[this._config.entity] as WeatherEntity;
@@ -69,12 +69,8 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
       this._config.tap_action && this._config.tap_action.action !== "none"
     );
 
-    const weatherStateIcon = getWeatherStateIcon(
-      stateObj.state,
-      this,
-      false,
-      this.hass.auth.accessToken /* iob */
-    );
+    const hasSecondary = this._config.secondary_info;
+    const weatherStateIcon = getWeatherStateIcon(stateObj.state, this, false, this.hass.auth.accessToken /* iob */);
 
     return html`
       <div
@@ -99,6 +95,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
       <div
         class="info ${classMap({
           pointer,
+          "text-content": !hasSecondary,
         })}"
         @action=${this._handleAction}
         .actionHandler=${actionHandler({
@@ -107,6 +104,31 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
         })}
       >
         ${this._config.name || computeStateName(stateObj)}
+        ${hasSecondary
+          ? html`
+              <div class="secondary">
+                ${this._config.secondary_info === "entity-id"
+                  ? stateObj.entity_id
+                  : this._config.secondary_info === "last-changed"
+                  ? html`
+                      <ha-relative-time
+                        .hass=${this.hass}
+                        .datetime=${stateObj.last_changed}
+                        capitalize
+                      ></ha-relative-time>
+                    `
+                  : this._config.secondary_info === "last-updated"
+                  ? html`
+                      <ha-relative-time
+                        .hass=${this.hass}
+                        .datetime=${stateObj.last_updated}
+                        capitalize
+                      ></ha-relative-time>
+                    `
+                  : ""}
+              </div>
+            `
+          : ""}
       </div>
       <div
         class="attributes ${classMap({
@@ -119,13 +141,14 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
         })}
       >
         <div>
-          ${UNAVAILABLE_STATES.includes(stateObj.state) ||
+          ${isUnavailableState(stateObj.state) ||
           stateObj.attributes.temperature === undefined ||
           stateObj.attributes.temperature === null
             ? computeStateDisplay(
                 this.hass.localize,
                 stateObj,
-                this.hass.locale
+                this.hass.locale,
+                this.hass.entities
               )
             : html`
                 ${formatNumber(

@@ -1,7 +1,7 @@
 import { TextFieldBase } from "@material/mwc-textfield/mwc-textfield-base";
 import { styles } from "@material/mwc-textfield/mwc-textfield.css";
 import { TemplateResult, html, PropertyValues, css } from "lit";
-import { customElement, property } from "lit/decorators";
+import { customElement, property, query } from "lit/decorators";
 
 @customElement("ha-textfield")
 export class HaTextField extends TextFieldBase {
@@ -16,6 +16,8 @@ export class HaTextField extends TextFieldBase {
   @property({ type: Boolean }) public iconTrailing?: boolean;
 
   @property() public autocomplete?: string;
+
+  @query("input") public formElement!: HTMLInputElement;
 
   override updated(changedProperties: PropertyValues) {
     super.updated(changedProperties);
@@ -76,6 +78,12 @@ export class HaTextField extends TextFieldBase {
         direction: var(--direction);
       }
 
+      .mdc-text-field--with-leading-icon.mdc-text-field--with-trailing-icon {
+        padding-left: var(--text-field-suffix-padding-left, 0px);
+        padding-right: var(--text-field-suffix-padding-right, 0px);
+        padding-inline-start: var(--text-field-suffix-padding-left, 0px);
+        padding-inline-end: var(--text-field-suffix-padding-right, 0px);
+      }
       .mdc-text-field:not(.mdc-text-field--disabled)
         .mdc-text-field__affix--suffix {
         color: var(--secondary-text-color);
@@ -135,8 +143,12 @@ export class HaTextField extends TextFieldBase {
 
       .mdc-text-field--with-leading-icon.mdc-text-field--filled
         .mdc-floating-label {
-        max-width: calc(100% - 48px);
-        inset-inline-start: 48px !important;
+        max-width: calc(
+          100% - 48px - var(--text-field-suffix-padding-left, 0px)
+        );
+        inset-inline-start: calc(
+          48px + var(--text-field-suffix-padding-left, 0px)
+        ) !important;
         inset-inline-end: initial !important;
         direction: var(--direction);
       }

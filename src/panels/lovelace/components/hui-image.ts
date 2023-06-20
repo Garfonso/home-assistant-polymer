@@ -4,7 +4,7 @@ import {
   html,
   LitElement,
   PropertyValues,
-  TemplateResult,
+  nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
@@ -12,10 +12,11 @@ import { styleMap } from "lit/directives/style-map";
 import { STATES_OFF } from "../../../common/const";
 import parseAspectRatio from "../../../common/util/parse-aspect-ratio";
 import "../../../components/ha-camera-stream";
+import type { HaCameraStream } from "../../../components/ha-camera-stream";
+import "../../../components/ha-circular-progress";
 import { CameraEntity, fetchThumbnailUrlWithCache } from "../../../data/camera";
 import { UNAVAILABLE } from "../../../data/entity";
 import { HomeAssistant } from "../../../types";
-import "../../../components/ha-circular-progress";
 
 const UPDATE_INTERVAL = 10000;
 const DEFAULT_FILTER = "grayscale(100%)";
@@ -65,9 +66,9 @@ export class HuiImage extends LitElement {
 
   @state() private _loadedImageSrc?: string;
 
-  private _intersectionObserver?: IntersectionObserver;
+  @state() private _lastImageHeight?: number;
 
-  private _lastImageHeight?: number;
+  private _intersectionObserver?: IntersectionObserver;
 
   private _cameraUpdater?: number;
 
@@ -130,9 +131,9 @@ export class HuiImage extends LitElement {
     }
   }
 
-  protected render(): TemplateResult {
+  protected render() {
     if (!this.hass) {
-      return html``;
+      return nothing;
     }
     const useRatio = Boolean(
       this._ratio && this._ratio.w > 0 && this._ratio.h > 0
@@ -192,6 +193,8 @@ export class HuiImage extends LitElement {
         style=${styleMap({
           paddingBottom: useRatio
             ? `${((100 * this._ratio!.h) / this._ratio!.w).toFixed(2)}%`
+            : this._lastImageHeight === undefined
+            ? "56.25%"
             : undefined,
           backgroundImage:
             useRatio && this._loadedImageSrc
@@ -203,7 +206,7 @@ export class HuiImage extends LitElement {
               : undefined,
         })}
         class="container ${classMap({
-          ratio: useRatio,
+          ratio: useRatio || this._lastImageHeight === undefined,
         })}"
       >
         ${this.cameraImage && this.cameraView === "live"
@@ -212,10 +215,11 @@ export class HuiImage extends LitElement {
                 muted
                 .hass=${this.hass}
                 .stateObj=${cameraObj}
+                @load=${this._onVideoLoad}
               ></ha-camera-stream>
             `
           : imageSrc === undefined
-          ? html``
+          ? nothing
           : html`
               <img
                 id="image"
@@ -235,7 +239,7 @@ export class HuiImage extends LitElement {
               id="brokenImage"
               style=${styleMap({
                 height: !useRatio
-                  ? `${this._lastImageHeight || "100"}px`
+                  ? `${this._lastImageHeight}px` || "100%"
                   : undefined,
               })}
             ></div>`
@@ -245,7 +249,7 @@ export class HuiImage extends LitElement {
               class="progress-container"
               style=${styleMap({
                 height: !useRatio
-                  ? `${this._lastImageHeight || "100"}px`
+                  ? `${this._lastImageHeight}px` || "100%"
                   : undefined,
               })}
             >
@@ -320,6 +324,13 @@ export class HuiImage extends LitElement {
     }
     await this.updateComplete;
     this._lastImageHeight = imgEl.offsetHeight;
+  }
+
+  private async _onVideoLoad(ev: Event): Promise<void> {
+    this._loadState = LoadState.Loaded;
+    const videoEl = ev.currentTarget as HaCameraStream;
+    await this.updateComplete;
+    this._lastImageHeight = videoEl.offsetHeight;
   }
 
   private async _updateCameraImageSrcAtInterval(): Promise<void> {

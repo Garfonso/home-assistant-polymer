@@ -14,6 +14,8 @@ export class HaTextSelector extends LitElement {
 
   @property() public value?: any;
 
+  @property() public name?: string;
+
   @property() public label?: string;
 
   @property() public placeholder?: string;
@@ -28,9 +30,17 @@ export class HaTextSelector extends LitElement {
 
   @state() private _unmaskedPassword = false;
 
+  public async focus() {
+    await this.updateComplete;
+    (
+      this.renderRoot.querySelector("ha-textarea, ha-textfield") as HTMLElement
+    )?.focus();
+  }
+
   protected render() {
     if (this.selector.text?.multiline) {
       return html`<ha-textarea
+        .name=${this.name}
         .label=${this.label}
         .placeholder=${this.placeholder}
         .value=${this.value || ""}
@@ -46,6 +56,7 @@ export class HaTextSelector extends LitElement {
       ></ha-textarea>`;
     }
     return html`<ha-textfield
+        .name=${this.name}
         .value=${this.value || ""}
         .placeholder=${this.placeholder || ""}
         .helper=${this.helper}

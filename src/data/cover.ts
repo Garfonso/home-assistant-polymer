@@ -2,7 +2,11 @@ import {
   HassEntityAttributeBase,
   HassEntityBase,
 } from "home-assistant-js-websocket";
+import { stateActive } from "../common/entity/state_active";
 import { supportsFeature } from "../common/entity/supports-feature";
+import { blankBeforePercent } from "../common/translations/blank_before_percent";
+import { UNAVAILABLE } from "./entity";
+import { FrontendLocaleData } from "./translation";
 
 export const enum CoverEntityFeature {
   OPEN = 1,
@@ -57,6 +61,46 @@ export function isTiltOnly(stateObj: CoverEntity) {
   return supportsTilt && !supportsCover;
 }
 
+export function canOpen(stateObj: CoverEntity) {
+  if (stateObj.state === UNAVAILABLE) {
+    return false;
+  }
+  const assumedState = stateObj.attributes.assumed_state === true;
+  return (!isFullyOpen(stateObj) && !isOpening(stateObj)) || assumedState;
+}
+
+export function canClose(stateObj: CoverEntity): boolean {
+  if (stateObj.state === UNAVAILABLE) {
+    return false;
+  }
+  const assumedState = stateObj.attributes.assumed_state === true;
+  return (!isFullyClosed(stateObj) && !isClosing(stateObj)) || assumedState;
+}
+
+export function canStop(stateObj: CoverEntity): boolean {
+  return stateObj.state !== UNAVAILABLE;
+}
+
+export function canOpenTilt(stateObj: CoverEntity): boolean {
+  if (stateObj.state === UNAVAILABLE) {
+    return false;
+  }
+  const assumedState = stateObj.attributes.assumed_state === true;
+  return !isFullyOpenTilt(stateObj) || assumedState;
+}
+
+export function canCloseTilt(stateObj: CoverEntity): boolean {
+  if (stateObj.state === UNAVAILABLE) {
+    return false;
+  }
+  const assumedState = stateObj.attributes.assumed_state === true;
+  return !isFullyClosedTilt(stateObj) || assumedState;
+}
+
+export function canStopTilt(stateObj: CoverEntity): boolean {
+  return stateObj.state !== UNAVAILABLE;
+}
+
 interface CoverEntityAttributes extends HassEntityAttributeBase {
   current_position?: number;
   current_tilt_position?: number;
@@ -64,4 +108,21 @@ interface CoverEntityAttributes extends HassEntityAttributeBase {
 
 export interface CoverEntity extends HassEntityBase {
   attributes: CoverEntityAttributes;
+}
+
+export function computeCoverPositionStateDisplay(
+  stateObj: CoverEntity,
+  locale: FrontendLocaleData,
+  position?: number
+) {
+  const statePosition = stateActive(stateObj)
+    ? stateObj.attributes.current_position ??
+      stateObj.attributes.current_tilt_position
+    : undefined;
+
+  const currentPosition = position ?? statePosition;
+
+  return currentPosition && currentPosition !== 100
+    ? `${Math.round(currentPosition)}${blankBeforePercent(locale)}%`
+    : "";
 }

@@ -11,10 +11,8 @@ import {
 } from "date-fns/esm";
 import { Collection, getCollection } from "home-assistant-js-websocket";
 import { groupBy } from "../common/util/group-by";
-import { subscribeOne } from "../common/util/subscribe-one";
 import { HomeAssistant } from "../types";
 import { ConfigEntry, getConfigEntries } from "./config_entries";
-import { subscribeEntityRegistry } from "./entity_registry";
 import {
   fetchStatistics,
   getStatisticMetadata,
@@ -186,8 +184,8 @@ export interface EnergyInfo {
 
 export interface EnergyValidationIssue {
   type: string;
-  identifier: string;
-  value?: unknown;
+  affected_entities: [string, unknown][];
+  translation_placeholders: Record<string, string>;
 }
 
 export interface EnergyPreferencesValidation {
@@ -200,10 +198,12 @@ export const getEnergyInfo = (hass: HomeAssistant) =>
     type: "energy/info",
   });
 
-export const getEnergyPreferenceValidation = (hass: HomeAssistant) =>
-  hass.callWS<EnergyPreferencesValidation>({
+export const getEnergyPreferenceValidation = async (hass: HomeAssistant) => {
+  await hass.loadBackendTranslation("issues", "energy");
+  return hass.callWS<EnergyPreferencesValidation>({
     type: "energy/validate",
   });
+};
 
 export const getEnergyPreferences = (hass: HomeAssistant) =>
   hass.callWS<EnergyPreferences>({
@@ -272,11 +272,16 @@ export interface EnergyData {
 
 export const getReferencedStatisticIds = (
   prefs: EnergyPreferences,
-  info: EnergyInfo
+  info: EnergyInfo,
+  includeTypes?: string[]
 ): string[] => {
   const statIDs: string[] = [];
 
   for (const source of prefs.energy_sources) {
+    if (includeTypes && !includeTypes.includes(source.type)) {
+      continue;
+    }
+
     if (source.type === "solar") {
       statIDs.push(source.stat_energy_from);
       continue;
@@ -284,6 +289,7 @@ export const getReferencedStatisticIds = (
 
     if (source.type === "gas" || source.type === "water") {
       statIDs.push(source.stat_energy_from);
+
       if (source.stat_cost) {
         statIDs.push(source.stat_cost);
       }
@@ -333,9 +339,8 @@ const getEnergyData = async (
   end?: Date,
   compare?: boolean
 ): Promise<EnergyData> => {
-  const [configEntries, entityRegistryEntries, info] = await Promise.all([
+  const [configEntries, info] = await Promise.all([
     getConfigEntries(hass, { domain: "co2signal" }),
-    subscribeOne(hass.connection, subscribeEntityRegistry),
     getEnergyInfo(hass),
   ]);
 
@@ -344,15 +349,14 @@ const getEnergyData = async (
     : undefined;
 
   let co2SignalEntity: string | undefined;
-
   if (co2SignalConfigEntry) {
-    for (const entry of entityRegistryEntries) {
-      if (entry.config_entry_id !== co2SignalConfigEntry.entry_id) {
+    for (const entity of Object.values(hass.entities)) {
+      if (entity.platform !== "co2signal") {
         continue;
       }
 
       // The integration offers 2 entities. We want the % one.
-      const co2State = hass.states[entry.entity_id];
+      const co2State = hass.states[entity.entity_id];
       if (!co2State || co2State.attributes.unit_of_measurement !== "%") {
         continue;
       }
@@ -371,33 +375,46 @@ const getEnergyData = async (
       }
     }
   }
-  const statIDs = getReferencedStatisticIds(prefs, info);
+  const energyStatIds = getReferencedStatisticIds(prefs, info, [
+    "grid",
+    "solar",
+    "battery",
+    "gas",
+  ]);
+  const waterStatIds = getReferencedStatisticIds(prefs, info, ["water"]);
+
+  const allStatIDs = [...energyStatIds, ...waterStatIds];
 
   const dayDifference = differenceInDays(end || new Date(), start);
   const period =
     dayDifference > 35 ? "month" : dayDifference > 2 ? "day" : "hour";
 
-  // Subtract 1 hour from start to get starting point data
-  const startMinHour = addHours(start, -1);
-
   const lengthUnit = hass.config.unit_system.length || "";
-  const units: StatisticsUnitConfiguration = {
+  const energyUnits: StatisticsUnitConfiguration = {
     energy: "kWh",
     volume: lengthUnit === "km" ? "m³" : "ft³",
   };
+  const waterUnits: StatisticsUnitConfiguration = {
+    volume: lengthUnit === "km" ? "L" : "gal",
+  };
 
-  const stats = await fetchStatistics(
-    hass!,
-    startMinHour,
-    end,
-    statIDs,
-    period,
-    units
-  );
+  const _energyStats: Statistics | Promise<Statistics> = energyStatIds.length
+    ? fetchStatistics(hass!, start, end, energyStatIds, period, energyUnits, [
+        "change",
+      ])
+    : {};
+  const _waterStats: Statistics | Promise<Statistics> = waterStatIds.length
+    ? fetchStatistics(hass!, start, end, waterStatIds, period, waterUnits, [
+        "change",
+      ])
+    : {};
 
   let statsCompare;
   let startCompare;
   let endCompare;
+  let _energyStatsCompare: Statistics | Promise<Statistics> = {};
+  let _waterStatsCompare: Statistics | Promise<Statistics> = {};
+
   if (compare) {
     if (dayDifference > 27 && dayDifference < 32) {
       // When comparing a month, we want to start at the begining of the month
@@ -405,25 +422,37 @@ const getEnergyData = async (
     } else {
       startCompare = addDays(start, (dayDifference + 1) * -1);
     }
-
-    const compareStartMinHour = addHours(startCompare, -1);
     endCompare = addMilliseconds(start, -1);
-
-    statsCompare = await fetchStatistics(
-      hass!,
-      compareStartMinHour,
-      endCompare,
-      statIDs,
-      period,
-      units
-    );
+    if (energyStatIds.length) {
+      _energyStatsCompare = fetchStatistics(
+        hass!,
+        startCompare,
+        endCompare,
+        energyStatIds,
+        period,
+        energyUnits,
+        ["change"]
+      );
+    }
+    if (waterStatIds.length) {
+      _waterStatsCompare = fetchStatistics(
+        hass!,
+        startCompare,
+        endCompare,
+        waterStatIds,
+        period,
+        waterUnits,
+        ["change"]
+      );
+    }
   }
 
-  let fossilEnergyConsumption: FossilEnergyConsumption | undefined;
-  let fossilEnergyConsumptionCompare: FossilEnergyConsumption | undefined;
-
+  let _fossilEnergyConsumption: undefined | Promise<FossilEnergyConsumption>;
+  let _fossilEnergyConsumptionCompare:
+    | undefined
+    | Promise<FossilEnergyConsumption>;
   if (co2SignalEntity !== undefined) {
-    fossilEnergyConsumption = await getFossilEnergyConsumption(
+    _fossilEnergyConsumption = getFossilEnergyConsumption(
       hass!,
       start,
       consumptionStatIDs,
@@ -432,7 +461,7 @@ const getEnergyData = async (
       dayDifference > 35 ? "month" : dayDifference > 2 ? "day" : "hour"
     );
     if (compare) {
-      fossilEnergyConsumptionCompare = await getFossilEnergyConsumption(
+      _fossilEnergyConsumptionCompare = getFossilEnergyConsumption(
         hass!,
         startCompare,
         consumptionStatIDs,
@@ -443,24 +472,38 @@ const getEnergyData = async (
     }
   }
 
-  Object.values(stats).forEach((stat) => {
-    // if the start of the first value is after the requested period, we have the first data point, and should add a zero point
-    if (stat.length && new Date(stat[0].start) > startMinHour) {
-      stat.unshift({
-        ...stat[0],
-        start: startMinHour.toISOString(),
-        end: startMinHour.toISOString(),
-        sum: 0,
-        state: 0,
-      });
-    }
-  });
-
-  const statsMetadataArray = await getStatisticMetadata(hass, statIDs);
   const statsMetadata: Record<string, StatisticsMetaData> = {};
-  statsMetadataArray.forEach((x) => {
-    statsMetadata[x.statistic_id] = x;
-  });
+  const _getStatisticMetadata:
+    | Promise<StatisticsMetaData[]>
+    | StatisticsMetaData[] = allStatIDs.length
+    ? getStatisticMetadata(hass, allStatIDs)
+    : [];
+  const [
+    energyStats,
+    waterStats,
+    energyStatsCompare,
+    waterStatsCompare,
+    statsMetadataArray,
+    fossilEnergyConsumption,
+    fossilEnergyConsumptionCompare,
+  ] = await Promise.all([
+    _energyStats,
+    _waterStats,
+    _energyStatsCompare,
+    _waterStatsCompare,
+    _getStatisticMetadata,
+    _fossilEnergyConsumption,
+    _fossilEnergyConsumptionCompare,
+  ]);
+  const stats = { ...energyStats, ...waterStats };
+  if (compare) {
+    statsCompare = { ...energyStatsCompare, ...waterStatsCompare };
+  }
+  if (allStatIDs.length) {
+    statsMetadataArray.forEach((x) => {
+      statsMetadata[x.statistic_id] = x;
+    });
+  }
 
   const data: EnergyData = {
     start,
@@ -628,7 +671,7 @@ export const getEnergySolarForecasts = (hass: HomeAssistant) =>
   });
 
 const energyGasUnitClass = ["volume", "energy"] as const;
-export type EnergyGasUnitClass = typeof energyGasUnitClass[number];
+export type EnergyGasUnitClass = (typeof energyGasUnitClass)[number];
 
 export const getEnergyGasUnitClass = (
   prefs: EnergyPreferences,
@@ -671,4 +714,4 @@ export const getEnergyGasUnit = (
 };
 
 export const getEnergyWaterUnit = (hass: HomeAssistant): string | undefined =>
-  hass.config.unit_system.length === "km" ? "m³" : "ft³";
+  hass.config.unit_system.length === "km" ? "L" : "gal";
