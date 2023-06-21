@@ -52,7 +52,7 @@ gulp.task(
   )
 );
 
-// IoB
+// IoB - copy from develop-app but without the watch stuff.
 gulp.task(
   "develop-iob",
   gulp.series(
@@ -64,8 +64,7 @@ gulp.task(
     gulp.parallel(
       "gen-service-worker-app-dev",
       "gen-icons-json",
-      "gen-pages-dev",
-      "gen-index-app-dev",
+      "gen-pages-app-dev",
       "build-translations",
       "build-locale-data"
     ),
