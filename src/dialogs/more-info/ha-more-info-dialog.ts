@@ -306,7 +306,7 @@ export class MoreInfoDialog extends LitElement {
                       ></ha-icon-button>
                     `
                   : nothing}
-                ${isAdmin
+                ${false //IoB - disable setting button in more-info
                   ? html`
                       <ha-icon-button
                         slot="actionItems"
