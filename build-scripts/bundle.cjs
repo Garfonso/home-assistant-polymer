@@ -128,7 +128,7 @@ module.exports.babelOptions = ({ latestBuild, isProdBuild, isTestBuild }) => ({
         },
         strictCSS: true,
         htmlMinifier: module.exports.htmlMinifierOptions,
-        failOnError: true, // we can turn this off in case of false positives
+        failOnError: false, // turned off for iob. -> errors because we remove stuff.
       },
     ],
     // Import helpers and regenerator from runtime package
