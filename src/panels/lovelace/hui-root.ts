@@ -342,6 +342,7 @@ class HUIRoot extends LitElement {
                           ></ha-icon-button>
                         `
                       : ""}
+                    ${this.renderNotificationButton()}  
                     ${this._showButtonMenu
                       ? html`
                           <ha-button-menu slot="actionItems">
@@ -705,7 +706,7 @@ class HUIRoot extends LitElement {
   }
 
   // for IoB
-  private renderNotificationButton(withVoice?: boolean): TemplateResult | void {
+  private renderNotificationButton(): TemplateResult | void {
     return html`
       <mwc-icon-button
         style="cursor: pointer; position: relative;"
@@ -723,16 +724,6 @@ class HUIRoot extends LitElement {
             `
           : ""}
       </mwc-icon-button>
-      ${withVoice && this._conversation(this.hass.config.components)
-        ? html`
-            <mwc-icon-button
-              label="Start conversation"
-              @click=${this._showVoiceCommandDialog}
-            >
-              <ha-svg-icon path=${mdiMicrophone}></ha-svg-icon>
-            </mwc-icon-button>
-          `
-        : ""}
     `;
   }
 
