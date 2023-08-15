@@ -160,7 +160,7 @@ export class HaVoiceCommandDialog extends LitElement {
                     : nothing}
                 </ha-list-item>`
               )}
-              ${this.hass.user?.is_admin
+              ${false //IoB - disable configuration of voice assistants.
                 ? html`<li divider role="separator"></li>
                     <a href="/config/voice-assistants/assistants"
                       ><ha-list-item @click=${this.closeDialog}
