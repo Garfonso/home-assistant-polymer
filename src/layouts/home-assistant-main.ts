@@ -84,7 +84,7 @@ export class HomeAssistantMain extends LitElement {
   }
 
   protected firstUpdated() {
-    //import("../components/ha-sidebar"); //IoB
+    // import("../components/ha-sidebar"); // this needs to be gone for IoB ??? TODO
 
     if (this.hass.auth.external) {
       this._externalSidebar =
@@ -176,11 +176,11 @@ export class HomeAssistantMain extends LitElement {
         color: var(--primary-text-color);
         /* remove the grey tap highlights in iOS on the fullscreen touch targets */
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-        --mdc-drawer-width: 56px;
+        --mdc-drawer-width: 0px; /* iob -> hide drawer */
         --mdc-top-app-bar-width: calc(100% - var(--mdc-drawer-width));
       }
       :host([expanded]) {
-        --mdc-drawer-width: calc(256px + env(safe-area-inset-left));
+        --mdc-drawer-width: 0px;  /* iob -> hide drawer */
       }
       :host([modal]) {
         --mdc-drawer-width: unset;
