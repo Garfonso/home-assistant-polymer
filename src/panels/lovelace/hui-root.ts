@@ -74,7 +74,6 @@ import "./views/hui-view";
 import type { HUIView } from "./views/hui-view";
 
 import { subscribeNotifications } from "../../data/persistent_notification"; // IoB
-import "../../dialogs/notifications/notification-drawer"; // IoB
 import { showNotificationDrawer } from "../../dialogs/notifications/show-notification-drawer"; // IoB
 
 @customElement("hui-root")
@@ -146,9 +145,6 @@ class HUIRoot extends LitElement {
       typeof this._curView === "number" ? views[this._curView] : undefined;
 
     return html`
-      <!-- Inserted for IoB -->
-      <notification-drawer .hass="${this.hass}"></notification-drawer>
-
       <div
         class=${classMap({
           "edit-mode": this._editMode,
