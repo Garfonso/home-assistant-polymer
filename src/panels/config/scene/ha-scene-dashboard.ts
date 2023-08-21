@@ -90,8 +90,9 @@ class HaSceneDashboard extends LitElement {
             "ui.panel.config.scene.picker.headers.state"
           ),
           type: "icon",
-          template: (_, scene) =>
-            html` <ha-state-icon .state=${scene}></ha-state-icon> `,
+          template: (_, scene) => html`
+            <ha-state-icon .state=${scene}></ha-state-icon>
+          `,
         },
         name: {
           title: this.hass.localize(
@@ -118,7 +119,11 @@ class HaSceneDashboard extends LitElement {
             return html`
               ${last_activated && !isUnavailableState(last_activated)
                 ? dayDifference > 3
-                  ? formatShortDateTime(date, this.hass.locale)
+                  ? formatShortDateTime(
+                      date,
+                      this.hass.locale,
+                      this.hass.config
+                    )
                   : relativeTime(date, this.hass.locale)
                 : this.hass.localize("ui.components.relative_time.never")}
             `;
@@ -147,50 +152,49 @@ class HaSceneDashboard extends LitElement {
         title: "",
         width: "72px",
         type: "overflow-menu",
-        template: (_: string, scene: any) =>
-          html`
-            <ha-icon-overflow-menu
-              .hass=${this.hass}
-              narrow
-              .items=${[
-                {
-                  path: mdiInformationOutline,
-                  label: this.hass.localize(
-                    "ui.panel.config.scene.picker.show_info"
-                  ),
-                  action: () => this._showInfo(scene),
-                },
-                {
-                  path: mdiPlay,
-                  label: this.hass.localize(
-                    "ui.panel.config.scene.picker.activate"
-                  ),
-                  action: () => this._activateScene(scene),
-                },
-                {
-                  divider: true,
-                },
-                {
-                  path: mdiContentDuplicate,
-                  label: this.hass.localize(
-                    "ui.panel.config.scene.picker.duplicate"
-                  ),
-                  action: () => this._duplicate(scene),
-                  disabled: !scene.attributes.id,
-                },
-                {
-                  label: this.hass.localize(
-                    "ui.panel.config.scene.picker.delete"
-                  ),
-                  path: mdiDelete,
-                  action: () => this._deleteConfirm(scene),
-                  warning: scene.attributes.id,
-                  disabled: !scene.attributes.id,
-                },
-              ]}
-            >
-            </ha-icon-overflow-menu>
-          `,
+        template: (_: string, scene: any) => html`
+          <ha-icon-overflow-menu
+            .hass=${this.hass}
+            narrow
+            .items=${[
+              {
+                path: mdiInformationOutline,
+                label: this.hass.localize(
+                  "ui.panel.config.scene.picker.show_info"
+                ),
+                action: () => this._showInfo(scene),
+              },
+              {
+                path: mdiPlay,
+                label: this.hass.localize(
+                  "ui.panel.config.scene.picker.activate"
+                ),
+                action: () => this._activateScene(scene),
+              },
+              {
+                divider: true,
+              },
+              {
+                path: mdiContentDuplicate,
+                label: this.hass.localize(
+                  "ui.panel.config.scene.picker.duplicate"
+                ),
+                action: () => this._duplicate(scene),
+                disabled: !scene.attributes.id,
+              },
+              {
+                label: this.hass.localize(
+                  "ui.panel.config.scene.picker.delete"
+                ),
+                path: mdiDelete,
+                action: () => this._deleteConfirm(scene),
+                warning: scene.attributes.id,
+                disabled: !scene.attributes.id,
+              },
+            ]}
+          >
+          </ha-icon-overflow-menu>
+        `,
       };
 
       return columns;

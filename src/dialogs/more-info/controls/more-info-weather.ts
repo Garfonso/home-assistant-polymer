@@ -6,23 +6,26 @@ import {
   mdiWeatherWindy,
 } from "@mdi/js";
 import {
-  css,
   CSSResultGroup,
-  html,
   LitElement,
   PropertyValues,
+  css,
+  html,
   nothing,
 } from "lit";
-import { customElement, property } from "lit/decorators";
+import { customElement, property, state } from "lit/decorators";
 import { formatDateWeekdayDay } from "../../../common/datetime/format_date";
 import { formatTimeWeekday } from "../../../common/datetime/format_time";
 import { formatNumber } from "../../../common/number/format_number";
 import "../../../components/ha-svg-icon";
 import {
+  ForecastEvent,
+  WeatherEntity,
+  getDefaultForecastType,
+  getForecast,
   getWeatherUnit,
   getWind,
-  isForecastHourly,
-  WeatherEntity,
+  subscribeForecast,
   weatherIcons,
   getWeatherStateIcon, /* iob needed below */
   weatherStateIsImage, /* iob needed below */
@@ -34,6 +37,48 @@ class MoreInfoWeather extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property() public stateObj?: WeatherEntity;
+
+  @state() private _forecastEvent?: ForecastEvent;
+
+  @state() private _subscribed?: Promise<() => void>;
+
+  private _unsubscribeForecastEvents() {
+    if (this._subscribed) {
+      this._subscribed.then((unsub) => unsub());
+      this._subscribed = undefined;
+    }
+  }
+
+  private async _subscribeForecastEvents() {
+    this._unsubscribeForecastEvents();
+    if (!this.isConnected || !this.hass || !this.stateObj) {
+      return;
+    }
+
+    const forecastType = getDefaultForecastType(this.stateObj);
+    if (forecastType) {
+      this._subscribed = subscribeForecast(
+        this.hass!,
+        this.stateObj!.entity_id,
+        forecastType,
+        (event) => {
+          this._forecastEvent = event;
+        }
+      );
+    }
+  }
+
+  public connectedCallback() {
+    super.connectedCallback();
+    if (this.hasUpdated) {
+      this._subscribeForecastEvents();
+    }
+  }
+
+  public disconnectedCallback(): void {
+    super.disconnectedCallback();
+    this._unsubscribeForecastEvents();
+  }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
     if (changedProps.has("stateObj")) {
@@ -52,6 +97,22 @@ class MoreInfoWeather extends LitElement {
     return false;
   }
 
+  protected updated(changedProps: PropertyValues): void {
+    super.updated(changedProps);
+
+    if (changedProps.has("stateObj") || !this._subscribed) {
+      const oldState = changedProps.get("stateObj") as
+        | WeatherEntity
+        | undefined;
+      if (
+        oldState?.entity_id !== this.stateObj?.entity_id ||
+        !this._subscribed
+      ) {
+        this._subscribeForecastEvents();
+      }
+    }
+  }
+
   protected render() {
     if (!this.hass || !this.stateObj) {
       return nothing;
@@ -59,7 +120,13 @@ class MoreInfoWeather extends LitElement {
 
     // for IoB weather icon.
     const isImage = weatherStateIsImage(this.stateObj.state);
-    const hourly = isForecastHourly(this.stateObj.attributes.forecast);
+    const forecastData = getForecast(
+      this.stateObj.attributes,
+      this._forecastEvent
+    );
+    const forecast = forecastData?.forecast;
+    const hourly = forecastData?.type === "hourly";
+    const dayNight = forecastData?.type === "twice_daily";
 
     return html`
       ${this._showValue(this.stateObj.attributes.temperature)
@@ -148,53 +215,64 @@ class MoreInfoWeather extends LitElement {
             </div>
           `
         : ""}
-      ${this.stateObj.attributes.forecast
+      ${forecast
         ? html`
             <div class="section">
               ${this.hass.localize("ui.card.weather.forecast")}:
             </div>
             <!-- // IoB weather icon from URL following below -> need to add isImage condition in forecast here. -->
-            ${this.stateObj.attributes.forecast.map((item) =>
+            ${forecast.map((item) =>
               this._showValue(item.templow) || this._showValue(item.temperature)
                 ? html`<div class="flex">
                     ${item.condition
-                      ? isImage 
+                      ? isImage
                         ? html`
-                          <div
-                            class="icon-image" 
-                            style="min-width: 32px; min-height: 32px;"
-                          >
-                            ${getWeatherStateIcon(
-                                item.condition, 
-                                this,
-                                false,
-                                this.hass.auth.accessToken
-                            )}
-                          </div>
-                        `    
+                            <div
+                                class="icon-image" 
+                                style="min-width: 32px; min-height: 32px;"
+                            >
+                                ${getWeatherStateIcon(
+                                  item.condition,
+                                  this,
+                          false,
+                                  this.hass.auth.accessToken
+                                )}
+                            </div>
+                            `
                         : html`
-                            <ha-svg-icon
-                              .path=${weatherIcons[item.condition]}
+                              <ha-svg-icon
+                                .path=${weatherIcons[item.condition]}
                             ></ha-svg-icon>
-                          `
-                    : ""}
-                    ${hourly
-                      ? html`
-                          <div class="main">
-                            ${formatTimeWeekday(
-                              new Date(item.datetime),
-                              this.hass.locale
-                            )}
-                          </div>
-                        `
-                      : html`
-                          <div class="main">
+                            `
+                      : ""}
+                    <div class="main">
+                      ${dayNight
+                        ? html`
                             ${formatDateWeekdayDay(
                               new Date(item.datetime),
-                              this.hass.locale
+                              this.hass!.locale,
+                              this.hass!.config
                             )}
-                          </div>
-                        `}
+                            (${item.is_daytime !== false
+                              ? this.hass!.localize("ui.card.weather.day")
+                              : this.hass!.localize("ui.card.weather.night")})
+                          `
+                        : hourly
+                        ? html`
+                            ${formatTimeWeekday(
+                              new Date(item.datetime),
+                              this.hass!.locale,
+                              this.hass!.config
+                            )}
+                          `
+                        : html`
+                            ${formatDateWeekdayDay(
+                              new Date(item.datetime),
+                              this.hass!.locale,
+                              this.hass!.config
+                            )}
+                          `}
+                    </div>
                     <div class="templow">
                       ${this._showValue(item.templow)
                         ? `${formatNumber(item.templow!, this.hass.locale)}

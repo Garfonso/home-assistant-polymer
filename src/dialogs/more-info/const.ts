@@ -23,6 +23,7 @@ export const DOMAINS_WITH_NEW_MORE_INFO = [
   "fan",
   "input_boolean",
   "light",
+  "lock",
   "siren",
   "switch",
 ];
@@ -40,6 +41,7 @@ export const DOMAINS_WITH_MORE_INFO = [
   "fan",
   "group",
   "humidifier",
+  "image",
   "input_boolean",
   "input_datetime",
   "light",
@@ -71,6 +73,7 @@ export const DOMAINS_HIDE_DEFAULT_MORE_INFO = [
   "select",
   "text",
   "update",
+  "event",
 ];
 
 /** Domains that should have the history hidden in the more info dialog. */

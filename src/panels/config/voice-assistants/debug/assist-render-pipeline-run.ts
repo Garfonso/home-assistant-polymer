@@ -101,13 +101,12 @@ const renderProgress = (
 
 const renderData = (data: Record<string, any>, keys: Record<string, string>) =>
   Object.entries(keys).map(
-    ([key, label]) =>
-      html`
-        <div class="row">
-          <div>${label}</div>
-          <div>${data[key]}</div>
-        </div>
-      `
+    ([key, label]) => html`
+      <div class="row">
+        <div>${label}</div>
+        <div>${data[key]}</div>
+      </div>
+    `
   );
 
 const dataMinusKeysRender = (
@@ -200,7 +199,7 @@ export class AssistPipelineDebug extends LitElement {
             <ha-card>
               <div class="card-content">
                 <div class="row heading">
-                  <span>Speech-to-Text</span>
+                  <span>Speech-to-text</span>
                   ${renderProgress(this.hass, this.pipelineRun, "stt")}
                 </div>
                 ${this.pipelineRun.stt
@@ -274,7 +273,7 @@ export class AssistPipelineDebug extends LitElement {
             <ha-card>
               <div class="card-content">
                 <div class="row heading">
-                  <span>Text-to-Speech</span>
+                  <span>Text-to-speech</span>
                   ${renderProgress(this.hass, this.pipelineRun, "tts")}
                 </div>
                 ${this.pipelineRun.tts

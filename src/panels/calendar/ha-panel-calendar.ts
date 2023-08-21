@@ -11,7 +11,7 @@ import {
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
-import { LocalStorage } from "../../common/decorators/local-storage";
+import { storage } from "../../common/decorators/storage";
 import { HASSDomEvent } from "../../common/dom/fire_event";
 import { computeStateName } from "../../common/entity/compute_state_name";
 import "../../components/ha-card";
@@ -41,7 +41,10 @@ class PanelCalendar extends LitElement {
 
   @state() private _error?: string = undefined;
 
-  @LocalStorage("deSelectedCalendars", true)
+  @storage({
+    key: "deSelectedCalendars",
+    state: true,
+  })
   private _deSelectedCalendars: string[] = [];
 
   private _start?: Date;
@@ -76,23 +79,22 @@ class PanelCalendar extends LitElement {
               ${this.hass.localize("ui.components.calendar.my_calendars")}
             </div>
             ${this._calendars.map(
-              (selCal) =>
-                html`
-                  <div>
-                    <mwc-formfield .label=${selCal.name}>
-                      <mwc-checkbox
-                        style=${styleMap({
-                          "--mdc-theme-secondary": selCal.backgroundColor!,
-                        })}
-                        .value=${selCal.entity_id}
-                        .checked=${!this._deSelectedCalendars.includes(
-                          selCal.entity_id
-                        )}
-                        @change=${this._handleToggle}
-                      ></mwc-checkbox>
-                    </mwc-formfield>
-                  </div>
-                `
+              (selCal) => html`
+                <div>
+                  <mwc-formfield .label=${selCal.name}>
+                    <mwc-checkbox
+                      style=${styleMap({
+                        "--mdc-theme-secondary": selCal.backgroundColor!,
+                      })}
+                      .value=${selCal.entity_id}
+                      .checked=${!this._deSelectedCalendars.includes(
+                        selCal.entity_id
+                      )}
+                      @change=${this._handleToggle}
+                    ></mwc-checkbox>
+                  </mwc-formfield>
+                </div>
+              `
             )}
           </div>
           <ha-full-calendar

@@ -10,6 +10,7 @@ import {
   RenderTemplateResult,
   subscribeRenderTemplate,
 } from "../../../data/ws-templates";
+import { showConfirmationDialog } from "../../../dialogs/generic/show-dialog-box";
 import { haStyle } from "../../../resources/styles";
 import { HomeAssistant } from "../../../types";
 import { documentationUrl } from "../../../util/documentation-url";
@@ -142,6 +143,9 @@ class HaPanelDevTemplate extends LitElement {
               "ui.panel.developer-tools.tabs.templates.reset"
             )}
           </mwc-button>
+          <mwc-button @click=${this._clear}>
+            ${this.hass.localize("ui.common.clear")}
+          </mwc-button>
         </div>
 
         <div class="render-pane">
@@ -198,30 +202,28 @@ class HaPanelDevTemplate extends LitElement {
                   ${this._templateResult.listeners.domains
                     .sort()
                     .map(
-                      (domain) =>
-                        html`
-                          <li>
-                            <b
-                              >${this.hass.localize(
-                                "ui.panel.developer-tools.tabs.templates.domain"
-                              )}</b
-                            >: ${domain}
-                          </li>
-                        `
+                      (domain) => html`
+                        <li>
+                          <b
+                            >${this.hass.localize(
+                              "ui.panel.developer-tools.tabs.templates.domain"
+                            )}</b
+                          >: ${domain}
+                        </li>
+                      `
                     )}
                   ${this._templateResult.listeners.entities
                     .sort()
                     .map(
-                      (entity_id) =>
-                        html`
-                          <li>
-                            <b
-                              >${this.hass.localize(
-                                "ui.panel.developer-tools.tabs.templates.entity"
-                              )}</b
-                            >: ${entity_id}
-                          </li>
-                        `
+                      (entity_id) => html`
+                        <li>
+                          <b
+                            >${this.hass.localize(
+                              "ui.panel.developer-tools.tabs.templates.entity"
+                            )}</b
+                          >: ${entity_id}
+                        </li>
+                      `
                     )}
                 </ul>
               `
@@ -378,10 +380,41 @@ class HaPanelDevTemplate extends LitElement {
     localStorage["panel-dev-template-template"] = this._template;
   }
 
-  private _restoreDemo() {
+  private async _restoreDemo() {
+    if (
+      !(await showConfirmationDialog(this, {
+        text: this.hass.localize(
+          "ui.panel.developer-tools.tabs.templates.confirm_reset"
+        ),
+        warning: true,
+      }))
+    ) {
+      return;
+    }
     this._template = DEMO_TEMPLATE;
     this._subscribeTemplate();
     delete localStorage["panel-dev-template-template"];
+  }
+
+  private async _clear() {
+    if (
+      !(await showConfirmationDialog(this, {
+        text: this.hass.localize(
+          "ui.panel.developer-tools.tabs.templates.confirm_clear"
+        ),
+        warning: true,
+      }))
+    ) {
+      return;
+    }
+    this._unsubscribeTemplate();
+    this._template = "";
+    // Reset to empty result. Setting to 'undefined' results in a different visual
+    // behaviour compared to manually emptying the template input box.
+    this._templateResult = {
+      result: "",
+      listeners: { all: false, entities: [], domains: [], time: false },
+    };
   }
 }
 

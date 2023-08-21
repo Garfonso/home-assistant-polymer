@@ -17,6 +17,11 @@ export class HaTextField extends TextFieldBase {
 
   @property() public autocomplete?: string;
 
+  @property() public autocorrect?: string;
+
+  @property({ attribute: "input-spellcheck" })
+  public inputSpellcheck?: string;
+
   @query("input") public formElement!: HTMLInputElement;
 
   override updated(changedProperties: PropertyValues) {
@@ -36,6 +41,20 @@ export class HaTextField extends TextFieldBase {
         this.formElement.setAttribute("autocomplete", this.autocomplete);
       } else {
         this.formElement.removeAttribute("autocomplete");
+      }
+    }
+    if (changedProperties.has("autocorrect")) {
+      if (this.autocorrect) {
+        this.formElement.setAttribute("autocorrect", this.autocorrect);
+      } else {
+        this.formElement.removeAttribute("autocorrect");
+      }
+    }
+    if (changedProperties.has("inputSpellcheck")) {
+      if (this.inputSpellcheck) {
+        this.formElement.setAttribute("spellcheck", this.inputSpellcheck);
+      } else {
+        this.formElement.removeAttribute("spellcheck");
       }
     }
   }
@@ -99,6 +118,10 @@ export class HaTextField extends TextFieldBase {
         direction: var(--direction);
       }
 
+      .mdc-text-field__icon--trailing {
+        padding: var(--textfield-icon-trailing-padding, 12px);
+      }
+
       .mdc-floating-label:not(.mdc-floating-label--float-above) {
         text-overflow: ellipsis;
         width: inherit;
@@ -155,6 +178,14 @@ export class HaTextField extends TextFieldBase {
 
       .mdc-text-field__input[type="number"] {
         direction: var(--direction);
+      }
+      .mdc-text-field__affix--prefix {
+        padding-right: var(--text-field-prefix-padding-right, 2px);
+      }
+
+      .mdc-text-field:not(.mdc-text-field--disabled)
+        .mdc-text-field__affix--prefix {
+        color: var(--mdc-text-field-label-ink-color);
       }
     `,
     // safari workaround - must be explicit

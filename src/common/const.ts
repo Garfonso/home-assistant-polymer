@@ -10,6 +10,7 @@ import {
   mdiBookmark,
   mdiBrightness5,
   mdiBullhorn,
+  mdiButtonPointer,
   mdiCalendar,
   mdiCalendarClock,
   mdiCarCoolantLevel,
@@ -28,11 +29,11 @@ import {
   mdiFormatListBulleted,
   mdiFormTextbox,
   mdiGauge,
-  mdiGestureTapButton,
   mdiGoogleAssistant,
   mdiGoogleCirclesCommunities,
   mdiHomeAssistant,
   mdiHomeAutomation,
+  mdiImage,
   mdiImageFilterFrames,
   mdiLightbulb,
   mdiLightningBolt,
@@ -44,6 +45,7 @@ import {
   mdiMoleculeCo,
   mdiMoleculeCo2,
   mdiPalette,
+  mdiPh,
   mdiProgressClock,
   mdiRayVertex,
   mdiRemote,
@@ -90,8 +92,9 @@ export const FIXED_DOMAIN_ICONS = {
   group: mdiGoogleCirclesCommunities,
   homeassistant: mdiHomeAssistant,
   homekit: mdiHomeAutomation,
+  image: mdiImage,
   image_processing: mdiImageFilterFrames,
-  input_button: mdiGestureTapButton,
+  input_button: mdiButtonPointer,
   input_datetime: mdiCalendarClock,
   input_number: mdiRayVertex,
   input_select: mdiFormatListBulleted,
@@ -146,6 +149,7 @@ export const FIXED_DEVICE_CLASS_ICONS = {
   nitrogen_monoxide: mdiMolecule,
   nitrous_oxide: mdiMolecule,
   ozone: mdiMolecule,
+  ph: mdiPh,
   pm1: mdiMolecule,
   pm10: mdiMolecule,
   pm25: mdiMolecule,
@@ -176,10 +180,12 @@ export const DOMAINS_WITH_CARD = [
   "climate",
   "cover",
   "configurator",
+  "event",
   "input_button",
   "input_select",
   "input_number",
   "input_text",
+  "humidifier",
   "lock",
   "media_player",
   "number",
@@ -255,7 +261,11 @@ export const DOMAINS_TOGGLE = new Set([
 ]);
 
 /** Domains that have a dynamic entity image / picture. */
-export const DOMAINS_WITH_DYNAMIC_PICTURE = new Set(["camera", "media_player"]);
+export const DOMAINS_WITH_DYNAMIC_PICTURE = new Set([
+  "camera",
+  "image",
+  "media_player",
+]);
 
 /** Temperature units. */
 export const UNIT_C = "°C";

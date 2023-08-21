@@ -1,4 +1,4 @@
-import { HassEntity } from "home-assistant-js-websocket";
+import { HassConfig, HassEntity } from "home-assistant-js-websocket";
 import { html, TemplateResult } from "lit";
 import { until } from "lit/directives/until";
 import { EntityRegistryDisplayEntry } from "../../data/entity_registry";
@@ -20,6 +20,7 @@ export const computeAttributeValueDisplay = (
   localize: LocalizeFunc,
   stateObj: HassEntity,
   locale: FrontendLocaleData,
+  config: HassConfig,
   entities: HomeAssistant["entities"],
   attribute: string,
   value?: any
@@ -45,7 +46,10 @@ export const computeAttributeValueDisplay = (
         // If invalid URL, exception will be raised
         const url = new URL(attributeValue);
         if (url.protocol === "http:" || url.protocol === "https:")
-          return html`<a target="_blank" rel="noreferrer" href=${attributeValue}
+          return html`<a
+            target="_blank"
+            rel="noopener noreferrer"
+            href=${attributeValue}
             >${attributeValue}</a
           >`;
       } catch (_) {
@@ -59,14 +63,14 @@ export const computeAttributeValueDisplay = (
       if (isTimestamp(attributeValue)) {
         const date = new Date(attributeValue);
         if (checkValidDate(date)) {
-          return formatDateTimeWithSeconds(date, locale);
+          return formatDateTimeWithSeconds(date, locale, config);
         }
       }
 
       // Value was not a timestamp, so only do date formatting
       const date = new Date(attributeValue);
       if (checkValidDate(date)) {
-        return formatDate(date, locale);
+        return formatDate(date, locale, config);
       }
     }
   }
@@ -92,6 +96,7 @@ export const computeAttributeValueDisplay = (
           localize,
           stateObj,
           locale,
+          config,
           entities,
           attribute,
           item

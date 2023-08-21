@@ -8,6 +8,10 @@ import memoizeOne from "memoize-one";
 import { fireEvent } from "../common/dom/fire_event";
 import { computeDomain } from "../common/entity/compute_domain";
 import {
+  fuzzyFilterSort,
+  ScorableTextItem,
+} from "../common/string/filter/sequence-matching";
+import {
   AreaRegistryEntry,
   createAreaRegistryEntry,
 } from "../data/area_registry";
@@ -28,13 +32,14 @@ import type { HaComboBox } from "./ha-combo-box";
 import "./ha-icon-button";
 import "./ha-svg-icon";
 
-const rowRenderer: ComboBoxLitRenderer<AreaRegistryEntry> = (
-  item
-) => html`<mwc-list-item
-  class=${classMap({ "add-new": item.area_id === "add_new" })}
->
-  ${item.name}
-</mwc-list-item>`;
+type ScorableAreaRegistryEntry = ScorableTextItem & AreaRegistryEntry;
+
+const rowRenderer: ComboBoxLitRenderer<AreaRegistryEntry> = (item) =>
+  html`<mwc-list-item
+    class=${classMap({ "add-new": item.area_id === "add_new" })}
+  >
+    ${item.name}
+  </mwc-list-item>`;
 
 @customElement("ha-area-picker")
 export class HaAreaPicker extends LitElement {
@@ -306,9 +311,12 @@ export class HaAreaPicker extends LitElement {
         this.entityFilter,
         this.noAdd,
         this.excludeAreas
-      );
-      (this.comboBox as any).items = areas;
-      (this.comboBox as any).filteredItems = areas;
+      ).map((area) => ({
+        ...area,
+        strings: [area.area_id, ...area.aliases, area.name],
+      }));
+      this.comboBox.items = areas;
+      this.comboBox.filteredItems = areas;
     }
   }
 
@@ -345,8 +353,9 @@ export class HaAreaPicker extends LitElement {
       return;
     }
 
-    const filteredItems = this.comboBox.items?.filter((item) =>
-      item.name.toLowerCase().includes(filter!.toLowerCase())
+    const filteredItems = fuzzyFilterSort<ScorableAreaRegistryEntry>(
+      filter,
+      this.comboBox?.items || []
     );
     if (!this.noAdd && filteredItems?.length === 0) {
       this._suggestion = filter;
@@ -409,7 +418,7 @@ export class HaAreaPicker extends LitElement {
             name,
           });
           const areas = [...Object.values(this.hass.areas), area];
-          (this.comboBox as any).filteredItems = this._getAreas(
+          this.comboBox.filteredItems = this._getAreas(
             areas,
             Object.values(this.hass.devices)!,
             Object.values(this.hass.entities)!,

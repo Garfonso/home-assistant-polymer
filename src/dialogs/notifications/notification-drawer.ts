@@ -108,12 +108,13 @@ export class HuiNotificationDrawer extends LitElement {
         <div class="notifications">
           ${notifications.length
             ? html`${notifications.map(
-                (notification) => html`<div class="notification">
-                  <notification-item
-                    .hass=${this.hass}
-                    .notification=${notification}
-                  ></notification-item>
-                </div>`
+                (notification) =>
+                  html`<div class="notification">
+                    <notification-item
+                      .hass=${this.hass}
+                      .notification=${notification}
+                    ></notification-item>
+                  </div>`
               )}
               ${this._notifications.length > 1
                 ? html`<div class="notification-actions">
@@ -139,11 +140,7 @@ export class HuiNotificationDrawer extends LitElement {
   }
 
   private _dismissAll() {
-    this._notifications.forEach((notification) => {
-      this.hass.callService("persistent_notification", "dismiss", {
-        notification_id: notification.notification_id,
-      });
-    });
+    this.hass.callService("persistent_notification", "dismiss_all");
     this.closeDialog();
   }
 

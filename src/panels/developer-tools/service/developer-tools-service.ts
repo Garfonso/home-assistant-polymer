@@ -1,10 +1,10 @@
 import { mdiHelpCircle } from "@mdi/js";
 import { ERR_CONNECTION_LOST } from "home-assistant-js-websocket";
 import { load } from "js-yaml";
-import { css, CSSResultGroup, html, LitElement } from "lit";
+import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
 import { property, query, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
-import { LocalStorage } from "../../../common/decorators/local-storage";
+import { storage } from "../../../common/decorators/storage";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { computeObjectId } from "../../../common/entity/compute_object_id";
 import { hasTemplate } from "../../../common/string/has-template";
@@ -20,7 +20,7 @@ import "../../../components/ha-service-picker";
 import "../../../components/ha-yaml-editor";
 import type { HaYamlEditor } from "../../../components/ha-yaml-editor";
 import { forwardHaptic } from "../../../data/haptics";
-import { ServiceAction } from "../../../data/script";
+import { Action, ServiceAction } from "../../../data/script";
 import {
   callExecuteScript,
   serviceCallWillDisconnect,
@@ -38,16 +38,29 @@ class HaPanelDevService extends LitElement {
 
   @state() private _uiAvailable = true;
 
-  @LocalStorage("panel-dev-service-state-service-data", true, false)
+  @state() private _response?: Record<string, any>;
+
+  @storage({
+    key: "panel-dev-service-state-service-data",
+    state: true,
+    subscribe: false,
+  })
   private _serviceData?: ServiceAction = { service: "", target: {}, data: {} };
 
-  @LocalStorage("panel-dev-service-state-yaml-mode", true, false)
+  @storage({
+    key: "panel-dev-service-state-yaml-mode",
+    state: true,
+    subscribe: false,
+  })
   private _yamlMode = false;
 
-  @query("ha-yaml-editor") private _yamlEditor?: HaYamlEditor;
+  @query("#yaml-editor") private _yamlEditor?: HaYamlEditor;
 
   protected firstUpdated(params) {
     super.firstUpdated(params);
+    this.hass.loadBackendTranslation("services");
+    this.hass.loadBackendTranslation("selector");
+
     const serviceParam = extractSearchParam("service");
     if (serviceParam) {
       this._serviceData = {
@@ -56,8 +69,8 @@ class HaPanelDevService extends LitElement {
         data: {},
       };
       if (this._yamlMode) {
-        this.updateComplete.then(() =>
-          this._yamlEditor?.setValue(this._serviceData)
+        this.updateComplete.then(
+          () => this._yamlEditor?.setValue(this._serviceData)
         );
       }
     } else if (!this._serviceData?.service) {
@@ -69,8 +82,8 @@ class HaPanelDevService extends LitElement {
         data: {},
       };
       if (this._yamlMode) {
-        this.updateComplete.then(() =>
-          this._yamlEditor?.setValue(this._serviceData)
+        this.updateComplete.then(
+          () => this._yamlEditor?.setValue(this._serviceData)
         );
       }
     }
@@ -84,6 +97,14 @@ class HaPanelDevService extends LitElement {
     );
 
     const isValid = this._isValid(this._serviceData, fields, target);
+
+    const domain = this._serviceData?.service
+      ? computeDomain(this._serviceData?.service)
+      : undefined;
+
+    const serviceName = this._serviceData?.service
+      ? computeObjectId(this._serviceData?.service)
+      : undefined;
 
     return html`
       <div class="content">
@@ -101,6 +122,7 @@ class HaPanelDevService extends LitElement {
                   @value-changed=${this._serviceChanged}
                 ></ha-service-picker>
                 <ha-yaml-editor
+                  id="yaml-editor"
                   .hass=${this.hass}
                   .defaultValue=${this._serviceData}
                   @value-changed=${this._yamlChanged}
@@ -152,7 +174,23 @@ class HaPanelDevService extends LitElement {
           </ha-progress-button>
         </div>
       </div>
-
+      ${this._response
+        ? html`<div class="content">
+            <ha-card
+              .header=${this.hass.localize(
+                "ui.panel.developer-tools.tabs.services.response"
+              )}
+            >
+              <div class="card-content">
+                <ha-yaml-editor
+                  readOnly
+                  autoUpdate
+                  .value=${this._response}
+                ></ha-yaml-editor>
+              </div>
+            </ha-card>
+          </div>`
+        : nothing}
       ${(this._yamlMode ? fields : this._filterSelectorFields(fields)).length
         ? html`<div class="content">
             <ha-expansion-panel
@@ -167,7 +205,7 @@ class HaPanelDevService extends LitElement {
               .expanded=${this._yamlMode}
             >
               ${this._yamlMode
-                ? html` <div class="description">
+                ? html`<div class="description">
                     <h3>
                       ${target
                         ? html`
@@ -221,11 +259,20 @@ class HaPanelDevService extends LitElement {
                   ? fields
                   : this._filterSelectorFields(fields)
                 ).map(
-                  (field) => html` <tr>
-                    <td><pre>${field.key}</pre></td>
-                    <td>${field.description}</td>
-                    <td>${field.example}</td>
-                  </tr>`
+                  (field) =>
+                    html` <tr>
+                      <td><pre>${field.key}</pre></td>
+                      <td>
+                        ${this.hass.localize(
+                          `component.${domain}.services.${serviceName}.fields.${field.key}.description`
+                        ) || field.description}
+                      </td>
+                      <td>
+                        ${this.hass.localize(
+                          `component.${domain}.services.${serviceName}.fields.${field.key}.example`
+                        ) || field.example}
+                      </td>
+                    </tr>`
                 )}
               </table>
               ${this._yamlMode
@@ -309,10 +356,20 @@ class HaPanelDevService extends LitElement {
     if (!this._serviceData?.service) {
       return;
     }
+    const [domain, service] = this._serviceData.service.split(".", 2);
+    const script: Action[] = [];
+    if ("response" in this.hass.services[domain][service]) {
+      script.push({
+        ...this._serviceData,
+        response_variable: "service_result",
+      });
+      script.push({ stop: "done", response_variable: "service_result" });
+    } else {
+      script.push(this._serviceData);
+    }
     try {
-      await callExecuteScript(this.hass, [this._serviceData]);
+      this._response = (await callExecuteScript(this.hass, script)).response;
     } catch (err: any) {
-      const [domain, service] = this._serviceData.service.split(".", 2);
       if (
         err.error?.code === ERR_CONNECTION_LOST &&
         serviceCallWillDisconnect(domain, service)
@@ -346,7 +403,27 @@ class HaPanelDevService extends LitElement {
   }
 
   private _checkUiSupported() {
-    if (this._serviceData && hasTemplate(this._serviceData)) {
+    const fields = this._fields(
+      this.hass.services,
+      this._serviceData?.service
+    ).fields;
+    if (
+      this._serviceData &&
+      (Object.entries(this._serviceData).some(
+        ([key, val]) => key !== "data" && hasTemplate(val)
+      ) ||
+        (this._serviceData.data &&
+          Object.entries(this._serviceData.data).some(([key, val]) => {
+            const field = fields.find((f) => f.key === key);
+            if (
+              field?.selector &&
+              ("template" in field.selector || "object" in field.selector)
+            ) {
+              return false;
+            }
+            return hasTemplate(val);
+          })))
+    ) {
       this._yamlMode = true;
       this._uiAvailable = false;
     } else {
@@ -362,7 +439,9 @@ class HaPanelDevService extends LitElement {
   private _serviceChanged(ev) {
     ev.stopPropagation();
     this._serviceData = { service: ev.detail.value || "", data: {} };
+    this._response = undefined;
     this._yamlEditor?.setValue(this._serviceData);
+    this._checkUiSupported();
   }
 
   private _fillExampleData() {
@@ -370,6 +449,14 @@ class HaPanelDevService extends LitElement {
       this.hass.services,
       this._serviceData?.service
     );
+    const domain = this._serviceData?.service
+      ? computeDomain(this._serviceData?.service)
+      : undefined;
+
+    const serviceName = this._serviceData?.service
+      ? computeObjectId(this._serviceData?.service)
+      : undefined;
+
     const example = {};
     fields.forEach((field) => {
       if (field.example) {
@@ -377,13 +464,17 @@ class HaPanelDevService extends LitElement {
         try {
           value = load(field.example);
         } catch (err: any) {
-          value = field.example;
+          value =
+            this.hass.localize(
+              `component.${domain}.services.${serviceName}.fields.${field.key}.example`
+            ) || field.example;
         }
         example[field.key] = value;
       }
     });
     this._serviceData = { ...this._serviceData!, data: example };
     this._yamlEditor?.setValue(this._serviceData);
+    this._checkUiSupported();
   }
 
   static get styles(): CSSResultGroup {

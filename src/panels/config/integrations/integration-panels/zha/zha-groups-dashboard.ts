@@ -94,8 +94,9 @@ export class ZHAGroupsDashboard extends LitElement {
               title: this.hass.localize("ui.panel.config.zha.groups.group_id"),
               type: "numeric",
               width: "15%",
-              template: (groupId: number) =>
-                html` ${formatAsPaddedHex(groupId)} `,
+              template: (groupId: number) => html`
+                ${formatAsPaddedHex(groupId)}
+              `,
               sortable: true,
             },
             members: {
@@ -119,6 +120,7 @@ export class ZHAGroupsDashboard extends LitElement {
         .data=${this._formattedGroups(this._groups)}
         @row-click=${this._handleRowClicked}
         clickable
+        hasFab
       >
         <a href="/config/zha/group-add" slot="fab">
           <ha-fab

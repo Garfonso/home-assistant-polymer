@@ -12,6 +12,7 @@ import {
 import { LovelaceHeaderFooterConfig } from "../header-footer/types";
 import { HaDurationData } from "../../../components/ha-duration-input";
 import { LovelaceTileFeatureConfig } from "../tile-features/types";
+import { ForecastType } from "../../../data/weather";
 
 export interface AlarmPanelCardConfig extends LovelaceCardConfig {
   entity: string;
@@ -155,6 +156,13 @@ export interface EnergySourcesTableCardConfig extends LovelaceCardConfig {
 
 export interface EnergySolarGaugeCardConfig extends LovelaceCardConfig {
   type: "energy-solar-consumed-gauge";
+  title?: string;
+  collection_key?: string;
+}
+
+export interface EnergySelfSufficiencyGaugeCardConfig
+  extends LovelaceCardConfig {
+  type: "energy-self-sufficiency-gauge";
   title?: string;
   collection_key?: string;
 }
@@ -328,6 +336,7 @@ export interface StatisticCardConfig extends LovelaceCardConfig {
 
 export interface PictureCardConfig extends LovelaceCardConfig {
   image?: string;
+  image_entity?: string;
   tap_action?: ActionConfig;
   hold_action?: ActionConfig;
   double_tap_action?: ActionConfig;
@@ -338,6 +347,7 @@ export interface PictureCardConfig extends LovelaceCardConfig {
 export interface PictureElementsCardConfig extends LovelaceCardConfig {
   title?: string;
   image?: string;
+  image_entity?: string;
   camera_image?: string;
   camera_view?: HuiImage["cameraView"];
   state_image?: Record<string, unknown>;
@@ -435,6 +445,7 @@ export interface WeatherForecastCardConfig extends LovelaceCardConfig {
   name?: string;
   show_current?: boolean;
   show_forecast?: boolean;
+  forecast_type?: ForecastType;
   secondary_info_attribute?: keyof TranslationDict["ui"]["card"]["weather"]["attributes"];
   theme?: string;
   tap_action?: ActionConfig;

@@ -305,13 +305,11 @@ class DialogSystemInformation extends LitElement {
     const sections: TemplateResult[] = [];
 
     if (!this._systemInfo) {
-      sections.push(
-        html`
-          <div class="loading-container">
-            <ha-circular-progress active></ha-circular-progress>
-          </div>
-        `
-      );
+      sections.push(html`
+        <div class="loading-container">
+          <ha-circular-progress active></ha-circular-progress>
+        </div>
+      `);
     } else {
       const domains = Object.keys(this._systemInfo).sort(sortKeys);
       for (const domain of domains) {
@@ -349,7 +347,11 @@ class DialogSystemInformation extends LitElement {
                     `}
               `;
             } else if (info.type === "date") {
-              value = formatDateTime(new Date(info.value), this.hass.locale);
+              value = formatDateTime(
+                new Date(info.value),
+                this.hass.locale,
+                this.hass.config
+              );
             }
           } else {
             value = domainInfo.info[key];
@@ -367,24 +369,22 @@ class DialogSystemInformation extends LitElement {
           `);
         }
         if (domain !== "homeassistant") {
-          sections.push(
-            html`
-              <div class="card-header">
-                <h3>${domainToName(this.hass.localize, domain)}</h3>
-                ${!domainInfo.manage_url
-                  ? ""
-                  : html`
-                      <a class="manage" href=${domainInfo.manage_url}>
-                        <mwc-button>
-                          ${this.hass.localize(
-                            "ui.panel.config.info.system_health.manage"
-                          )}
-                        </mwc-button>
-                      </a>
-                    `}
-              </div>
-            `
-          );
+          sections.push(html`
+            <div class="card-header">
+              <h3>${domainToName(this.hass.localize, domain)}</h3>
+              ${!domainInfo.manage_url
+                ? ""
+                : html`
+                    <a class="manage" href=${domainInfo.manage_url}>
+                      <mwc-button>
+                        ${this.hass.localize(
+                          "ui.panel.config.info.system_health.manage"
+                        )}
+                      </mwc-button>
+                    </a>
+                  `}
+            </div>
+          `);
         }
         sections.push(html`
           <table>
@@ -425,7 +425,11 @@ class DialogSystemInformation extends LitElement {
           } else if (info.type === "failed") {
             value = `failed to load: ${info.error}`;
           } else if (info.type === "date") {
-            value = formatDateTime(new Date(info.value), this.hass.locale);
+            value = formatDateTime(
+              new Date(info.value),
+              this.hass.locale,
+              this.hass.config
+            );
           }
         } else {
           value = domainInfo.info[key];

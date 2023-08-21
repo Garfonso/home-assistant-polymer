@@ -43,10 +43,11 @@ class HaInputSelectForm extends LitElement {
   }
 
   public focus() {
-    this.updateComplete.then(() =>
-      (
-        this.shadowRoot?.querySelector("[dialogInitialFocus]") as HTMLElement
-      )?.focus()
+    this.updateComplete.then(
+      () =>
+        (
+          this.shadowRoot?.querySelector("[dialogInitialFocus]") as HTMLElement
+        )?.focus()
     );
   }
 
@@ -54,20 +55,20 @@ class HaInputSelectForm extends LitElement {
     if (!this.hass) {
       return nothing;
     }
-    const nameInvalid = !this._name || this._name.trim() === "";
 
     return html`
       <div class="form">
         <ha-textfield
           dialogInitialFocus
-          .errorMessage=${this.hass!.localize(
+          autoValidate
+          required
+          .validationMessage=${this.hass!.localize(
             "ui.dialogs.helper_settings.required_error_msg"
           )}
           .value=${this._name}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.name"
           )}
-          .invalid=${nameInvalid}
           .configValue=${"name"}
           @input=${this._valueChanged}
         ></ha-textfield>

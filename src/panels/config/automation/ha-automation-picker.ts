@@ -15,6 +15,7 @@ import { CSSResultGroup, html, LitElement, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { differenceInDays } from "date-fns/esm";
+import { styleMap } from "lit/directives/style-map";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 import { formatShortDateTime } from "../../../common/datetime/format_date_time";
 import { relativeTime } from "../../../common/datetime/relative_time";
@@ -52,6 +53,7 @@ import { configSections } from "../ha-panel-config";
 import { showNewAutomationDialog } from "./show-dialog-new-automation";
 import { findRelated } from "../../../data/search";
 import { fetchBlueprints } from "../../../data/blueprint";
+import { UNAVAILABLE } from "../../../data/entity";
 
 @customElement("ha-automation-picker")
 class HaAutomationPicker extends LitElement {
@@ -106,7 +108,15 @@ class HaAutomationPicker extends LitElement {
           ),
           type: "icon",
           template: (_, automation) =>
-            html`<ha-state-icon .state=${automation}></ha-state-icon>`,
+            html`<ha-state-icon
+              .state=${automation}
+              style=${styleMap({
+                color:
+                  automation.state === UNAVAILABLE
+                    ? "var(--error-color)"
+                    : "unset",
+              })}
+            ></ha-state-icon>`,
         },
         name: {
           title: this.hass.localize(
@@ -128,7 +138,11 @@ class HaAutomationPicker extends LitElement {
                     ${this.hass.localize("ui.card.automation.last_triggered")}:
                     ${automation.attributes.last_triggered
                       ? dayDifference > 3
-                        ? formatShortDateTime(date, this.hass.locale)
+                        ? formatShortDateTime(
+                            date,
+                            this.hass.locale,
+                            this.hass.config
+                          )
                         : relativeTime(date, this.hass.locale)
                       : this.hass.localize("ui.components.relative_time.never")}
                   </div>
@@ -149,7 +163,11 @@ class HaAutomationPicker extends LitElement {
             return html`
               ${last_triggered
                 ? dayDifference > 3
-                  ? formatShortDateTime(date, this.hass.locale)
+                  ? formatShortDateTime(
+                      date,
+                      this.hass.locale,
+                      this.hass.config
+                    )
                   : relativeTime(date, this.hass.locale)
                 : this.hass.localize("ui.components.relative_time.never")}
             `;
@@ -194,70 +212,69 @@ class HaAutomationPicker extends LitElement {
         title: "",
         width: this.narrow ? undefined : "10%",
         type: "overflow-menu",
-        template: (_: string, automation: any) =>
-          html`
-            <ha-icon-overflow-menu
-              .hass=${this.hass}
-              narrow
-              .items=${[
-                {
-                  path: mdiInformationOutline,
-                  label: this.hass.localize(
-                    "ui.panel.config.automation.editor.show_info"
-                  ),
-                  action: () => this._showInfo(automation),
-                },
-                {
-                  path: mdiPlay,
-                  label: this.hass.localize(
-                    "ui.panel.config.automation.editor.run"
-                  ),
-                  action: () => this._runActions(automation),
-                },
-                {
-                  path: mdiTransitConnection,
-                  label: this.hass.localize(
-                    "ui.panel.config.automation.editor.show_trace"
-                  ),
-                  action: () => this._showTrace(automation),
-                },
-                {
-                  divider: true,
-                },
-                {
-                  path: mdiContentDuplicate,
-                  label: this.hass.localize(
-                    "ui.panel.config.automation.picker.duplicate"
-                  ),
-                  action: () => this.duplicate(automation),
-                },
-                {
-                  path:
-                    automation.state === "off"
-                      ? mdiPlayCircleOutline
-                      : mdiStopCircleOutline,
-                  label:
-                    automation.state === "off"
-                      ? this.hass.localize(
-                          "ui.panel.config.automation.editor.enable"
-                        )
-                      : this.hass.localize(
-                          "ui.panel.config.automation.editor.disable"
-                        ),
-                  action: () => this._toggle(automation),
-                },
-                {
-                  label: this.hass.localize(
-                    "ui.panel.config.automation.picker.delete"
-                  ),
-                  path: mdiDelete,
-                  action: () => this._deleteConfirm(automation),
-                  warning: true,
-                },
-              ]}
-            >
-            </ha-icon-overflow-menu>
-          `,
+        template: (_: string, automation: any) => html`
+          <ha-icon-overflow-menu
+            .hass=${this.hass}
+            narrow
+            .items=${[
+              {
+                path: mdiInformationOutline,
+                label: this.hass.localize(
+                  "ui.panel.config.automation.editor.show_info"
+                ),
+                action: () => this._showInfo(automation),
+              },
+              {
+                path: mdiPlay,
+                label: this.hass.localize(
+                  "ui.panel.config.automation.editor.run"
+                ),
+                action: () => this._runActions(automation),
+              },
+              {
+                path: mdiTransitConnection,
+                label: this.hass.localize(
+                  "ui.panel.config.automation.editor.show_trace"
+                ),
+                action: () => this._showTrace(automation),
+              },
+              {
+                divider: true,
+              },
+              {
+                path: mdiContentDuplicate,
+                label: this.hass.localize(
+                  "ui.panel.config.automation.picker.duplicate"
+                ),
+                action: () => this.duplicate(automation),
+              },
+              {
+                path:
+                  automation.state === "off"
+                    ? mdiPlayCircleOutline
+                    : mdiStopCircleOutline,
+                label:
+                  automation.state === "off"
+                    ? this.hass.localize(
+                        "ui.panel.config.automation.editor.enable"
+                      )
+                    : this.hass.localize(
+                        "ui.panel.config.automation.editor.disable"
+                      ),
+                action: () => this._toggle(automation),
+              },
+              {
+                label: this.hass.localize(
+                  "ui.panel.config.automation.picker.delete"
+                ),
+                path: mdiDelete,
+                action: () => this._deleteConfirm(automation),
+                warning: true,
+              },
+            ]}
+          >
+          </ha-icon-overflow-menu>
+        `,
       };
       return columns;
     }
@@ -478,7 +495,7 @@ class HaAutomationPicker extends LitElement {
 
   private _createNew() {
     if (isComponentLoaded(this.hass, "blueprint")) {
-      showNewAutomationDialog(this);
+      showNewAutomationDialog(this, { mode: "automation" });
     } else {
       navigate("/config/automation/edit/new");
     }

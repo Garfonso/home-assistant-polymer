@@ -143,7 +143,11 @@ export class SupervisorBackupContent extends LitElement {
               : this._localize("partial_backup")}
             (${Math.ceil(this.backup.size * 10) / 10 + " MB"})<br />
             ${this.hass
-              ? formatDateTime(new Date(this.backup.date), this.hass.locale)
+              ? formatDateTime(
+                  new Date(this.backup.date),
+                  this.hass.locale,
+                  this.hass.config
+                )
               : this.backup.date}
           </div>`
         : html`<paper-input
@@ -336,7 +340,9 @@ export class SupervisorBackupContent extends LitElement {
     const data: any = {};
 
     if (!this.backup) {
-      data.name = this.backupName || formatDate(new Date(), this.hass.locale);
+      data.name =
+        this.backupName ||
+        formatDate(new Date(), this.hass.locale, this.hass.config);
     }
 
     if (this.backupHasPassword) {
@@ -378,28 +384,30 @@ export class SupervisorBackupContent extends LitElement {
         : undefined;
     let checkedItems = 0;
     this[section].forEach((item) => {
-      templates.push(html`<ha-formfield
-        .label=${html`<supervisor-formfield-label
-          .label=${item.name}
-          .iconPath=${section === "addons" ? mdiPuzzle : mdiFolder}
-          .imageUrl=${section === "addons" &&
-          !this.onboarding &&
-          atLeastVersion(this.hass.config.version, 0, 105) &&
-          addons?.get(item.slug)?.icon
-            ? `/api/hassio/addons/${item.slug}/icon`
-            : undefined}
-          .version=${item.version}
+      templates.push(
+        html`<ha-formfield
+          .label=${html`<supervisor-formfield-label
+            .label=${item.name}
+            .iconPath=${section === "addons" ? mdiPuzzle : mdiFolder}
+            .imageUrl=${section === "addons" &&
+            !this.onboarding &&
+            atLeastVersion(this.hass.config.version, 0, 105) &&
+            addons?.get(item.slug)?.icon
+              ? `/api/hassio/addons/${item.slug}/icon`
+              : undefined}
+            .version=${item.version}
+          >
+          </supervisor-formfield-label>`}
         >
-        </supervisor-formfield-label>`}
-      >
-        <ha-checkbox
-          .item=${item}
-          .checked=${item.checked}
-          .section=${section}
-          @change=${this._updateSectionEntry}
-        >
-        </ha-checkbox>
-      </ha-formfield>`);
+          <ha-checkbox
+            .item=${item}
+            .checked=${item.checked}
+            .section=${section}
+            @change=${this._updateSectionEntry}
+          >
+          </ha-checkbox>
+        </ha-formfield>`
+      );
 
       if (item.checked) {
         checkedItems++;

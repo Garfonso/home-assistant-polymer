@@ -202,7 +202,7 @@ class HaPanelDevState extends EventsMixin(LocalizeMixin(PolymerElement)) {
               autocapitalize="none"
               autocomplete="off"
               autocorrect="off"
-              spellcheck="false"
+              input-spellcheck="false"
               value="[[_state]]"
               on-change="stateChanged"
               class="state-input"
@@ -628,14 +628,16 @@ class HaPanelDevState extends EventsMixin(LocalizeMixin(PolymerElement)) {
   lastChangedString(entity) {
     return formatDateTimeWithSeconds(
       new Date(entity.last_changed),
-      this.hass.locale
+      this.hass.locale,
+      this.hass.config
     );
   }
 
   lastUpdatedString(entity) {
     return formatDateTimeWithSeconds(
       new Date(entity.last_updated),
-      this.hass.locale
+      this.hass.locale,
+      this.hass.config
     );
   }
 

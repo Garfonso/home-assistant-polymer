@@ -30,6 +30,8 @@ class StateHistoryChartLine extends LitElement {
 
   @property({ type: Boolean }) public showNames = true;
 
+  @property({ attribute: false }) public startTime!: Date;
+
   @property({ attribute: false }) public endTime!: Date;
 
   @property({ type: Number }) public paddingYAxis = 0;
@@ -57,7 +59,12 @@ class StateHistoryChartLine extends LitElement {
   }
 
   public willUpdate(changedProps: PropertyValues) {
-    if (!this.hasUpdated || changedProps.has("showNames")) {
+    if (
+      !this.hasUpdated ||
+      changedProps.has("showNames") ||
+      changedProps.has("startTime") ||
+      changedProps.has("endTime")
+    ) {
       this._chartOptions = {
         parsing: false,
         animation: false,
@@ -71,8 +78,10 @@ class StateHistoryChartLine extends LitElement {
             adapters: {
               date: {
                 locale: this.hass.locale,
+                config: this.hass.config,
               },
             },
+            suggestedMin: this.startTime,
             suggestedMax: this.endTime,
             ticks: {
               maxRotation: 0,
@@ -145,6 +154,8 @@ class StateHistoryChartLine extends LitElement {
     }
     if (
       changedProps.has("data") ||
+      changedProps.has("startTime") ||
+      changedProps.has("endTime") ||
       this._chartTime <
         new Date(this.endTime.getTime() - MIN_TIME_BETWEEN_UPDATES)
     ) {
@@ -317,23 +328,94 @@ class StateHistoryChartLine extends LitElement {
           }
         });
       } else if (domain === "humidifier") {
+        const hasAction = states.states.some(
+          (entityState) => entityState.attributes?.action
+        );
+        const hasCurrent = states.states.some(
+          (entityState) => entityState.attributes?.current_humidity
+        );
+
+        const hasHumidifying =
+          hasAction &&
+          states.states.some(
+            (entityState: LineChartState) =>
+              entityState.attributes?.action === "humidifying"
+          );
+        const hasDrying =
+          hasAction &&
+          states.states.some(
+            (entityState: LineChartState) =>
+              entityState.attributes?.action === "drying"
+          );
+
         addDataSet(
           `${this.hass.localize("ui.card.humidifier.target_humidity_entity", {
             name: name,
           })}`
         );
-        addDataSet(
-          `${this.hass.localize("ui.card.humidifier.on_entity", {
-            name: name,
-          })}`,
-          true
-        );
+
+        if (hasCurrent) {
+          addDataSet(
+            `${this.hass.localize(
+              "ui.card.humidifier.current_humidity_entity",
+              {
+                name: name,
+              }
+            )}`
+          );
+        }
+
+        // If action attribute is available, we used it to shade the area below the humidity.
+        // If action attribute is not available, we shade the area when the device is on
+        if (hasHumidifying) {
+          addDataSet(
+            `${this.hass.localize("ui.card.humidifier.humidifying", {
+              name: name,
+            })}`,
+            true,
+            computedStyles.getPropertyValue("--state-humidifier-on-color")
+          );
+        } else if (hasDrying) {
+          addDataSet(
+            `${this.hass.localize("ui.card.humidifier.drying", {
+              name: name,
+            })}`,
+            true,
+            computedStyles.getPropertyValue("--state-humidifier-on-color")
+          );
+        } else {
+          addDataSet(
+            `${this.hass.localize("ui.card.humidifier.on_entity", {
+              name: name,
+            })}`,
+            true
+          );
+        }
 
         states.states.forEach((entityState) => {
           if (!entityState.attributes) return;
           const target = safeParseFloat(entityState.attributes.humidity);
+          // If the current humidity is not available, then we fill up to the target humidity
+          const current = hasCurrent
+            ? safeParseFloat(entityState.attributes?.current_humidity)
+            : target;
           const series = [target];
-          series.push(entityState.state === "on" ? target : null);
+
+          if (hasCurrent) {
+            series.push(current);
+          }
+
+          if (hasHumidifying) {
+            series.push(
+              entityState.attributes?.action === "humidifying" ? current : null
+            );
+          } else if (hasDrying) {
+            series.push(
+              entityState.attributes?.action === "drying" ? current : null
+            );
+          } else {
+            series.push(entityState.state === "on" ? current : null);
+          }
           pushData(new Date(entityState.last_changed), series);
         });
       } else {
@@ -375,6 +457,9 @@ class StateHistoryChartLine extends LitElement {
             lastNullDate = date;
           }
         });
+        if (lastNullDate !== null) {
+          pushData(lastNullDate, [null]);
+        }
       }
 
       // Add an entry for final values
