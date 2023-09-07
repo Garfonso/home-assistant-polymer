@@ -1,3 +1,5 @@
+import "@material/mwc-tab";
+import "@material/mwc-tab-bar";
 import {
   mdiEye,
   mdiGauge,
@@ -14,14 +16,17 @@ import {
   nothing,
 } from "lit";
 import { customElement, property, state } from "lit/decorators";
+import memoizeOne from "memoize-one";
 import { formatDateWeekdayDay } from "../../../common/datetime/format_date";
 import { formatTimeWeekday } from "../../../common/datetime/format_time";
 import "../../../components/ha-svg-icon";
 import {
   ForecastEvent,
+  ModernForecastType,
   WeatherEntity,
   getDefaultForecastType,
   getForecast,
+  getSupportedForecastTypes,
   getWind,
   subscribeForecast,
   weatherIcons,
@@ -38,6 +43,8 @@ class MoreInfoWeather extends LitElement {
 
   @state() private _forecastEvent?: ForecastEvent;
 
+  @state() private _forecastType?: ModernForecastType;
+
   @state() private _subscribed?: Promise<() => void>;
 
   private _unsubscribeForecastEvents() {
@@ -45,25 +52,28 @@ class MoreInfoWeather extends LitElement {
       this._subscribed.then((unsub) => unsub());
       this._subscribed = undefined;
     }
+    this._forecastEvent = undefined;
   }
 
   private async _subscribeForecastEvents() {
     this._unsubscribeForecastEvents();
-    if (!this.isConnected || !this.hass || !this.stateObj) {
+    if (
+      !this.isConnected ||
+      !this.hass ||
+      !this.stateObj ||
+      !this._forecastType
+    ) {
       return;
     }
 
-    const forecastType = getDefaultForecastType(this.stateObj);
-    if (forecastType) {
-      this._subscribed = subscribeForecast(
-        this.hass!,
-        this.stateObj!.entity_id,
-        forecastType,
-        (event) => {
-          this._forecastEvent = event;
-        }
-      );
-    }
+    this._subscribed = subscribeForecast(
+      this.hass!,
+      this.stateObj!.entity_id,
+      this._forecastType,
+      (event) => {
+        this._forecastEvent = event;
+      }
+    );
   }
 
   public connectedCallback() {
@@ -95,10 +105,10 @@ class MoreInfoWeather extends LitElement {
     return false;
   }
 
-  protected updated(changedProps: PropertyValues): void {
-    super.updated(changedProps);
+  protected willUpdate(changedProps: PropertyValues): void {
+    super.willUpdate(changedProps);
 
-    if (changedProps.has("stateObj") || !this._subscribed) {
+    if ((changedProps.has("stateObj") || !this._subscribed) && this.stateObj) {
       const oldState = changedProps.get("stateObj") as
         | WeatherEntity
         | undefined;
@@ -106,10 +116,17 @@ class MoreInfoWeather extends LitElement {
         oldState?.entity_id !== this.stateObj?.entity_id ||
         !this._subscribed
       ) {
+        this._forecastType = getDefaultForecastType(this.stateObj);
         this._subscribeForecastEvents();
       }
+    } else if (changedProps.has("_forecastType")) {
+      this._subscribeForecastEvents();
     }
   }
+
+  private _supportedForecasts = memoizeOne((stateObj: WeatherEntity) =>
+    getSupportedForecastTypes(stateObj)
+  );
 
   protected render() {
     if (!this.hass || !this.stateObj) {
@@ -118,6 +135,9 @@ class MoreInfoWeather extends LitElement {
 
     // for IoB weather icon.
     const isImage = weatherStateIsImage(this.stateObj.state);
+
+    const supportedForecasts = this._supportedForecasts(this.stateObj);
+
     const forecastData = getForecast(
       this.stateObj.attributes,
       this._forecastEvent
@@ -214,6 +234,23 @@ class MoreInfoWeather extends LitElement {
             <div class="section">
               ${this.hass.localize("ui.card.weather.forecast")}:
             </div>
+            ${supportedForecasts.length > 1
+              ? html`<mwc-tab-bar
+                  .activeIndex=${supportedForecasts.findIndex(
+                    (item) => item === this._forecastType
+                  )}
+                  @MDCTabBar:activated=${this._handleForecastTypeChanged}
+                >
+                  ${supportedForecasts.map(
+                    (forecastType) =>
+                      html`<mwc-tab
+                        .label=${this.hass!.localize(
+                          `ui.card.weather.${forecastType}`
+                        )}
+                      ></mwc-tab>`
+                  )}
+                </mwc-tab-bar>`
+              : nothing}
             <!-- // IoB weather icon from URL following below -> need to add isImage condition in forecast here. -->
             ${forecast.map((item) =>
               this._showValue(item.templow) || this._showValue(item.temperature)
@@ -302,12 +339,23 @@ class MoreInfoWeather extends LitElement {
     `;
   }
 
+  private _handleForecastTypeChanged(ev: CustomEvent): void {
+    this._forecastType = this._supportedForecasts(this.stateObj!)[
+      ev.detail.index
+    ];
+  }
+
   static get styles(): CSSResultGroup {
     return css`
       ha-svg-icon {
         color: var(--paper-item-icon-color);
         margin-left: 8px;
       }
+
+      mwc-tab-bar {
+        margin-bottom: 4px;
+      }
+
       .section {
         margin: 16px 0 8px 0;
         font-size: 1.2em;
