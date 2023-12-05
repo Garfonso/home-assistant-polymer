@@ -13,7 +13,14 @@ import {
   startOfToday,
 } from "date-fns/esm";
 import { HassConfig, UnsubscribeFunc } from "home-assistant-js-websocket";
-import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
+import {
+  css,
+  CSSResultGroup,
+  html,
+  LitElement,
+  nothing,
+  PropertyValues,
+} from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import memoizeOne from "memoize-one";
@@ -24,7 +31,7 @@ import {
   rgb2lab,
 } from "../../../../common/color/convert-color";
 import { labBrighten, labDarken } from "../../../../common/color/lab";
-import { formatDateShort } from "../../../../common/datetime/format_date";
+import { formatDateVeryShort } from "../../../../common/datetime/format_date";
 import { formatTime } from "../../../../common/datetime/format_time";
 import {
   formatNumber,
@@ -49,6 +56,7 @@ import { SubscribeMixin } from "../../../../mixins/subscribe-mixin";
 import { HomeAssistant } from "../../../../types";
 import { LovelaceCard } from "../../types";
 import { EnergySolarGraphCardConfig } from "../types";
+import { hasConfigChanged } from "../../common/has-changed";
 
 @customElement("hui-energy-solar-graph-card")
 export class HuiEnergySolarGraphCard
@@ -87,6 +95,14 @@ export class HuiEnergySolarGraphCard
 
   public setConfig(config: EnergySolarGraphCardConfig): void {
     this._config = config;
+  }
+
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    return (
+      hasConfigChanged(this, changedProps) ||
+      changedProps.size > 1 ||
+      !changedProps.has("hass")
+    );
   }
 
   protected render() {
@@ -184,18 +200,18 @@ export class HuiEnergySolarGraphCard
                 dayDifference > 35
                   ? "monthyear"
                   : dayDifference > 7
-                  ? "date"
-                  : dayDifference > 2
-                  ? "weekday"
-                  : dayDifference > 0
-                  ? "datetime"
-                  : "hour",
+                    ? "date"
+                    : dayDifference > 2
+                      ? "weekday"
+                      : dayDifference > 0
+                        ? "datetime"
+                        : "hour",
               minUnit:
                 dayDifference > 35
                   ? "month"
                   : dayDifference > 2
-                  ? "day"
-                  : "hour",
+                    ? "day"
+                    : "hour",
             },
           },
           y: {
@@ -224,7 +240,9 @@ export class HuiEnergySolarGraphCard
                 }
                 const date = new Date(datasets[0].parsed.x);
                 return `${
-                  compare ? `${formatDateShort(date, locale, config)}: ` : ""
+                  compare
+                    ? `${formatDateVeryShort(date, locale, config)}: `
+                    : ""
                 }${formatTime(date, locale, config)} – ${formatTime(
                   addHours(date, 1),
                   locale,
@@ -323,7 +341,8 @@ export class HuiEnergySolarGraphCard
         energyData.stats,
         energyData.statsMetadata,
         solarSources,
-        solarColor
+        solarColor,
+        computedStyles
       )
     );
 
@@ -345,6 +364,7 @@ export class HuiEnergySolarGraphCard
           energyData.statsMetadata,
           solarSources,
           solarColor,
+          computedStyles,
           true
         )
       );
@@ -379,20 +399,26 @@ export class HuiEnergySolarGraphCard
     statisticsMetaData: Record<string, StatisticsMetaData>,
     solarSources: SolarSourceTypeEnergyPreference[],
     solarColor: string,
+    computedStyles: CSSStyleDeclaration,
     compare = false
   ) {
     const data: ChartDataset<"bar", ScatterDataPoint[]>[] = [];
 
     solarSources.forEach((source, idx) => {
-      const modifiedColor =
-        idx > 0
-          ? this.hass.themes.darkMode
-            ? labBrighten(rgb2lab(hex2rgb(solarColor)), idx)
-            : labDarken(rgb2lab(hex2rgb(solarColor)), idx)
-          : undefined;
-      const borderColor = modifiedColor
-        ? rgb2hex(lab2rgb(modifiedColor))
-        : solarColor;
+      let borderColor = computedStyles
+        .getPropertyValue("--energy-solar-color-" + idx)
+        .trim();
+      if (borderColor.length === 0) {
+        const modifiedColor =
+          idx > 0
+            ? this.hass.themes.darkMode
+              ? labBrighten(rgb2lab(hex2rgb(solarColor)), idx)
+              : labDarken(rgb2lab(hex2rgb(solarColor)), idx)
+            : undefined;
+        borderColor = modifiedColor
+          ? rgb2hex(lab2rgb(modifiedColor))
+          : solarColor;
+      }
 
       let prevStart: number | null = null;
 
@@ -401,6 +427,7 @@ export class HuiEnergySolarGraphCard
       // Process solar production data.
       if (source.stat_energy_from in statistics) {
         const stats = statistics[source.stat_energy_from];
+        let end;
 
         for (const point of stats) {
           if (point.change === null || point.change === undefined) {
@@ -415,6 +442,13 @@ export class HuiEnergySolarGraphCard
             y: point.change,
           });
           prevStart = point.start;
+          end = point.end;
+        }
+        if (solarProductionData.length === 1) {
+          solarProductionData.push({
+            x: end,
+            y: 0,
+          });
         }
       }
 

@@ -27,7 +27,7 @@ import type {
   RowClickedEvent,
 } from "../../../components/data-table/ha-data-table";
 import "../../../components/ha-button-related-filter-menu";
-import "../../../components/ha-chip";
+import "../../../components/ha-label";
 import "../../../components/ha-fab";
 import "../../../components/ha-icon-button";
 import "../../../components/ha-icon-overflow-menu";
@@ -55,6 +55,12 @@ import { findRelated } from "../../../data/search";
 import { fetchBlueprints } from "../../../data/blueprint";
 import { UNAVAILABLE } from "../../../data/entity";
 
+type AutomationItem = AutomationEntity & {
+  name: string;
+  last_triggered?: string | undefined;
+  disabled: boolean;
+};
+
 @customElement("ha-automation-picker")
 class HaAutomationPicker extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -79,7 +85,7 @@ class HaAutomationPicker extends LitElement {
     (
       automations: AutomationEntity[],
       filteredAutomations?: string[] | null
-    ) => {
+    ): AutomationItem[] => {
       if (filteredAutomations === null) {
         return [];
       }
@@ -100,14 +106,14 @@ class HaAutomationPicker extends LitElement {
 
   private _columns = memoizeOne(
     (narrow: boolean, _locale): DataTableColumnContainer => {
-      const columns: DataTableColumnContainer = {
+      const columns: DataTableColumnContainer<AutomationItem> = {
         icon: {
           title: "",
           label: this.hass.localize(
             "ui.panel.config.automation.picker.headers.state"
           ),
           type: "icon",
-          template: (_, automation) =>
+          template: (automation) =>
             html`<ha-state-icon
               .state=${automation}
               style=${styleMap({
@@ -128,12 +134,12 @@ class HaAutomationPicker extends LitElement {
           direction: "asc",
           grows: true,
           template: narrow
-            ? (name, automation: any) => {
+            ? (automation) => {
                 const date = new Date(automation.attributes.last_triggered);
                 const now = new Date();
                 const dayDifference = differenceInDays(now, date);
                 return html`
-                  ${name}
+                  ${automation.name}
                   <div class="secondary">
                     ${this.hass.localize("ui.card.automation.last_triggered")}:
                     ${automation.attributes.last_triggered
@@ -156,20 +162,17 @@ class HaAutomationPicker extends LitElement {
           sortable: true,
           width: "20%",
           title: this.hass.localize("ui.card.automation.last_triggered"),
-          template: (last_triggered) => {
-            const date = new Date(last_triggered);
+          template: (automation) => {
+            if (!automation.last_triggered) {
+              return this.hass.localize("ui.components.relative_time.never");
+            }
+            const date = new Date(automation.last_triggered);
             const now = new Date();
             const dayDifference = differenceInDays(now, date);
             return html`
-              ${last_triggered
-                ? dayDifference > 3
-                  ? formatShortDateTime(
-                      date,
-                      this.hass.locale,
-                      this.hass.config
-                    )
-                  : relativeTime(date, this.hass.locale)
-                : this.hass.localize("ui.components.relative_time.never")}
+              ${dayDifference > 3
+                ? formatShortDateTime(date, this.hass.locale, this.hass.config)
+                : relativeTime(date, this.hass.locale)}
             `;
           },
         };
@@ -178,8 +181,8 @@ class HaAutomationPicker extends LitElement {
       columns.disabled = this.narrow
         ? {
             title: "",
-            template: (disabled: boolean) =>
-              disabled
+            template: (automation) =>
+              automation.disabled
                 ? html`
                     <simple-tooltip animation-delay="0" position="left">
                       ${this.hass.localize(
@@ -196,14 +199,14 @@ class HaAutomationPicker extends LitElement {
         : {
             width: "20%",
             title: "",
-            template: (disabled: boolean) =>
-              disabled
+            template: (automation) =>
+              automation.disabled
                 ? html`
-                    <ha-chip>
+                    <ha-label>
                       ${this.hass.localize(
                         "ui.panel.config.automation.picker.disabled"
                       )}
-                    </ha-chip>
+                    </ha-label>
                   `
                 : "",
           };
@@ -212,7 +215,7 @@ class HaAutomationPicker extends LitElement {
         title: "",
         width: this.narrow ? undefined : "10%",
         type: "overflow-menu",
-        template: (_: string, automation: any) => html`
+        template: (automation) => html`
           <ha-icon-overflow-menu
             .hass=${this.hass}
             narrow
@@ -349,10 +352,12 @@ class HaAutomationPicker extends LitElement {
     this._activeFilters = [
       this.hass.localize(
         "ui.panel.config.automation.picker.filtered_by_blueprint",
-        "name",
-        !blueprintMeta || "error" in blueprintMeta
-          ? blueprint
-          : blueprintMeta.metadata.name || blueprint
+        {
+          name:
+            !blueprintMeta || "error" in blueprintMeta
+              ? blueprint
+              : blueprintMeta.metadata.name || blueprint,
+        }
       ),
     ];
   }
@@ -428,8 +433,7 @@ class HaAutomationPicker extends LitElement {
               )
             : this.hass.localize(
                 "ui.panel.config.automation.editor.load_error_unknown",
-                "err_no",
-                err.status_code
+                { err_no: err.status_code }
               ),
       });
     }
@@ -454,8 +458,7 @@ class HaAutomationPicker extends LitElement {
       await showAlertDialog(this, {
         text: this.hass.localize(
           "ui.panel.config.automation.editor.load_error_unknown",
-          "err_no",
-          err.status_code
+          { err_no: err.status_code }
         ),
       });
     }

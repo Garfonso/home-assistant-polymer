@@ -10,7 +10,7 @@ import {
   type,
   union,
 } from "superstruct";
-import { BaseActionConfig } from "../../../../data/lovelace";
+import { BaseActionConfig } from "../../../../data/lovelace/config/action";
 
 const actionConfigStructUser = object({
   user: string(),
@@ -48,6 +48,7 @@ const actionConfigStructService = object({
 const actionConfigStructNavigate = object({
   action: literal("navigate"),
   navigation_path: string(),
+  navigation_replace: optional(boolean()),
   confirmation: optional(actionConfigStructConfirmation),
 });
 

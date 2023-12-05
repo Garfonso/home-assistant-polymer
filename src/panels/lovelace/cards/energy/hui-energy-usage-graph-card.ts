@@ -13,7 +13,14 @@ import {
   startOfToday,
 } from "date-fns/esm";
 import { HassConfig, UnsubscribeFunc } from "home-assistant-js-websocket";
-import { css, CSSResultGroup, html, LitElement, nothing } from "lit";
+import {
+  css,
+  CSSResultGroup,
+  html,
+  LitElement,
+  nothing,
+  PropertyValues,
+} from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import memoizeOne from "memoize-one";
@@ -24,7 +31,7 @@ import {
   rgb2lab,
 } from "../../../../common/color/convert-color";
 import { labBrighten, labDarken } from "../../../../common/color/lab";
-import { formatDateShort } from "../../../../common/datetime/format_date";
+import { formatDateVeryShort } from "../../../../common/datetime/format_date";
 import { formatTime } from "../../../../common/datetime/format_time";
 import {
   formatNumber,
@@ -43,6 +50,7 @@ import { SubscribeMixin } from "../../../../mixins/subscribe-mixin";
 import { HomeAssistant } from "../../../../types";
 import { LovelaceCard } from "../../types";
 import { EnergyUsageGraphCardConfig } from "../types";
+import { hasConfigChanged } from "../../common/has-changed";
 
 interface ColorSet {
   base: string;
@@ -86,6 +94,14 @@ export class HuiEnergyUsageGraphCard
 
   public setConfig(config: EnergyUsageGraphCardConfig): void {
     this._config = config;
+  }
+
+  protected shouldUpdate(changedProps: PropertyValues): boolean {
+    return (
+      hasConfigChanged(this, changedProps) ||
+      changedProps.size > 1 ||
+      !changedProps.has("hass")
+    );
   }
 
   protected render() {
@@ -183,18 +199,18 @@ export class HuiEnergyUsageGraphCard
                 dayDifference > 35
                   ? "monthyear"
                   : dayDifference > 7
-                  ? "date"
-                  : dayDifference > 2
-                  ? "weekday"
-                  : dayDifference > 0
-                  ? "datetime"
-                  : "hour",
+                    ? "date"
+                    : dayDifference > 2
+                      ? "weekday"
+                      : dayDifference > 0
+                        ? "datetime"
+                        : "hour",
               minUnit:
                 dayDifference > 35
                   ? "month"
                   : dayDifference > 2
-                  ? "day"
-                  : "hour",
+                    ? "day"
+                    : "hour",
             },
           },
           y: {
@@ -233,7 +249,9 @@ export class HuiEnergyUsageGraphCard
                 }
                 const date = new Date(datasets[0].parsed.x);
                 return `${
-                  compare ? `${formatDateShort(date, locale, config)}: ` : ""
+                  compare
+                    ? `${formatDateVeryShort(date, locale, config)}: `
+                    : ""
                 }${formatTime(date, locale, config)} – ${formatTime(
                   addHours(date, 1),
                   locale,
@@ -523,6 +541,7 @@ export class HuiEnergyUsageGraphCard
       solar?: { [start: number]: number };
     } = {};
 
+    let pointEndTime;
     Object.entries(statIdsByCat).forEach(([key, statIds]) => {
       const sum = [
         "solar",
@@ -550,9 +569,11 @@ export class HuiEnergyUsageGraphCard
           if (sum) {
             totalStats[stat.start] =
               stat.start in totalStats ? totalStats[stat.start] + val : val;
+            pointEndTime = stat.end;
           }
           if (add && !(stat.start in set)) {
             set[stat.start] = val;
+            pointEndTime = stat.end;
           }
         });
         sets[id] = set;
@@ -670,6 +691,12 @@ export class HuiEnergyUsageGraphCard
                 : value,
           });
         }
+        if (points.length === 1) {
+          points.push({
+            x: pointEndTime,
+            y: 0,
+          });
+        }
 
         data.push({
           label:
@@ -684,8 +711,8 @@ export class HuiEnergyUsageGraphCard
             type === "used_solar"
               ? 1
               : type === "to_battery"
-              ? Object.keys(combinedData).length
-              : idx + 2,
+                ? Object.keys(combinedData).length
+                : idx + 2,
           borderColor: compare ? borderColor + "7F" : borderColor,
           backgroundColor: compare ? borderColor + "32" : borderColor + "7F",
           stack: "stack",

@@ -1,3 +1,4 @@
+import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
 import {
   mdiCheck,
   mdiCheckCircleOutline,
@@ -5,8 +6,7 @@ import {
   mdiOpenInNew,
   mdiPlus,
 } from "@mdi/js";
-import "@lrnwebcomponents/simple-tooltip/simple-tooltip";
-import { html, LitElement, nothing, PropertyValues } from "lit";
+import { LitElement, PropertyValues, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
 import memoize from "memoize-one";
@@ -22,19 +22,24 @@ import "../../../../components/ha-fab";
 import "../../../../components/ha-icon";
 import "../../../../components/ha-icon-button";
 import "../../../../components/ha-svg-icon";
+import { LovelacePanelConfig } from "../../../../data/lovelace";
 import {
+  LovelaceConfig,
+  saveConfig,
+} from "../../../../data/lovelace/config/types";
+import {
+  LovelaceDashboard,
+  LovelaceDashboardCreateParams,
   createDashboard,
   deleteDashboard,
   fetchDashboards,
-  LovelaceDashboard,
-  LovelaceDashboardCreateParams,
-  LovelacePanelConfig,
   updateDashboard,
-} from "../../../../data/lovelace";
+} from "../../../../data/lovelace/dashboard";
 import { showConfirmationDialog } from "../../../../dialogs/generic/show-dialog-box";
 import "../../../../layouts/hass-loading-screen";
 import "../../../../layouts/hass-tabs-subpage-data-table";
 import { HomeAssistant, Route } from "../../../../types";
+import { showNewDashboardDialog } from "../../dashboard/show-dialog-new-dashboard";
 import { lovelaceTabs } from "../ha-config-lovelace";
 import { showDashboardDetailDialog } from "./show-dialog-lovelace-dashboard-detail";
 
@@ -68,12 +73,12 @@ export class HaConfigLovelaceDashboards extends LitElement {
             "ui.panel.config.lovelace.dashboards.picker.headers.icon"
           ),
           type: "icon",
-          template: (icon: DataTableItem["icon"], dashboard) =>
-            icon
+          template: (dashboard) =>
+            dashboard.icon
               ? html`
                   <ha-icon
                     slot="item-icon"
-                    .icon=${icon}
+                    .icon=${dashboard.icon}
                     style=${ifDefined(
                       dashboard.iconColor
                         ? `color: ${dashboard.iconColor}`
@@ -91,9 +96,9 @@ export class HaConfigLovelaceDashboards extends LitElement {
           sortable: true,
           filterable: true,
           grows: true,
-          template: (title: DataTableItem["title"], dashboard) => {
+          template: (dashboard) => {
             const titleTemplate = html`
-              ${title}
+              ${dashboard.title}
               ${dashboard.default
                 ? html`
                     <ha-svg-icon
@@ -132,10 +137,10 @@ export class HaConfigLovelaceDashboards extends LitElement {
           sortable: true,
           filterable: true,
           width: "20%",
-          template: (mode: DataTableItem["mode"]) => html`
+          template: (dashboard) => html`
             ${this.hass.localize(
-              `ui.panel.config.lovelace.dashboards.conf_mode.${mode}`
-            ) || mode}
+              `ui.panel.config.lovelace.dashboards.conf_mode.${dashboard.mode}`
+            ) || dashboard.mode}
           `,
         };
         if (dashboards.some((dashboard) => dashboard.filename)) {
@@ -155,8 +160,8 @@ export class HaConfigLovelaceDashboards extends LitElement {
           sortable: true,
           type: "icon",
           width: "100px",
-          template: (requireAdmin: DataTableItem["require_admin"]) =>
-            requireAdmin
+          template: (dashboard) =>
+            dashboard.require_admin
               ? html`<ha-svg-icon .path=${mdiCheck}></ha-svg-icon>`
               : html`—`,
         };
@@ -166,8 +171,8 @@ export class HaConfigLovelaceDashboards extends LitElement {
           ),
           type: "icon",
           width: "121px",
-          template: (sidebar: DataTableItem["show_in_sidebar"]) =>
-            sidebar
+          template: (dashboard) =>
+            dashboard.show_in_sidebar
               ? html`<ha-svg-icon .path=${mdiCheck}></ha-svg-icon>`
               : html`—`,
         };
@@ -180,12 +185,12 @@ export class HaConfigLovelaceDashboards extends LitElement {
         ),
         filterable: true,
         width: "100px",
-        template: (urlPath) =>
+        template: (dashboard) =>
           narrow
             ? html`
                 <ha-icon-button
                   .path=${mdiOpenInNew}
-                  .urlPath=${urlPath}
+                  .urlPath=${dashboard.url_path}
                   @click=${this._navigate}
                   .label=${this.hass.localize(
                     "ui.panel.config.lovelace.dashboards.picker.open"
@@ -193,7 +198,9 @@ export class HaConfigLovelaceDashboards extends LitElement {
                 ></ha-icon-button>
               `
             : html`
-                <mwc-button .urlPath=${urlPath} @click=${this._navigate}
+                <mwc-button
+                  .urlPath=${dashboard.url_path}
+                  @click=${this._navigate}
                   >${this.hass.localize(
                     "ui.panel.config.lovelace.dashboards.picker.open"
                   )}</mwc-button
@@ -327,16 +334,21 @@ export class HaConfigLovelaceDashboards extends LitElement {
       return;
     }
     const dashboard = this._dashboards.find((res) => res.url_path === urlPath);
-    this._openDialog(dashboard, urlPath);
+    this._openDetailDialog(dashboard, urlPath);
   }
 
-  private _addDashboard() {
-    this._openDialog();
+  private async _addDashboard() {
+    showNewDashboardDialog(this, {
+      selectConfig: (config) => {
+        this._openDetailDialog(undefined, undefined, config);
+      },
+    });
   }
 
-  private async _openDialog(
+  private async _openDetailDialog(
     dashboard?: LovelaceDashboard,
-    urlPath?: string
+    urlPath?: string,
+    defaultConfig?: LovelaceConfig
   ): Promise<void> {
     showDashboardDetailDialog(this, {
       dashboard,
@@ -351,6 +363,9 @@ export class HaConfigLovelaceDashboards extends LitElement {
               this.hass.locale.language
             )
         );
+        if (defaultConfig) {
+          await saveConfig(this.hass!, created.url_path, defaultConfig);
+        }
       },
       updateDashboard: async (values) => {
         const updated = await updateDashboard(
