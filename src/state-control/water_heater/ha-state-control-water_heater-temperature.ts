@@ -18,7 +18,10 @@ import {
   WaterHeaterEntityFeature,
 } from "../../data/water_heater";
 import { HomeAssistant } from "../../types";
-import { stateControlCircularSliderStyle } from "../state-control-circular-slider-style";
+import {
+  createStateControlCircularSliderController,
+  stateControlCircularSliderStyle,
+} from "../state-control-circular-slider-style";
 
 @customElement("ha-state-control-water_heater-temperature")
 export class HaStateControlWaterHeaterTemperature extends LitElement {
@@ -29,7 +32,12 @@ export class HaStateControlWaterHeaterTemperature extends LitElement {
   @property({ attribute: "show-current", type: Boolean })
   public showCurrent?: boolean;
 
+  @property({ type: Boolean, attribute: "prevent-interaction-on-scroll" })
+  public preventInteractionOnScroll?: boolean;
+
   @state() private _targetTemperature?: number;
+
+  private _sizeController = createStateControlCircularSliderController(this);
 
   protected willUpdate(changedProp: PropertyValues): void {
     super.willUpdate(changedProp);
@@ -174,6 +182,10 @@ export class HaStateControlWaterHeaterTemperature extends LitElement {
     const stateColor = stateColorCss(this.stateObj);
     const active = stateActive(this.stateObj);
 
+    const containerSizeClass = this._sizeController.value
+      ? ` ${this._sizeController.value}`
+      : "";
+
     if (
       supportsTargetTemperature &&
       this._targetTemperature != null &&
@@ -181,12 +193,13 @@ export class HaStateControlWaterHeaterTemperature extends LitElement {
     ) {
       return html`
         <div
-          class="container"
+          class="container${containerSizeClass}"
           style=${styleMap({
             "--state-color": stateColor,
           })}
         >
           <ha-control-circular-slider
+            .preventInteractionOnScroll=${this.preventInteractionOnScroll}
             .inactive=${!active}
             .value=${this._targetTemperature}
             .min=${this._min}
@@ -211,12 +224,13 @@ export class HaStateControlWaterHeaterTemperature extends LitElement {
 
     return html`
       <div
-        class="container"
+        class="container${containerSizeClass}"
         style=${styleMap({
           "--state-color": stateColor,
         })}
       >
         <ha-control-circular-slider
+          .preventInteractionOnScroll=${this.preventInteractionOnScroll}
           mode="full"
           .current=${this.stateObj.attributes.current_temperature}
           .min=${this._min}
