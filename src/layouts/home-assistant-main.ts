@@ -65,14 +65,13 @@ export class HomeAssistantMain extends LitElement {
         .direction=${computeRTLDirection(this.hass)}
         @MDCDrawer:closed=${this._drawerClosed}
       >
-        <!-- Disabled for IoB -->
-        <!-- ha-sidebar
+        <ha-sidebar
           .hass=${this.hass}
           .narrow=${sidebarNarrow}
           .route=${this.route}
           .editMode=${this._sidebarEditMode}
           .alwaysExpand=${sidebarNarrow || this.hass.dockedSidebar === "docked"}
-        ></--ha-sidebar -->
+        ></ha-sidebar>
         <partial-panel-resolver
           .narrow=${this.narrow}
           .hass=${this.hass}
@@ -84,7 +83,7 @@ export class HomeAssistantMain extends LitElement {
   }
 
   protected firstUpdated() {
-    // import("../components/ha-sidebar"); // this needs to be gone for IoB ??? TODO
+    import(/* webpackPreload: true */ "../components/ha-sidebar");
 
     if (this.hass.auth.external) {
       this._externalSidebar =
@@ -176,11 +175,11 @@ export class HomeAssistantMain extends LitElement {
         color: var(--primary-text-color);
         /* remove the grey tap highlights in iOS on the fullscreen touch targets */
         -webkit-tap-highlight-color: rgba(0, 0, 0, 0);
-        --mdc-drawer-width: 0px; /* iob -> hide drawer */
+        --mdc-drawer-width: 56px;
         --mdc-top-app-bar-width: calc(100% - var(--mdc-drawer-width));
       }
       :host([expanded]) {
-        --mdc-drawer-width: 0px;  /* iob -> hide drawer */
+        --mdc-drawer-width: calc(256px + env(safe-area-inset-left));
       }
       :host([modal]) {
         --mdc-drawer-width: unset;
