@@ -7,7 +7,14 @@ import {
   mdiRayStartArrow,
   mdiRefresh,
 } from "@mdi/js";
-import { css, CSSResultGroup, html, LitElement, TemplateResult } from "lit";
+import {
+  css,
+  CSSResultGroup,
+  html,
+  LitElement,
+  nothing,
+  TemplateResult,
+} from "lit";
 import { customElement, property, query, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { repeat } from "lit/directives/repeat";
@@ -41,6 +48,8 @@ import { haStyle } from "../../../resources/styles";
 import { HomeAssistant, Route } from "../../../types";
 import { computeRTL } from "../../../common/util/compute_rtl";
 
+const TABS = ["details", "automation_config", "timeline", "logbook"] as const;
+
 @customElement("ha-automation-trace")
 export class HaAutomationTrace extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
@@ -49,9 +58,9 @@ export class HaAutomationTrace extends LitElement {
 
   @property({ attribute: false }) public automations!: AutomationEntity[];
 
-  @property({ type: Boolean }) public isWide?: boolean;
+  @property({ type: Boolean }) public isWide = false;
 
-  @property({ type: Boolean, reflect: true }) public narrow!: boolean;
+  @property({ type: Boolean, reflect: true }) public narrow = false;
 
   @property({ attribute: false }) public route!: Route;
 
@@ -67,12 +76,7 @@ export class HaAutomationTrace extends LitElement {
 
   @state() private _logbookEntries?: LogbookEntry[];
 
-  @state() private _view:
-    | "details"
-    | "config"
-    | "timeline"
-    | "logbook"
-    | "blueprint" = "details";
+  @state() private _view: (typeof TABS)[number] | "blueprint" = "details";
 
   @query("hat-script-graph") private _graph?: HatScriptGraph;
 
@@ -102,7 +106,9 @@ export class HaAutomationTrace extends LitElement {
           ? html`
               <a
                 class="trace-link"
-                href="/config/automation/edit/${stateObj.attributes.id}"
+                href="/config/automation/edit/${encodeURIComponent(
+                  stateObj.attributes.id
+                )}"
                 slot="toolbar-icon"
               >
                 <mwc-button>
@@ -136,7 +142,9 @@ export class HaAutomationTrace extends LitElement {
             ? html`
                 <a
                   class="trace-link"
-                  href="/config/automation/edit/${stateObj.attributes.id}"
+                  href="/config/automation/edit/${encodeURIComponent(
+                    stateObj.attributes.id
+                  )}"
                 >
                   <mwc-list-item graphic="icon">
                     ${this.hass.localize(
@@ -213,15 +221,22 @@ export class HaAutomationTrace extends LitElement {
         </div>
 
         ${this._traces === undefined
-          ? html`<div class="container">Loading…</div>`
+          ? html`<div class="container">
+              ${this.hass!.localize("ui.common.loading")}
+            </div>`
           : this._traces.length === 0
-            ? html`<div class="container">No traces found</div>`
+            ? html`<div class="container">
+                ${this.hass!.localize(
+                  "ui.panel.config.automation.trace.no_traces_found"
+                )}
+              </div>`
             : this._trace === undefined
               ? ""
               : html`
                   <div class="main">
                     <div class="graph">
                       <hat-script-graph
+                        .hass=${this.hass}
                         .trace=${this._trace}
                         .selected=${this._selected?.path}
                         @graph-node-selected=${this._pickNode}
@@ -230,20 +245,17 @@ export class HaAutomationTrace extends LitElement {
 
                     <div class="info">
                       <div class="tabs top">
-                        ${[
-                          ["details", "Step Details"],
-                          ["timeline", "Trace Timeline"],
-                          ["logbook", "Related logbook entries"],
-                          ["config", "Automation Config"],
-                        ].map(
-                          ([view, label]) => html`
+                        ${TABS.map(
+                          (view) => html`
                             <button
                               tabindex="0"
                               .view=${view}
                               class=${classMap({ active: this._view === view })}
                               @click=${this._showTab}
                             >
-                              ${label}
+                              ${this.hass!.localize(
+                                `ui.panel.config.automation.trace.tabs.${view}`
+                              )}
                             </button>
                           `
                         )}
@@ -257,7 +269,9 @@ export class HaAutomationTrace extends LitElement {
                                 })}
                                 @click=${this._showTab}
                               >
-                                Blueprint Config
+                                ${this.hass!.localize(
+                                  `ui.panel.config.automation.trace.tabs.blueprint_config`
+                                )}
                               </button>
                             `
                           : ""}
@@ -265,7 +279,7 @@ export class HaAutomationTrace extends LitElement {
                       ${this._selected === undefined ||
                       this._logbookEntries === undefined ||
                       trackedNodes === undefined
-                        ? ""
+                        ? nothing
                         : this._view === "details"
                           ? html`
                               <ha-trace-path-details
@@ -278,7 +292,7 @@ export class HaAutomationTrace extends LitElement {
                                 .renderedNodes=${renderedNodes!}
                               ></ha-trace-path-details>
                             `
-                          : this._view === "config"
+                          : this._view === "automation_config"
                             ? html`
                                 <ha-trace-config
                                   .hass=${this.hass}

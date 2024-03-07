@@ -74,7 +74,7 @@ export const configSections: { [name: string]: PageNavigation[] } = {
       translationKey: "areas",
       iconPath: mdiSofa,
       iconColor: "#E48629",
-      components: ["zone"],
+      component: "zone",
     },
     {
       path: "/hassio",
@@ -108,7 +108,7 @@ export const configSections: { [name: string]: PageNavigation[] } = {
       translationKey: "people",
       iconPath: mdiAccount,
       iconColor: "#5A87FA",
-      components: ["person", "users"],
+      component: ["person", "users"],
     },
     {
       path: "#external-app-configuration",
@@ -309,6 +309,7 @@ export const configSections: { [name: string]: PageNavigation[] } = {
       iconPath: mdiBackupRestore,
       iconColor: "#0D47A1",
       component: "backup",
+      not_component: "hassio",
     },
     {
       path: "/hassio/backups",
@@ -341,7 +342,7 @@ export const configSections: { [name: string]: PageNavigation[] } = {
       translationKey: "hardware",
       iconPath: mdiMemory,
       iconColor: "#301A8E",
-      components: ["hassio", "hardware"],
+      component: ["hassio", "hardware"],
     },
   ],
   about: [
@@ -360,9 +361,9 @@ export const configSections: { [name: string]: PageNavigation[] } = {
 class HaPanelConfig extends SubscribeMixin(HassRouterPage) {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property() public narrow!: boolean;
+  @property({ type: Boolean }) public narrow = false;
 
-  @property() public route!: Route;
+  @property({ attribute: false }) public route!: Route;
 
   private _entitiesContext = new ContextProvider(this, {
     context: fullEntitiesContext,

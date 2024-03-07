@@ -647,6 +647,8 @@ export class HaVoiceCommandDialog extends LitElement {
           position: absolute;
           --mdc-icon-size: 16px;
           right: 5px;
+          inset-inline-end: 5px;
+          inset-inline-start: initial;
           top: 0px;
         }
 
@@ -668,7 +670,12 @@ export class HaVoiceCommandDialog extends LitElement {
         ha-button-menu {
           --mdc-theme-on-primary: var(--text-primary-color);
           --mdc-theme-primary: var(--primary-color);
-          margin: -8px 0 0 -8px;
+          margin-top: -8px;
+          margin-bottom: 0;
+          margin-right: 0;
+          margin-inline-end: 0;
+          margin-left: -8px;
+          margin-inline-start: -8px;
         }
         ha-button-menu ha-button {
           --mdc-theme-primary: var(--secondary-text-color);
@@ -689,7 +696,7 @@ export class HaVoiceCommandDialog extends LitElement {
           height: 28px;
           margin-left: 4px;
           margin-inline-start: 4px;
-          margin-inline-end: 4px;
+          margin-inline-end: initial;
           direction: var(--direction);
         }
         ha-list-item {
@@ -698,7 +705,7 @@ export class HaVoiceCommandDialog extends LitElement {
         ha-list-item ha-svg-icon {
           margin-left: 4px;
           margin-inline-start: 4px;
-          margin-inline-end: 4px;
+          margin-inline-end: initial;
           direction: var(--direction);
           display: block;
         }

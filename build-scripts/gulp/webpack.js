@@ -138,7 +138,9 @@ gulp.task("webpack-prod-app", () =>
 
 gulp.task("webpack-dev-server-demo", () =>
   runDevServer({
-    compiler: webpack(bothBuilds(createDemoConfig, { isProdBuild: false })),
+    compiler: webpack(
+      createDemoConfig({ isProdBuild: false, latestBuild: true })
+    ),
     contentBase: paths.demo_output_root,
     port: 8090,
   })
@@ -154,7 +156,9 @@ gulp.task("webpack-prod-demo", () =>
 
 gulp.task("webpack-dev-server-cast", () =>
   runDevServer({
-    compiler: webpack(bothBuilds(createCastConfig, { isProdBuild: false })),
+    compiler: webpack(
+      createCastConfig({ isProdBuild: false, latestBuild: true })
+    ),
     contentBase: paths.cast_output_root,
     port: 8080,
     // Accessible from the network, because that's how Cast hits it.
@@ -197,8 +201,9 @@ gulp.task("webpack-prod-hassio", () =>
 
 gulp.task("webpack-dev-server-gallery", () =>
   runDevServer({
-    // We don't use the es5 build, but the dev server will fuck up the publicPath if we don't
-    compiler: webpack(bothBuilds(createGalleryConfig, { isProdBuild: false })),
+    compiler: webpack(
+      createGalleryConfig({ isProdBuild: false, latestBuild: true })
+    ),
     contentBase: paths.gallery_output_root,
     port: 8100,
     listenHost: "0.0.0.0",
