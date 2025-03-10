@@ -112,10 +112,10 @@ gulp.task("rspack-watch-app", () => {
 
 // IoB
 gulp.task(
-  "webpack-dev-app",
+  "rspack-dev-app",
   () =>
     new Promise((resolve) =>
-      webpack(
+      rspack(
         [
           createAppConfig({
             isProdBuild: false,
