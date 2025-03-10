@@ -73,7 +73,8 @@ gulp.task(
       "build-translations",
       "build-locale-data"
     ),
+    "copy-translations-app",
     "copy-static-app",
-    "rspack-dev-app"
+    "rspack-dev-app",
   )
 );
