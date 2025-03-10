@@ -35,9 +35,7 @@ export class MoreInfoLogbook extends LitElement {
         <div class="title">
           ${this.hass.localize("ui.dialogs.more_info_control.logbook")}
         </div>
-        <a href=${this._showMoreHref}
-          >${this.hass.localize("ui.dialogs.more_info_control.show_more")}</a
-        >
+        <!-- IoB removed show more info -->
       </div>
       <ha-logbook
         .hass=${this.hass}

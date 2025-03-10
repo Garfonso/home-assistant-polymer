@@ -61,7 +61,7 @@ export class MoreInfoHistory extends LitElement {
             <div class="title">
               ${this.hass.localize("ui.dialogs.more_info_control.history")}
             </div>
-            ${false && __DEMO__ //IoB disable this link.. doesn't lead anywhere.
+            ${true || __DEMO__ // IoB disable this link.. doesn't lead anywhere.
               ? nothing
               : html`<a href=${this._showMoreHref}
                   >${this.hass.localize(
