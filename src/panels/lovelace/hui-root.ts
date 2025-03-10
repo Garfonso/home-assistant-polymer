@@ -112,18 +112,6 @@ class HUIRoot extends LitElement {
     (_components) =>
       isComponentLoaded(this.hass, "conversation")
   );
-
-  public connectedCallback(): void {
-    super.connectedCallback();
-    this._unsubNotifications = subscribeNotifications(
-      this.hass!.connection,
-      (notifications) => {
-        this._persistentNotifications = !!notifications
-          ? notifications.length
-          : 0;
-      }
-    );
-  }
   // IoB end
 
   constructor() {
@@ -547,6 +535,17 @@ class HUIRoot extends LitElement {
     window.addEventListener("scroll", this._handleWindowScroll, {
       passive: true,
     });
+
+    //IoB
+    this._unsubNotifications = subscribeNotifications(
+      this.hass!.connection,
+      (notifications) => {
+        this._persistentNotifications = !!notifications
+          ? notifications.length
+          : 0;
+      }
+    );
+    //IoB end
   }
 
   public disconnectedCallback(): void {
@@ -556,6 +555,7 @@ class HUIRoot extends LitElement {
     if (this._unsubNotifications) {
       this._unsubNotifications();
     }
+    //IoB end
   }
 
   protected updated(changedProperties: PropertyValues): void {

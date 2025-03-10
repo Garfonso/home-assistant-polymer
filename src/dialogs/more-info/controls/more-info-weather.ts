@@ -25,8 +25,6 @@ import {
   getWind,
   subscribeForecast,
   weatherSVGStyles,
-  weatherIcons, /* iob needed below ?*/
-  getWeatherStateIcon, /* iob needed below */
   weatherStateIsImage, /* iob needed below */
 } from "../../../data/weather";
 import type { HomeAssistant } from "../../../types";
@@ -356,27 +354,14 @@ class MoreInfoWeather extends LitElement {
                         ${this._showValue(item.condition)
                           ? html`
                               <div class="forecast-image-icon">
-                                ${isImage ?
-                                  html`
-                            <div
-                                class="icon-image" 
-                                style="min-width: 32px; min-height: 32px;"
-                            >
                                 ${getWeatherStateIcon(
-                                    item.condition,
-                                    this,
-                                    false,
-                                    this.hass.auth.accessToken
-                                  )}
-                            </div>
-                            ` :
-                                  getWeatherStateIcon(
                                   item.condition!,
                                   this,
                                   !(
                                     item.is_daytime ||
                                     item.is_daytime === undefined
-                                  )
+                                  ),
+                                  this.hass.auth.accessToken //IoB
                                 )}
                               </div>
                             `

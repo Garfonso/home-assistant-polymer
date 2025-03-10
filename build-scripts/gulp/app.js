@@ -74,6 +74,6 @@ gulp.task(
       "build-locale-data"
     ),
     "copy-static-app",
-    "webpack-dev-app"
+    "rspack-dev-app"
   )
 );
