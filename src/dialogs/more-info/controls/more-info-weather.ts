@@ -30,6 +30,7 @@ import {
 import type { HomeAssistant } from "../../../types";
 import "../../../components/ha-relative-time";
 import "../../../components/ha-state-icon";
+import { computeStateName } from "../../../common/entity/compute_state_name"; // IoB
 
 @customElement("more-info-weather")
 class MoreInfoWeather extends LitElement {
@@ -142,7 +143,7 @@ class MoreInfoWeather extends LitElement {
     const hourly = forecastData?.type === "hourly";
     const dayNight = forecastData?.type === "twice_daily";
 
-    const weatherStateIcon = getWeatherStateIcon(this.stateObj.state, this);
+    const weatherStateIcon = getWeatherStateIcon(this.stateObj.state, this, undefined, this.hass.auth.accessToken); //IoB
 
     return html`
       <div class="content">
@@ -159,7 +160,7 @@ class MoreInfoWeather extends LitElement {
         <div class="info">
           <div class="name-state">
             <div class="state">
-              ${this.hass.formatEntityState(this.stateObj)}
+              ${isImage ? computeStateName(this.stateObj) : this.hass.formatEntityState(this.stateObj) /*IoB*/}
             </div>
             <div class="time-ago">
               <ha-tooltip>
