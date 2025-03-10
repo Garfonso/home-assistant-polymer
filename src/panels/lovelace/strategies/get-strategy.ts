@@ -1,16 +1,14 @@
-import {
+import type {
   LovelaceConfig,
   LovelaceRawConfig,
-  isStrategyDashboard,
 } from "../../../data/lovelace/config/types";
-import { LovelaceStrategyConfig } from "../../../data/lovelace/config/strategy";
-import {
-  LovelaceViewConfig,
-  isStrategyView,
-} from "../../../data/lovelace/config/view";
-import { AsyncReturnType, HomeAssistant } from "../../../types";
+import { isStrategyDashboard } from "../../../data/lovelace/config/types";
+import type { LovelaceStrategyConfig } from "../../../data/lovelace/config/strategy";
+import type { LovelaceViewConfig } from "../../../data/lovelace/config/view";
+import { isStrategyView } from "../../../data/lovelace/config/view";
+import type { AsyncReturnType, HomeAssistant } from "../../../types";
 import { cleanLegacyStrategyConfig, isLegacyStrategy } from "./legacy-strategy";
-import {
+import type {
   LovelaceDashboardStrategy,
   LovelaceSectionStrategy,
   LovelaceStrategy,
@@ -22,22 +20,28 @@ const CUSTOM_PREFIX = "custom:";
 
 const STRATEGIES: Record<LovelaceStrategyConfigType, Record<string, any>> = {
   dashboard: {
-    "original-states": () => import("./original-states-dashboard-strategy"),
+    "original-states": () =>
+      import("./original-states/original-states-dashboard-strategy"),
+    map: () => import("./map/map-dashboard-strategy"),
+    iframe: () => import("./iframe/iframe-dashboard-strategy"),
   },
   view: {
-    "original-states": () => import("./original-states-view-strategy"),
+    "original-states": () =>
+      import("./original-states/original-states-view-strategy"),
     energy: () => import("../../energy/strategies/energy-view-strategy"),
+    map: () => import("./map/map-view-strategy"),
+    iframe: () => import("./iframe/iframe-view-strategy"),
   },
   section: {},
 };
 
 export type LovelaceStrategyConfigType = "dashboard" | "view" | "section";
 
-type Strategies = {
+interface Strategies {
   dashboard: LovelaceDashboardStrategy;
   view: LovelaceViewStrategy;
   section: LovelaceSectionStrategy;
-};
+}
 
 type StrategyConfig<T extends LovelaceStrategyConfigType> = AsyncReturnType<
   Strategies[T]["generate"]

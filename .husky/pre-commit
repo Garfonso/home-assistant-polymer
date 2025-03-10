@@ -1,4 +1,2 @@
-#!/usr/bin/env sh
-#. "$(dirname -- "$0")/_/husky.sh"
-
+#IoB: disabled commit hook
 #yarn run lint-staged --relative --shell "/bin/bash"

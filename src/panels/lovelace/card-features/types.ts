@@ -1,6 +1,6 @@
-import { AlarmMode } from "../../../data/alarm_control_panel";
-import { HvacMode } from "../../../data/climate";
-import { OperationMode } from "../../../data/water_heater";
+import type { AlarmMode } from "../../../data/alarm_control_panel";
+import type { HvacMode } from "../../../data/climate";
+import type { OperationMode } from "../../../data/water_heater";
 
 export interface CoverOpenCloseCardFeatureConfig {
   type: "cover-open-close";
@@ -26,6 +26,18 @@ export interface LightColorTempCardFeatureConfig {
   type: "light-color-temp";
 }
 
+export interface LockCommandsCardFeatureConfig {
+  type: "lock-commands";
+}
+
+export interface LockOpenDoorCardFeatureConfig {
+  type: "lock-open-door";
+}
+
+export interface MediaPlayerVolumeSliderCardFeatureConfig {
+  type: "media-player-volume-slider";
+}
+
 export interface FanPresetModesCardFeatureConfig {
   type: "fan-preset-modes";
   style?: "dropdown" | "icons";
@@ -47,6 +59,18 @@ export interface ClimateFanModesCardFeatureConfig {
   fan_modes?: string[];
 }
 
+export interface ClimateSwingModesCardFeatureConfig {
+  type: "climate-swing-modes";
+  style?: "dropdown" | "icons";
+  swing_modes?: string[];
+}
+
+export interface ClimateSwingHorizontalModesCardFeatureConfig {
+  type: "climate-swing-horizontal-modes";
+  style?: "dropdown" | "icons";
+  swing_horizontal_modes?: string[];
+}
+
 export interface ClimateHvacModesCardFeatureConfig {
   type: "climate-hvac-modes";
   style?: "dropdown" | "icons";
@@ -59,8 +83,18 @@ export interface ClimatePresetModesCardFeatureConfig {
   preset_modes?: string[];
 }
 
+export const COUNTER_ACTIONS = ["decrement", "reset", "increment"] as const;
+
+export type CounterActions = (typeof COUNTER_ACTIONS)[number];
+
+export interface CounterActionsCardFeatureConfig {
+  type: "counter-actions";
+  actions?: CounterActions[];
+}
+
 export interface SelectOptionsCardFeatureConfig {
   type: "select-options";
+  options?: string[];
 }
 
 export interface NumericInputCardFeatureConfig {
@@ -74,6 +108,10 @@ export interface TargetHumidityCardFeatureConfig {
 
 export interface TargetTemperatureCardFeatureConfig {
   type: "target-temperature";
+}
+
+export interface ToggleCardFeatureConfig {
+  type: "toggle";
 }
 
 export interface WaterHeaterOperationModesCardFeatureConfig {
@@ -123,8 +161,11 @@ export interface UpdateActionsCardFeatureConfig {
 export type LovelaceCardFeatureConfig =
   | AlarmModesCardFeatureConfig
   | ClimateFanModesCardFeatureConfig
+  | ClimateSwingModesCardFeatureConfig
+  | ClimateSwingHorizontalModesCardFeatureConfig
   | ClimateHvacModesCardFeatureConfig
   | ClimatePresetModesCardFeatureConfig
+  | CounterActionsCardFeatureConfig
   | CoverOpenCloseCardFeatureConfig
   | CoverPositionCardFeatureConfig
   | CoverTiltPositionCardFeatureConfig
@@ -136,14 +177,18 @@ export type LovelaceCardFeatureConfig =
   | LawnMowerCommandsCardFeatureConfig
   | LightBrightnessCardFeatureConfig
   | LightColorTempCardFeatureConfig
+  | LockCommandsCardFeatureConfig
+  | LockOpenDoorCardFeatureConfig
+  | MediaPlayerVolumeSliderCardFeatureConfig
   | NumericInputCardFeatureConfig
   | SelectOptionsCardFeatureConfig
   | TargetHumidityCardFeatureConfig
   | TargetTemperatureCardFeatureConfig
+  | ToggleCardFeatureConfig
   | UpdateActionsCardFeatureConfig
   | VacuumCommandsCardFeatureConfig
   | WaterHeaterOperationModesCardFeatureConfig;
 
-export type LovelaceCardFeatureContext = {
+export interface LovelaceCardFeatureContext {
   entity_id?: string;
-};
+}

@@ -1,17 +1,15 @@
+import type { UnsubscribeFunc } from "home-assistant-js-websocket";
 import {
   STATE_NOT_RUNNING,
   STATE_RUNNING,
   STATE_STARTING,
-  UnsubscribeFunc,
 } from "home-assistant-js-websocket";
-import {
-  BootstrapIntegrationsTimings,
-  subscribeBootstrapIntegrations,
-} from "../data/bootstrap_integrations";
+import type { BootstrapIntegrationsTimings } from "../data/bootstrap_integrations";
+import { subscribeBootstrapIntegrations } from "../data/bootstrap_integrations";
 import { domainToName } from "../data/integration";
-import { Constructor } from "../types";
+import type { Constructor } from "../types";
 import { showToast } from "../util/toast";
-import { HassBaseEl } from "./hass-base-mixin";
+import type { HassBaseEl } from "./hass-base-mixin";
 import { navigate } from "../common/navigate";
 
 export default <T extends Constructor<HassBaseEl>>(superClass: T) =>
@@ -37,8 +35,8 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) =>
           showToast(this, {
             message:
               this.hass!.localize("ui.notification_toast.starting") ||
-              "Home Assistant is starting, not everything will be available until it is finished.",
-            duration: 0,
+              "Home Assistant is starting. Not everything will be available until it is finished.",
+            duration: -1,
             dismissable: false,
             action: {
               text:
@@ -97,7 +95,7 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) =>
       }
       showToast(this, {
         message: "",
-        duration: 1,
+        duration: 0,
       });
     }
 
@@ -108,7 +106,7 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) =>
         this._disconnectedTimeout = undefined;
         showToast(this, {
           message: this.hass!.localize("ui.notification_toast.connection_lost"),
-          duration: 0,
+          duration: -1,
           dismissable: false,
         });
       }, 1000);
@@ -123,8 +121,8 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) =>
         showToast(this, {
           message:
             this.hass!.localize("ui.notification_toast.wrapping_up_startup") ||
-            `Wrapping up startup, not everything will be available until it is finished.`,
-          duration: 0,
+            `Wrapping up startup. Not everything will be available until it is finished.`,
+          duration: -1,
           dismissable: false,
           action: {
             text:
@@ -143,12 +141,13 @@ export default <T extends Constructor<HassBaseEl>>(superClass: T) =>
       )[0][0];
 
       showToast(this, {
+        id: "integration_starting",
         message:
           this.hass!.localize("ui.notification_toast.integration_starting", {
             integration: domainToName(this.hass!.localize, integration),
           }) ||
-          `Starting ${integration}, not everything will be available until it is finished.`,
-        duration: 0,
+          `Starting ${integration}. Not everything will be available until it is finished.`,
+        duration: -1,
         dismissable: false,
         action: {
           text:

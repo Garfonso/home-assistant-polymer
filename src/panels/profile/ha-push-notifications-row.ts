@@ -1,10 +1,11 @@
-import { LitElement, TemplateResult, css, html } from "lit";
+import type { TemplateResult } from "lit";
+import { LitElement, css, html } from "lit";
 import { customElement, property } from "lit/decorators";
 import { isComponentLoaded } from "../../common/config/is_component_loaded";
 import { pushSupported } from "../../components/ha-push-notifications-toggle";
 import "../../components/ha-settings-row";
 import { documentationUrl } from "../../util/documentation-url";
-import { HomeAssistant } from "../../types";
+import type { HomeAssistant } from "../../types";
 
 @customElement("ha-push-notifications-row")
 class HaPushNotificationsRow extends LitElement {
@@ -13,7 +14,7 @@ class HaPushNotificationsRow extends LitElement {
   @property({ type: Boolean }) public narrow = false;
 
   protected render(): TemplateResult {
-    const platformLoaded = isComponentLoaded(this.hass, "notify.html5");
+    const platformLoaded = isComponentLoaded(this.hass, "html5.notify");
     let descriptionKey:
       | "error_use_https"
       | "error_load_platform"
@@ -56,13 +57,11 @@ class HaPushNotificationsRow extends LitElement {
     `;
   }
 
-  static get styles() {
-    return css`
-      a {
-        color: var(--primary-color);
-      }
-    `;
-  }
+  static styles = css`
+    a {
+      color: var(--primary-color);
+    }
+  `;
 }
 
 declare global {
