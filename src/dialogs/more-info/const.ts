@@ -6,7 +6,7 @@ import { computeGroupDomain } from "../../data/group";
 import { CONTINUOUS_DOMAINS } from "../../data/logbook";
 import type { HomeAssistant } from "../../types";
 import { isNumericEntity } from "../../data/history";
-import {weatherStateIsImage} from "../../data/weather";  //IoB
+import {weatherStateIsImage} from "../../data/weather";  // IoB
 
 export const DOMAINS_NO_INFO = ["camera", "configurator", "weather"]; // IoB add weather here
 /**
@@ -92,7 +92,7 @@ export const DOMAINS_HIDE_DEFAULT_MORE_INFO = [
 ];
 
 /** Domains that should have the history hidden in the more info dialog. */
-export const DOMAINS_MORE_INFO_NO_HISTORY = ["camera", "configurator"];
+export const DOMAINS_MORE_INFO_NO_HISTORY = ["camera", "configurator"]; // IoB add weather here
 
 export const computeShowHistoryComponent = (
   hass: HomeAssistant,
@@ -138,6 +138,12 @@ export const computeShowLogBookComponent = (
     return false;
   }
 
+  // IoB prevent history for weather:
+  if (domain === "weather") {
+    if (stateObj && weatherStateIsImage(stateObj.state)) {
+      return false;
+    }
+  }
   return true;
 };
 
