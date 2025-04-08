@@ -339,7 +339,6 @@ class HUIRoot extends LitElement {
                         ></ha-icon-button-arrow-prev>
                       `
                     : html`
-                        <!-- Disabled for IoB ...? -->
                         <ha-menu-button
                           slot="navigationIcon"
                           .hass=${this.hass}
