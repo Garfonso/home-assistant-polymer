@@ -103,6 +103,10 @@ class HUIRoot extends LitElement {
 
   private _viewCache?: Record<string, HUIView>;
 
+  private _viewScrollPositions: Record<string, number> = {};
+
+  private _restoreScroll = false;
+
   private _debouncedConfigChanged: () => void;
 
   // IoB
@@ -333,12 +337,12 @@ class HUIRoot extends LitElement {
                         ></ha-icon-button-arrow-prev>
                       `
                     : html`
-                        <!-- Disabled for IoB -->
-                        <!-- ha-menu-button
+                        <!-- Disabled for IoB ...? -->
+                        <ha-menu-button
                           slot="navigationIcon"
                           .hass=${this.hass}
                           .narrow=${this.narrow}
-                        ></ha-menu-button -->
+                        ></ha-menu-button>
                       `}
                   ${curViewConfig?.subview
                     ? html`<div class="main-title">${curViewConfig.title}</div>`
@@ -495,6 +499,10 @@ class HUIRoot extends LitElement {
     this.toggleAttribute("scrolled", window.scrollY !== 0);
   };
 
+  private _handlePopState = () => {
+    this._restoreScroll = true;
+  };
+
   private _isVisible = (view: LovelaceViewConfig) =>
     Boolean(
       this._editMode ||
@@ -536,26 +544,33 @@ class HUIRoot extends LitElement {
       passive: true,
     });
 
-    //IoB
+    window.addEventListener("popstate", this._handlePopState);
+    // Disable history scroll restoration because it is managed manually here
+    window.history.scrollRestoration = "manual";
+
+    // IoB
     this._unsubNotifications = subscribeNotifications(
       this.hass!.connection,
       (notifications) => {
-        this._persistentNotifications = !!notifications
-          ? notifications.length
-          : 0;
+        this._persistentNotifications = notifications?.length || 0;
       }
     );
-    //IoB end
+    // IoB end
   }
 
   public disconnectedCallback(): void {
     super.disconnectedCallback();
     window.removeEventListener("scroll", this._handleWindowScroll);
-    //IoB:
+    window.removeEventListener("popstate", this._handlePopState);
+    this.toggleAttribute("scrolled", window.scrollY !== 0);
+    // Re-enable history scroll restoration when leaving the page
+    window.history.scrollRestoration = "auto";
+
+    // IoB:
     if (this._unsubNotifications) {
       this._unsubNotifications();
     }
-    //IoB end
+    // IoB end
   }
 
   protected updated(changedProperties: PropertyValues): void {
@@ -598,9 +613,6 @@ class HUIRoot extends LitElement {
         }
         newSelectView = index;
       }
-
-      // Will allow to override history scroll restoration when using back button
-      setTimeout(() => scrollTo({ behavior: "auto", top: 0 }), 1);
     }
 
     if (changedProperties.has("lovelace")) {
@@ -639,7 +651,18 @@ class HUIRoot extends LitElement {
         newSelectView = this._curView;
       }
       // Will allow for ripples to start rendering
-      afterNextRender(() => this._selectView(newSelectView, force));
+      afterNextRender(() => {
+        if (changedProperties.has("route")) {
+          const position =
+            (this._restoreScroll && this._viewScrollPositions[newSelectView]) ||
+            0;
+          this._restoreScroll = false;
+          requestAnimationFrame(() =>
+            scrollTo({ behavior: "auto", top: position })
+          );
+        }
+        this._selectView(newSelectView, force);
+      });
     }
   }
 
@@ -836,6 +859,12 @@ class HUIRoot extends LitElement {
         });
         return;
       }
+
+      const urlPath = this.route?.prefix.slice(1);
+      await this.hass.loadFragmentTranslation("config");
+      const dashboards = await fetchDashboards(this.hass);
+      const dashboard = dashboards.find((d) => d.url_path === urlPath);
+
       showDashboardStrategyEditorDialog(this, {
         config: this.lovelace!.rawConfig,
         saveConfig: this.lovelace!.saveConfig,
@@ -846,8 +875,27 @@ class HUIRoot extends LitElement {
             narrow: this.narrow!,
           });
         },
-        showRawConfigEditor: () => {
-          this.lovelace!.enableFullEditMode();
+        deleteDashboard: async () => {
+          const confirm = await showConfirmationDialog(this, {
+            title: this.hass!.localize(
+              "ui.panel.config.lovelace.dashboards.confirm_delete_title",
+              { dashboard_title: dashboard!.title }
+            ),
+            text: this.hass!.localize(
+              "ui.panel.config.lovelace.dashboards.confirm_delete_text"
+            ),
+            confirmText: this.hass!.localize("ui.common.delete"),
+            destructive: true,
+          });
+          if (!confirm) {
+            return false;
+          }
+          try {
+            await deleteDashboard(this.hass!, dashboard!.id);
+            return true;
+          } catch (_err: any) {
+            return false;
+          }
         },
       });
       return;
@@ -974,12 +1022,18 @@ class HUIRoot extends LitElement {
       return;
     }
 
+    // Save scroll position of current view
+    if (this._curView != null) {
+      this._viewScrollPositions[this._curView] = window.scrollY;
+    }
+
     viewIndex = viewIndex === undefined ? 0 : viewIndex;
 
     this._curView = viewIndex;
 
     if (force) {
       this._viewCache = {};
+      this._viewScrollPositions = {};
     }
 
     // Recreate a new element to clear the applied themes.
