@@ -153,6 +153,8 @@ class HUIRoot extends LitElement {
             ></ha-icon-button>
           </a>`
       );
+    } else {
+      result.push(this._renderNotificationButton())
     }
 
     const items: {
@@ -667,7 +669,7 @@ class HUIRoot extends LitElement {
   }
 
   // for IoB
-  private renderNotificationButton(): TemplateResult | void {
+  private _renderNotificationButton(): TemplateResult {
     return html`
       <mwc-icon-button
         style="cursor: pointer; position: relative;"
