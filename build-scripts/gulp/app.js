@@ -36,7 +36,7 @@ gulp.task(
       process.env.NODE_ENV = "production";
     },
     "clean",
-    // "translations-enable-merge-backend", // IoB - includes backend translation in frontend files. - do we really need this?? :-/
+    "translations-enable-merge-backend", // IoB - includes backend translation in frontend files. - do we really need this?? :-/
     gulp.parallel("gen-icons-json", "build-translations", "build-locale-data"),
     "copy-static-app",
     "rspack-prod-app",
