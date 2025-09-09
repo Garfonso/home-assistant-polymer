@@ -222,14 +222,10 @@ export const getComponentIcons = async (
   force = false
 ): Promise<ComponentIcons | undefined> => {
   // For Cast, old instances can connect to it.
-  if (
-    __BACKWARDS_COMPAT__ &&
-    !atLeastVersion(hass.connection.haVersion, 2024, 2)
-  ) {
-    return import("../fake_data/entity_component_icons")
-      .then((mod) => mod.ENTITY_COMPONENT_ICONS)
-      .then((res) => res[domain]);
-  }
+  // IoB - always return old icons. Don't want to submit them... :-/
+  return import("../fake_data/entity_component_icons")
+    .then((mod) => mod.ENTITY_COMPONENT_ICONS)
+    .then((res) => res[domain]);
 
   if (
     !force &&
