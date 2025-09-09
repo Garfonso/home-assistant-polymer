@@ -669,10 +669,17 @@ class HUIRoot extends LitElement {
 
   // for IoB
   private _renderNotificationButton(): TemplateResult {
+    const sidebars = document.body.getElementsByTagName("ha-sidebar");
+    console.log('Got sidebars:', sidebars);
+    const isSidebarVisible = sidebars.length > 0;
+    if (isSidebarVisible) {
+      return html`""`;
+    }
+
     return html`
       <mwc-icon-button
         style="cursor: pointer; position: relative;"
-        label="${this.hass.localize("ui.notification_drawer.title")}"
+        label=${this.hass.localize("ui.notification_drawer.title")}
         @click=${this._handleShowNotificationDrawer}
       >
         <ha-svg-icon path=${mdiBell}></ha-svg-icon>
