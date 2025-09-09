@@ -709,13 +709,6 @@ class HUIRoot extends LitElement {
     return (this._persistentNotifications || 0) + len;
   }
 
-  private get _hideToolbar(): boolean {
-    return (
-      this.config.hideToolbar === true &&
-      window.location.search.indexOf("toolbar") === -1
-    );
-  }
-
   private _handleShowNotificationDrawer() {
     showNotificationDrawer(this, { narrow: this.narrow! });
   }
