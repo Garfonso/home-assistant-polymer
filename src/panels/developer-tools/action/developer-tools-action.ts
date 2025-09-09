@@ -52,6 +52,7 @@ class HaPanelDevAction extends LitElement {
 
   private _yamlValid = true;
 
+  @state()
   @storage({
     key: "panel-dev-action-state-service-data",
     state: true,
@@ -59,6 +60,7 @@ class HaPanelDevAction extends LitElement {
   })
   private _serviceData?: ServiceAction = { action: "", target: {}, data: {} };
 
+  @state()
   @storage({
     key: "panel-dev-action-state-yaml-mode",
     state: true,
@@ -140,6 +142,7 @@ class HaPanelDevAction extends LitElement {
                   .hass=${this.hass}
                   .value=${this._serviceData?.action}
                   @value-changed=${this._serviceChanged}
+                  show-service-id
                 ></ha-service-picker>
                 <ha-yaml-editor
                   id="yaml-editor"
@@ -154,6 +157,7 @@ class HaPanelDevAction extends LitElement {
                   .value=${this._serviceData}
                   .narrow=${this.narrow}
                   show-advanced
+                  show-service-id
                   @value-changed=${this._serviceDataChanged}
                   class="card-content"
                 ></ha-service-control>
@@ -166,7 +170,8 @@ class HaPanelDevAction extends LitElement {
       <div class="button-row">
         <div class="buttons">
           <div class="switch-mode-container">
-            <mwc-button
+            <ha-button
+              appearance="plain"
               @click=${this._toggleYaml}
               .disabled=${!this._uiAvailable}
             >
@@ -177,7 +182,7 @@ class HaPanelDevAction extends LitElement {
                 : this.hass.localize(
                     "ui.panel.developer-tools.tabs.actions.yaml_mode"
                   )}
-            </mwc-button>
+            </ha-button>
             ${!this._uiAvailable
               ? html`<span class="error"
                   >${this.hass.localize(
@@ -209,7 +214,10 @@ class HaPanelDevAction extends LitElement {
                   has-extra-actions
                   .value=${this._response}
                 >
-                  <ha-button slot="extra-actions" @click=${this._copyTemplate}
+                  <ha-button
+                    appearance="plain"
+                    slot="extra-actions"
+                    @click=${this._copyTemplate}
                     >${this.hass.localize(
                       "ui.panel.developer-tools.tabs.actions.copy_clipboard_template"
                     )}</ha-button
@@ -304,10 +312,12 @@ class HaPanelDevAction extends LitElement {
                 )}
               </table>
               ${this._yamlMode
-                ? html`<mwc-button @click=${this._fillExampleData}
+                ? html`<ha-button
+                    appearance="plain"
+                    @click=${this._fillExampleData}
                     >${this.hass.localize(
                       "ui.panel.developer-tools.tabs.actions.fill_example_data"
-                    )}</mwc-button
+                    )}</ha-button
                   >`
                 : ""}
             </ha-expansion-panel>
@@ -528,26 +538,11 @@ class HaPanelDevAction extends LitElement {
   }
 
   private _checkUiSupported() {
-    const fields = this._fields(
-      this.hass.services,
-      this._serviceData?.action
-    ).fields;
     if (
       this._serviceData &&
-      (Object.entries(this._serviceData).some(
-        ([key, val]) => key !== "data" && hasTemplate(val)
-      ) ||
-        (this._serviceData.data &&
-          Object.entries(this._serviceData.data).some(([key, val]) => {
-            const field = fields.find((f) => f.key === key);
-            if (
-              field?.selector &&
-              ("template" in field.selector || "object" in field.selector)
-            ) {
-              return false;
-            }
-            return hasTemplate(val);
-          })))
+      Object.entries(this._serviceData).some(
+        ([key, val]) => !["data", "target"].includes(key) && hasTemplate(val)
+      )
     ) {
       this._yamlMode = true;
       this._uiAvailable = false;
@@ -614,19 +609,19 @@ class HaPanelDevAction extends LitElement {
       css`
         .content {
           padding: 16px;
-          padding: max(16px, env(safe-area-inset-top))
-            max(16px, env(safe-area-inset-right))
-            max(16px, env(safe-area-inset-bottom))
-            max(16px, env(safe-area-inset-left));
+          padding: max(16px, var(--safe-area-inset-top))
+            max(16px, var(--safe-area-inset-right))
+            max(16px, var(--safe-area-inset-bottom))
+            max(16px, var(--safe-area-inset-left));
           max-width: 1200px;
           margin: auto;
         }
         .button-row {
           padding: 8px 16px;
-          padding: max(8px, env(safe-area-inset-top))
-            max(16px, env(safe-area-inset-right))
-            max(8px, env(safe-area-inset-bottom))
-            max(16px, env(safe-area-inset-left));
+          padding: max(8px, var(--safe-area-inset-top))
+            max(16px, var(--safe-area-inset-right))
+            max(8px, var(--safe-area-inset-bottom))
+            max(16px, var(--safe-area-inset-left));
           border-top: 1px solid var(--divider-color);
           border-bottom: 1px solid var(--divider-color);
           background: var(--card-background-color);

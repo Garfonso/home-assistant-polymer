@@ -7,6 +7,7 @@ import { isComponentLoaded } from "../../common/config/is_component_loaded";
 import { createSearchParam } from "../../common/url/search-params";
 import "../../panels/logbook/ha-logbook";
 import type { HomeAssistant } from "../../types";
+import { haStyle } from "../../resources/styles";
 
 @customElement("ha-more-info-logbook")
 export class MoreInfoLogbook extends LitElement {
@@ -32,10 +33,11 @@ export class MoreInfoLogbook extends LitElement {
 
     return html`
       <div class="header">
-        <div class="title">
-          ${this.hass.localize("ui.dialogs.more_info_control.logbook")}
-        </div>
-        <!-- IoB removed show more info -->
+        <h2>${this.hass.localize("ui.dialogs.more_info_control.logbook")}</h2>
+        <!-- IoB removed show more info 
+        <a href=${this._showMoreHref}
+        >${this.hass.localize("ui.dialogs.more_info_control.show_more")}</a
+        -->
       </div>
       <ha-logbook
         .hass=${this.hass}
@@ -66,6 +68,7 @@ export class MoreInfoLogbook extends LitElement {
 
   static get styles() {
     return [
+      haStyle,
       css`
         ha-logbook {
           --logbook-max-height: 250px;
@@ -86,15 +89,8 @@ export class MoreInfoLogbook extends LitElement {
         a:visited {
           color: var(--primary-color);
         }
-        .title {
-          font-family: var(--paper-font-title_-_font-family);
-          -webkit-font-smoothing: var(
-            --paper-font-title_-_-webkit-font-smoothing
-          );
-          font-size: var(--paper-font-subhead_-_font-size);
-          font-weight: var(--paper-font-title_-_font-weight);
-          letter-spacing: var(--paper-font-title_-_letter-spacing);
-          line-height: var(--paper-font-title_-_line-height);
+        h2 {
+          margin: 0;
         }
       `,
     ];

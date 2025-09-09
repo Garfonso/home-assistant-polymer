@@ -30,6 +30,7 @@ import type { HassDialog } from "../../../../dialogs/make-dialog-manager";
 import { haStyle, haStyleDialog } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
 import type { RestoreBackupDialogParams } from "./show-dialog-restore-backup";
+import { waitForIntegrationSetup } from "../../../../data/integration";
 
 interface FormData {
   encryption_key_type: "config" | "custom";
@@ -226,10 +227,10 @@ class DialogRestoreBackup extends LitElement implements HassDialog {
 
   private _renderConfirmActions() {
     return html`
-      <ha-button @click=${this.closeDialog}>
+      <ha-button appearance="plain" @click=${this.closeDialog}>
         ${this.hass.localize("ui.common.cancel")}
       </ha-button>
-      <ha-button @click=${this._restoreBackup} destructive>
+      <ha-button @click=${this._restoreBackup} variant="danger">
         ${this.hass.localize(
           "ui.panel.config.backup.dialogs.restore.actions.restore"
         )}
@@ -280,26 +281,36 @@ class DialogRestoreBackup extends LitElement implements HassDialog {
   }
 
   private _subscribeBackupEvents() {
-    this._unsub = subscribeBackupEvents(this.hass!, (event) => {
-      if (event.manager_state === "idle" && this._state === "in_progress") {
-        this.closeDialog();
+    this._unsub = subscribeBackupEvents(
+      this.hass!,
+      (event) => {
+        if (event.manager_state === "idle" && this._state === "in_progress") {
+          this.closeDialog();
+        }
+        if (event.manager_state !== "restore_backup") {
+          return;
+        }
+        this._state = event.state;
+        if (event.state === "completed") {
+          this.closeDialog();
+        }
+        if (event.state === "failed") {
+          this._error = this.hass.localize(
+            "ui.panel.config.backup.dialogs.restore.restore_failed"
+          );
+        }
+        if (event.state === "in_progress") {
+          this._stage = event.stage;
+        }
+      },
+      async () => {
+        if (isComponentLoaded(this.hass, "backup")) {
+          return true;
+        }
+        return (await waitForIntegrationSetup(this.hass, "backup"))
+          .integration_loaded;
       }
-      if (event.manager_state !== "restore_backup") {
-        return;
-      }
-      this._state = event.state;
-      if (event.state === "completed") {
-        this.closeDialog();
-      }
-      if (event.state === "failed") {
-        this._error = this.hass.localize(
-          "ui.panel.config.backup.dialogs.restore.restore_failed"
-        );
-      }
-      if (event.state === "in_progress") {
-        this._stage = event.stage;
-      }
-    });
+    );
   }
 
   private _unsubscribe() {

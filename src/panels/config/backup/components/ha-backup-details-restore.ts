@@ -67,7 +67,8 @@ class HaBackupDetailsRestore extends LitElement {
           <ha-button
             @click=${this._restore}
             .disabled=${this._isRestoreDisabled}
-            destructive
+            variant="danger"
+            appearance="plain"
           >
             ${this.localize(
               `ui.panel.${this.translationKeyPanel}.details.restore.action`
@@ -133,7 +134,7 @@ class HaBackupDetailsRestore extends LitElement {
       align-items: center;
       flex-direction: row;
       gap: 8px;
-      line-height: normal;
+      line-height: var(--ha-line-height-condensed);
     }
   `;
 }

@@ -1,5 +1,4 @@
 import { ResizeController } from "@lit-labs/observers/resize-controller";
-import "@material/mwc-list";
 import type { RequestSelectedDetail } from "@material/mwc-list/mwc-list-item";
 import { mdiChevronDown, mdiPlus, mdiRefresh } from "@mdi/js";
 import type { CSSResultGroup, PropertyValues, TemplateResult } from "lit";
@@ -14,6 +13,8 @@ import "../../components/ha-button-menu";
 import "../../components/ha-card";
 import "../../components/ha-check-list-item";
 import "../../components/ha-icon-button";
+import "../../components/ha-list";
+import "../../components/ha-list-item";
 import type { HaListItem } from "../../components/ha-list-item";
 import "../../components/ha-menu-button";
 import "../../components/ha-state-icon";
@@ -41,6 +42,7 @@ class PanelCalendar extends LitElement {
 
   @state() private _error?: string = undefined;
 
+  @state()
   @storage({
     key: "deSelectedCalendars",
     state: true,
@@ -133,10 +135,7 @@ class PanelCalendar extends LitElement {
             >
               <ha-button slot="trigger">
                 ${this.hass.localize("ui.components.calendar.my_calendars")}
-                <ha-svg-icon
-                  slot="trailingIcon"
-                  .path=${mdiChevronDown}
-                ></ha-svg-icon>
+                <ha-svg-icon slot="end" .path=${mdiChevronDown}></ha-svg-icon>
               </ha-button>
               ${calendarItems}
               ${this.hass.user?.is_admin
@@ -162,7 +161,7 @@ class PanelCalendar extends LitElement {
           @click=${this._handleRefresh}
         ></ha-icon-button>
         ${showPane && this.hass.user?.is_admin
-          ? html`<mwc-list slot="pane" multi}>${calendarItems}</mwc-list>
+          ? html`<ha-list slot="pane" multi}>${calendarItems}</ha-list>
               <ha-list-item
                 graphic="icon"
                 slot="pane-footer"
@@ -301,25 +300,7 @@ class PanelCalendar extends LitElement {
           --calendar-border-width: 1px 0;
         }
         ha-button-menu ha-button {
-          --mdc-theme-primary: currentColor;
-          --mdc-typography-button-text-transform: none;
-          --mdc-typography-button-font-size: var(
-            --mdc-typography-headline6-font-size,
-            1.25rem
-          );
-          --mdc-typography-button-font-weight: var(
-            --mdc-typography-headline6-font-weight,
-            500
-          );
-          --mdc-typography-button-letter-spacing: var(
-            --mdc-typography-headline6-letter-spacing,
-            0.0125em
-          );
-          --mdc-typography-button-line-height: var(
-            --mdc-typography-headline6-line-height,
-            2rem
-          );
-          --button-height: 40px;
+          --ha-font-size-m: var(--ha-font-size-l);
         }
         :host([mobile]) .lists {
           --mdc-menu-min-width: 100vw;

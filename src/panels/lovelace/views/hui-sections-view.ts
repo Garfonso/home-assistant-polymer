@@ -379,6 +379,7 @@ export class SectionsView extends LitElement implements LovelaceViewElement {
     const index = ev.currentTarget.index;
 
     showEditSectionDialog(this, {
+      lovelace: this.lovelace!,
       lovelaceConfig: this.lovelace!.config,
       saveConfig: (newConfig) => {
         this.lovelace!.saveConfig(newConfig);
@@ -530,9 +531,9 @@ export class SectionsView extends LitElement implements LovelaceViewElement {
 
     .drop-helper p {
       color: var(--primary-text-color);
-      font-size: 16px;
-      font-weight: 400;
-      line-height: 24px;
+      font-size: var(--ha-font-size-l);
+      font-weight: var(--ha-font-weight-normal);
+      line-height: var(--ha-line-height-normal);
       text-align: center;
     }
 
@@ -617,9 +618,9 @@ export class SectionsView extends LitElement implements LovelaceViewElement {
     .imported-card-header .title {
       margin: 0;
       color: var(--primary-text-color);
-      font-size: 16px;
-      font-weight: 400;
-      line-height: 24px;
+      font-size: var(--ha-font-size-l);
+      font-weight: var(--ha-font-weight-normal);
+      line-height: var(--ha-line-height-normal);
       --mdc-icon-size: 18px;
       display: flex;
       align-items: center;
@@ -629,9 +630,9 @@ export class SectionsView extends LitElement implements LovelaceViewElement {
     .imported-card-header .subtitle {
       margin: 0;
       color: var(--secondary-text-color);
-      font-size: 14px;
-      font-weight: 400;
-      line-height: 20px;
+      font-size: var(--ha-font-size-m);
+      font-weight: var(--ha-font-weight-normal);
+      line-height: var(--ha-line-height-condensed);
     }
   `;
 }

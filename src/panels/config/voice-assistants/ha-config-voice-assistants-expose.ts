@@ -1,4 +1,4 @@
-import { consume } from "@lit-labs/context";
+import { consume } from "@lit/context";
 import {
   mdiCloseBoxMultiple,
   mdiCloseCircleOutline,
@@ -27,6 +27,7 @@ import type {
   SortingChangedEvent,
 } from "../../../components/data-table/ha-data-table";
 import "../../../components/ha-fab";
+import "../../../components/ha-button";
 import "../../../components/ha-tooltip";
 import type { AlexaEntity } from "../../../data/alexa";
 import { fetchCloudAlexaEntities } from "../../../data/alexa";
@@ -76,6 +77,7 @@ export class VoiceAssistantsExpose extends LitElement {
 
   @state() private _extEntities?: Record<string, ExtEntityRegistryEntry>;
 
+  @state()
   @storage({
     storage: "sessionStorage",
     key: "voice-expose-table-search",
@@ -587,15 +589,21 @@ export class VoiceAssistantsExpose extends LitElement {
               <div class="header-btns" slot="selection-bar">
                 ${!this.narrow
                   ? html`
-                      <mwc-button @click=${this._exposeSelected}
+                      <ha-button
+                        appearance="plain"
+                        size="small"
+                        @click=${this._exposeSelected}
                         >${this.hass.localize(
                           "ui.panel.config.voice_assistants.expose.expose"
-                        )}</mwc-button
+                        )}</ha-button
                       >
-                      <mwc-button @click=${this._unexposeSelected}
+                      <ha-button
+                        appearance="plain"
+                        size="small"
+                        @click=${this._unexposeSelected}
                         >${this.hass.localize(
                           "ui.panel.config.voice_assistants.expose.unexpose"
-                        )}</mwc-button
+                        )}</ha-button
                       >
                     `
                   : html`
@@ -811,7 +819,7 @@ export class VoiceAssistantsExpose extends LitElement {
           top: -4px;
         }
         .selected-txt {
-          font-weight: bold;
+          font-weight: var(--ha-font-weight-bold);
           padding-left: 16px;
           padding-inline-start: 16px;
           direction: var(--direction);
@@ -820,7 +828,7 @@ export class VoiceAssistantsExpose extends LitElement {
           margin-top: 20px;
         }
         .header-toolbar .selected-txt {
-          font-size: 16px;
+          font-size: var(--ha-font-size-l);
         }
         .header-toolbar .header-btns {
           margin-right: -12px;
@@ -830,7 +838,7 @@ export class VoiceAssistantsExpose extends LitElement {
         .header-btns {
           display: flex;
         }
-        .header-btns > mwc-button,
+        .header-btns > ha-button,
         .header-btns > ha-icon-button {
           margin: 8px;
         }

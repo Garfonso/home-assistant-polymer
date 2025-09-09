@@ -1,17 +1,17 @@
-import "@material/mwc-list/mwc-list";
 import { mdiDotsVertical, mdiDownload, mdiRefresh, mdiText } from "@mdi/js";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
+import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 import { fireEvent } from "../../../common/dom/fire_event";
 import type { LocalizeFunc } from "../../../common/translations/localize";
 import "../../../components/buttons/ha-call-service-button";
-import "../../../components/buttons/ha-progress-button";
 import "../../../components/ha-button-menu";
 import "../../../components/ha-card";
-import "../../../components/ha-spinner";
 import "../../../components/ha-icon-button";
+import "../../../components/ha-list";
 import "../../../components/ha-list-item";
+import "../../../components/ha-spinner";
 import { getSignedPath } from "../../../data/auth";
 import { getErrorLogDownloadUrl } from "../../../data/error_log";
 import { domainToName } from "../../../data/integration";
@@ -23,6 +23,7 @@ import {
 } from "../../../data/system_log";
 import type { HomeAssistant } from "../../../types";
 import { fileDownload } from "../../../util/file_download";
+import { showDownloadLogsDialog } from "./show-dialog-download-logs";
 import { showSystemLogDetailDialog } from "./show-dialog-system-log-detail";
 import { formatSystemLogTime } from "./util";
 
@@ -150,7 +151,7 @@ export class SystemLogCard extends LitElement {
                           { term: this.filter }
                         )}
                       </div>`
-                    : html`<mwc-list
+                    : html`<ha-list
                         >${filteredItems.map(
                           (item, idx) => html`
                             <ha-list-item
@@ -184,7 +185,7 @@ export class SystemLogCard extends LitElement {
                               </span>
                             </ha-list-item>
                           `
-                        )}</mwc-list
+                        )}</ha-list
                       >`}
 
                 <div class="card-actions">
@@ -228,6 +229,18 @@ export class SystemLogCard extends LitElement {
   }
 
   private async _downloadLogs() {
+    // download logs via supervisor
+    if (isComponentLoaded(this.hass, "hassio")) {
+      showDownloadLogsDialog(this, {
+        header: this.header,
+        provider: "core",
+        defaultLineCount: 100,
+        boot: 0,
+      });
+      return;
+    }
+
+    // download logs from core
     const timeString = new Date().toISOString().replace(/:/g, "-");
     const downloadUrl = getErrorLogDownloadUrl;
     const logFileName = `home-assistant_${timeString}.log`;
@@ -248,7 +261,7 @@ export class SystemLogCard extends LitElement {
     :host {
       direction: var(--direction);
     }
-    mwc-list {
+    ha-list {
       direction: ltr;
     }
 
@@ -266,12 +279,12 @@ export class SystemLogCard extends LitElement {
     .card-header {
       color: var(--ha-card-header-color, var(--primary-text-color));
       font-family: var(--ha-card-header-font-family, inherit);
-      font-size: var(--ha-card-header-font-size, 24px);
+      font-size: var(--ha-card-header-font-size, var(--ha-font-size-2xl));
       letter-spacing: -0.012em;
-      line-height: 48px;
+      line-height: var(--ha-line-height-expanded);
       display: block;
       margin-block-start: 0px;
-      font-weight: normal;
+      font-weight: var(--ha-font-weight-normal);
     }
 
     .system-log-intro {

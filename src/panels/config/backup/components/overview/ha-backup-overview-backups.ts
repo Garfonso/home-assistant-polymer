@@ -99,13 +99,11 @@ class HaBackupOverviewBackups extends LitElement {
           </ha-md-list>
         </div>
         <div class="card-actions">
-          <a href="/config/backup/backups?type=all">
-            <ha-button>
-              ${this.hass.localize(
-                "ui.panel.config.backup.overview.backups.show_all"
-              )}
-            </ha-button>
-          </a>
+          <ha-button appearance="filled" href="/config/backup/backups?type=all">
+            ${this.hass.localize(
+              "ui.panel.config.backup.overview.backups.show_all"
+            )}
+          </ha-button>
         </div>
       </ha-card>
     `;
@@ -122,7 +120,7 @@ class HaBackupOverviewBackups extends LitElement {
           gap: 24px;
           display: flex;
           flex-direction: column;
-          margin-bottom: calc(72px + env(safe-area-inset-bottom));
+          margin-bottom: calc(72px + var(--safe-area-inset-bottom));
         }
         .card-actions {
           display: flex;

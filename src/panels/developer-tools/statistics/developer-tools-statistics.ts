@@ -1,4 +1,3 @@
-import "@material/mwc-button/mwc-button";
 import {
   mdiArrowDown,
   mdiArrowUp,
@@ -21,6 +20,8 @@ import { fireEvent } from "../../../common/dom/fire_event";
 import { computeStateName } from "../../../common/entity/compute_state_name";
 import type { LocalizeFunc } from "../../../common/translations/localize";
 import "../../../components/chips/ha-assist-chip";
+import "../../../components/ha-md-divider";
+import "../../../components/ha-button";
 import "../../../components/data-table/ha-data-table";
 import type {
   DataTableColumnContainer,
@@ -31,7 +32,7 @@ import type {
 import { showDataTableSettingsDialog } from "../../../components/data-table/show-dialog-data-table-settings";
 import "../../../components/ha-md-button-menu";
 import "../../../components/ha-dialog";
-import type { HaMenu } from "../../../components/ha-menu";
+import type { HaMdMenu } from "../../../components/ha-md-menu";
 import "../../../components/ha-md-menu-item";
 import "../../../components/search-input-outlined";
 import type {
@@ -108,9 +109,9 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
 
   @query("ha-data-table", true) private _dataTable!: HaDataTable;
 
-  @query("#group-by-menu") private _groupByMenu!: HaMenu;
+  @query("#group-by-menu") private _groupByMenu!: HaMdMenu;
 
-  @query("#sort-by-menu") private _sortByMenu!: HaMenu;
+  @query("#sort-by-menu") private _sortByMenu!: HaMdMenu;
 
   @query("search-input-outlined") private _searchInput!: HTMLElement;
 
@@ -202,9 +203,11 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
         ),
         template: (statistic) =>
           html`${statistic.issues
-            ? html`<mwc-button
+            ? html`<ha-button
                 @click=${this._fixIssue}
                 .data=${statistic.issues}
+                appearance="plain"
+                size="small"
               >
                 ${localize(
                   statistic.issues.some((issue) =>
@@ -213,7 +216,7 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
                     ? "ui.panel.developer-tools.tabs.statistics.fix_issue.fix"
                     : "ui.panel.developer-tools.tabs.statistics.fix_issue.info"
                 )}
-              </mwc-button>`
+              </ha-button>`
             : "—"}`,
         minWidth: "113px",
         maxWidth: "113px",
@@ -365,7 +368,7 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
                       )}
                     </div>
                   </ha-md-menu-item>
-                  <md-divider role="separator" tabindex="-1"></md-divider>
+                  <ha-md-divider role="separator" tabindex="-1"></ha-md-divider>
                   <ha-md-menu-item
                     .value=${undefined}
                     @click=${this._disableSelectMode}
@@ -445,7 +448,11 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
                 </div>`}
         </ha-data-table>
       </div>
-      <ha-menu anchor="group-by-anchor" id="group-by-menu" positioning="fixed">
+      <ha-md-menu
+        anchor="group-by-anchor"
+        id="group-by-menu"
+        positioning="fixed"
+      >
         ${Object.entries(columns).map(([id, column]) =>
           column.groupable
             ? html`
@@ -468,7 +475,7 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
         >
           ${localize("ui.components.subpage-data-table.dont_group_by")}
         </ha-md-menu-item>
-        <md-divider role="separator" tabindex="-1"></md-divider>
+        <ha-md-divider role="separator" tabindex="-1"></ha-md-divider>
         <ha-md-menu-item
           @click=${this._collapseAllGroups}
           .disabled=${this._groupColumn === undefined}
@@ -489,8 +496,8 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
           ></ha-svg-icon>
           ${localize("ui.components.subpage-data-table.expand_all_groups")}
         </ha-md-menu-item>
-      </ha-menu>
-      <ha-menu anchor="sort-by-anchor" id="sort-by-menu" positioning="fixed">
+      </ha-md-menu>
+      <ha-md-menu anchor="sort-by-anchor" id="sort-by-menu" positioning="fixed">
         ${Object.entries(columns).map(([id, column]) =>
           column.sortable
             ? html`
@@ -516,7 +523,7 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
               `
             : nothing
         )}
-      </ha-menu>
+      </ha-md-menu>
     `;
   }
 
@@ -757,7 +764,7 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
           justify-content: space-between;
           padding: 8px 12px;
           box-sizing: border-box;
-          font-size: 14px;
+          font-size: var(--ha-font-size-m);
           --ha-assist-chip-container-color: var(--card-background-color);
         }
 
@@ -795,10 +802,10 @@ class HaPanelDevStatistics extends KeyboardShortcutMixin(LitElement) {
 
         ha-dialog {
           --mdc-dialog-min-width: calc(
-            100vw - env(safe-area-inset-right) - env(safe-area-inset-left)
+            100vw - var(--safe-area-inset-right) - var(--safe-area-inset-left)
           );
           --mdc-dialog-max-width: calc(
-            100vw - env(safe-area-inset-right) - env(safe-area-inset-left)
+            100vw - var(--safe-area-inset-right) - var(--safe-area-inset-left)
           );
           --mdc-dialog-min-height: 100%;
           --mdc-dialog-max-height: 100%;

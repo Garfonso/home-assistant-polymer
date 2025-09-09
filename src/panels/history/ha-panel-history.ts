@@ -63,6 +63,7 @@ class HaPanelHistory extends LitElement {
 
   @state() private _endDate: Date;
 
+  @state()
   @storage({
     key: "historyPickedValue",
     state: true,
@@ -425,13 +426,7 @@ class HaPanelHistory extends LitElement {
 
   private _dateRangeChanged(ev) {
     this._startDate = ev.detail.value.startDate;
-    const endDate = ev.detail.value.endDate;
-    if (endDate.getHours() === 0 && endDate.getMinutes() === 0) {
-      endDate.setDate(endDate.getDate() + 1);
-      endDate.setMilliseconds(endDate.getMilliseconds() - 1);
-    }
-    this._endDate = endDate;
-
+    this._endDate = ev.detail.value.endDate;
     this._updatePath();
   }
 
@@ -625,7 +620,7 @@ class HaPanelHistory extends LitElement {
 
         .content {
           padding: 0 16px 16px;
-          padding-bottom: max(env(safe-area-inset-bottom), 16px);
+          padding-bottom: max(var(--safe-area-inset-bottom), 16px);
         }
 
         :host([virtualize]) {

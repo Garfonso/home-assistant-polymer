@@ -1,5 +1,4 @@
 import { mdiPlay, mdiStop } from "@mdi/js";
-import "@material/mwc-button";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
@@ -226,7 +225,7 @@ class MoreInfoScript extends LitElement {
       margin-bottom: 16px;
     }
     .fields .title {
-      font-weight: bold;
+      font-weight: var(--ha-font-weight-bold);
     }
     ha-control-button ha-svg-icon {
       z-index: -1;

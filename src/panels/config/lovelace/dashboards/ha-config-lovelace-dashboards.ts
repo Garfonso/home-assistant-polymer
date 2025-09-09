@@ -11,17 +11,21 @@ import { customElement, property, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
 import memoize from "memoize-one";
 import { isComponentLoaded } from "../../../../common/config/is_component_loaded";
+import { storage } from "../../../../common/decorators/storage";
 import { navigate } from "../../../../common/navigate";
 import { stringCompare } from "../../../../common/string/compare";
+import type { LocalizeFunc } from "../../../../common/translations/localize";
 import type {
   DataTableColumnContainer,
   RowClickedEvent,
   SortingChangedEvent,
 } from "../../../../components/data-table/ha-data-table";
-import "../../../../components/ha-clickable-list-item";
 import "../../../../components/ha-fab";
 import "../../../../components/ha-icon";
+import "../../../../components/ha-button";
 import "../../../../components/ha-icon-button";
+import "../../../../components/ha-md-button-menu";
+import "../../../../components/ha-md-list-item";
 import "../../../../components/ha-svg-icon";
 import "../../../../components/ha-tooltip";
 import type { LovelacePanelConfig } from "../../../../data/lovelace";
@@ -44,13 +48,11 @@ import { showConfirmationDialog } from "../../../../dialogs/generic/show-dialog-
 import "../../../../layouts/hass-loading-screen";
 import "../../../../layouts/hass-tabs-subpage-data-table";
 import type { HomeAssistant, Route } from "../../../../types";
-import type { LocalizeFunc } from "../../../../common/translations/localize";
 import { getLovelaceStrategy } from "../../../lovelace/strategies/get-strategy";
 import { showNewDashboardDialog } from "../../dashboard/show-dialog-new-dashboard";
 import { lovelaceTabs } from "../ha-config-lovelace";
 import { showDashboardConfigureStrategyDialog } from "./show-dialog-lovelace-dashboard-configure-strategy";
 import { showDashboardDetailDialog } from "./show-dialog-lovelace-dashboard-detail";
-import { storage } from "../../../../common/decorators/storage";
 
 type DataTableItem = Pick<
   LovelaceDashboard,
@@ -73,6 +75,7 @@ export class HaConfigLovelaceDashboards extends LitElement {
 
   @state() private _dashboards: LovelaceDashboard[] = [];
 
+  @state()
   @storage({
     storage: "sessionStorage",
     key: "lovelace-dashboards-table-search",
@@ -160,7 +163,7 @@ export class HaConfigLovelaceDashboards extends LitElement {
                         placement="right"
                       >
                         <ha-svg-icon
-                          style="padding-left: 10px; padding-inline-start: 10px; direction: var(--direction);"
+                          style="padding-left: 10px; padding-inline-start: 10px; padding-inline-end: initial; direction: var(--direction);"
                           .path=${mdiCheckCircleOutline}
                         ></ha-svg-icon>
                       </ha-tooltip>
@@ -235,12 +238,13 @@ export class HaConfigLovelaceDashboards extends LitElement {
                 ></ha-icon-button>
               `
             : html`
-                <mwc-button
-                  .urlPath=${dashboard.url_path}
-                  @click=${this._navigate}
+                <ha-button
+                  href="/${dashboard.url_path}"
+                  size="small"
+                  appearance="plain"
                   >${this.hass.localize(
                     "ui.panel.config.lovelace.dashboards.picker.open"
-                  )}</mwc-button
+                  )}</ha-button
                 >
               `,
       };
@@ -327,16 +331,16 @@ export class HaConfigLovelaceDashboards extends LitElement {
         has-fab
         clickable
       >
-        <ha-button-menu slot="toolbar-icon" activatable>
+        <ha-md-button-menu slot="toolbar-icon">
           <ha-icon-button
             slot="trigger"
             .label=${this.hass.localize("ui.common.menu")}
             .path=${mdiDotsVertical}
           ></ha-icon-button>
-          <ha-clickable-list-item href="/config/lovelace/resources">
+          <ha-md-list-item type="link" href="/config/lovelace/resources">
             ${this.hass.localize("ui.panel.config.lovelace.resources.caption")}
-          </ha-clickable-list-item>
-        </ha-button-menu>
+          </ha-md-list-item>
+        </ha-md-button-menu>
         <ha-fab
           slot="fab"
           .label=${this.hass.localize(

@@ -21,13 +21,13 @@ import "../../../components/ha-button-menu";
 import "../../../components/ha-check-list-item";
 import "../../../components/ha-checkbox";
 import "../../../components/ha-fab";
+import "../../../components/ha-button";
 import "../../../components/ha-icon-button";
 import "../../../components/ha-svg-icon";
 import "../../../components/search-input";
 import "../../../components/search-input-outlined";
 import type { ConfigEntry } from "../../../data/config_entries";
 import { getConfigEntries } from "../../../data/config_entries";
-import { getConfigFlowInProgressCollection } from "../../../data/config_flow";
 import { fetchDiagnosticHandlers } from "../../../data/diagnostics";
 import type { EntityRegistryEntry } from "../../../data/entity_registry";
 import { subscribeEntityRegistry } from "../../../data/entity_registry";
@@ -170,6 +170,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
       components: string[],
       manifests: Record<string, IntegrationManifest>,
       configEntries: ConfigEntryExtended[],
+      entityEntries: EntityRegistryEntry[],
       localize: HomeAssistant["localize"],
       filter?: string
     ): [
@@ -218,7 +219,17 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
         })
       );
 
-      const allEntries = [...configEntries, ...nonConfigEntry];
+      const allEntries = [
+        ...configEntries.filter(
+          (entry) =>
+            entry.supports_options ||
+            this._manifests[entry.domain]?.integration_type !== "hardware" ||
+            entityEntries.some(
+              (entity) => entity.config_entry_id === entry.entry_id
+            )
+        ),
+        ...nonConfigEntry,
+      ];
 
       let filteredConfigEntries: ConfigEntryExtended[];
       const ignored: ConfigEntryExtended[] = [];
@@ -380,6 +391,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
         this.hass.config.components,
         this._manifests,
         this.configEntries,
+        this._entityRegistryEntries,
         this.hass.localize,
         this._filter
       );
@@ -395,11 +407,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
           ${!this._showDisabled && this.narrow && disabledConfigEntries.length
             ? html`<span class="badge">${disabledConfigEntries.length}</span>`
             : ""}
-          <ha-button-menu
-            multi
-            @action=${this._handleMenuAction}
-            @click=${this._preventDefault}
-          >
+          <ha-button-menu multi @action=${this._handleMenuAction}>
             <ha-icon-button
               slot="trigger"
               .label=${this.hass.localize("ui.common.menu")}
@@ -436,6 +444,7 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
         back-path="/config"
         .route=${this.route}
         .tabs=${configSections.devices}
+        has-fab
       >
         ${this.narrow
           ? html`
@@ -477,12 +486,15 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
                           "ui.panel.config.integrations.disable.disabled_integrations",
                           { number: disabledConfigEntries.length }
                         )}
-                        <mwc-button
+                        <ha-button
+                          appearance="plain"
+                          size="small"
                           @click=${this._toggleShowDisabled}
-                          .label=${this.hass.localize(
+                        >
+                          ${this.hass.localize(
                             "ui.panel.config.integrations.disable.show"
                           )}
-                        ></mwc-button>
+                        </ha-button>
                       </div>`
                     : ""}
                   ${filterMenu}
@@ -593,13 +605,16 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
                         "ui.panel.config.integrations.none_found_detail"
                       )}
                     </p>
-                    <mwc-button
+                    <ha-button
                       @click=${this._createFlow}
-                      unelevated
-                      .label=${this.hass.localize(
+                      appearance="filled"
+                      size="small"
+                    >
+                      <ha-svg-icon slot="start" .path=${mdiPlus}></ha-svg-icon>
+                      ${this.hass.localize(
                         "ui.panel.config.integrations.add_integration"
                       )}
-                    ></mwc-button>
+                    </ha-button>
                   </div>
                 `
               : // If we have a filter, never show a card
@@ -622,13 +637,19 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
                             "ui.panel.config.integrations.no_integrations"
                           )}
                         </p>
-                        <mwc-button
+                        <ha-button
                           @click=${this._createFlow}
-                          unelevated
-                          .label=${this.hass.localize(
+                          appearance="filled"
+                          size="small"
+                        >
+                          <ha-svg-icon
+                            slot="start"
+                            .path=${mdiPlus}
+                          ></ha-svg-icon>
+                          ${this.hass.localize(
                             "ui.panel.config.integrations.add_integration"
                           )}
-                        ></mwc-button>
+                        </ha-button>
                       </div>
                     `
                   : ""}
@@ -743,7 +764,6 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
   }
 
   private _handleFlowUpdated() {
-    getConfigFlowInProgressCollection(this.hass.connection).refresh();
     this._reScanImprovDevices();
     this._fetchManifests();
   }
@@ -974,9 +994,6 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
           grid-gap: 8px 8px;
           padding: 8px 16px 16px;
         }
-        .container:last-of-type {
-          margin-bottom: 64px;
-        }
         .empty-message {
           margin: auto;
           text-align: center;
@@ -1028,13 +1045,13 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
           padding-left: 8px;
           padding-inline-start: 8px;
           padding-inline-end: 2px;
-          font-size: 14px;
+          font-size: var(--ha-font-size-m);
           width: max-content;
           cursor: initial;
           direction: var(--direction);
           height: 32px;
         }
-        .active-filters mwc-button {
+        .active-filters ha-button {
           margin-left: 8px;
           margin-inline-start: 8px;
           margin-inline-end: initial;
@@ -1053,20 +1070,18 @@ class HaConfigIntegrationsDashboard extends KeyboardShortcutMixin(
         }
         .badge {
           min-width: 20px;
-          box-sizing: border-box;
+          min-height: 20px;
           border-radius: 50%;
-          font-weight: 400;
+          font-weight: var(--ha-font-weight-normal);
           background-color: var(--primary-color);
-          line-height: 20px;
-          text-align: center;
-          padding: 0px 4px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
           color: var(--text-primary-color);
           position: absolute;
           right: 0px;
-          inset-inline-end: 0px;
-          inset-inline-start: initial;
           top: 4px;
-          font-size: 0.65em;
+          font-size: var(--ha-font-size-s);
         }
         .menu-badge-container {
           position: relative;

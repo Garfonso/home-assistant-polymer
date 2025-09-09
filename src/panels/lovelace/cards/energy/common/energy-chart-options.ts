@@ -10,6 +10,8 @@ import {
   addYears,
   addMonths,
   addHours,
+  startOfDay,
+  addDays,
 } from "date-fns";
 import type {
   BarSeriesOption,
@@ -172,7 +174,11 @@ function formatTooltip(
   const values = params
     .map((param) => {
       const y = param.value?.[1] as number;
-      const value = formatNumber(y, locale);
+      const value = formatNumber(
+        y,
+        locale,
+        y < 0.1 ? { maximumFractionDigits: 3 } : undefined
+      );
       if (value === "0") {
         return false;
       }
@@ -281,6 +287,10 @@ export function getCompareTransform(start: Date, compareStart?: Date) {
     start.getTime() === startOfMonth(start).getTime()
   ) {
     return (ts: Date) => addMonths(ts, compareMonthDiff);
+  }
+  const compareDayDiff = differenceInDays(start, compareStart);
+  if (compareDayDiff !== 0 && start.getTime() === startOfDay(start).getTime()) {
+    return (ts: Date) => addDays(ts, compareDayDiff);
   }
   const compareOffset = start.getTime() - compareStart.getTime();
   return (ts: Date) => addMilliseconds(ts, compareOffset);
