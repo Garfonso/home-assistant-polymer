@@ -58,7 +58,7 @@ const createRspackConfig = ({
     devtool: isTestBuild
       ? false
       : isProdBuild
-        ? "nosources-source-map"
+        ? false // IoB - no source maps in prod, halves emitted file count
         : "eval-cheap-module-source-map",
     entry,
     node: false,
