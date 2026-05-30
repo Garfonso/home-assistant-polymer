@@ -1,11 +1,10 @@
-import "@material/mwc-button/mwc-button";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 import "../../../components/ha-alert";
 import "../../../components/ha-card";
-import "../../../components/ha-checkbox";
+import "../../../components/ha-button";
 import "../../../components/ha-network";
 import "../../../components/ha-settings-row";
 import { fetchNetworkInfo } from "../../../data/hassio/network";
@@ -23,10 +22,7 @@ class ConfigNetwork extends LitElement {
   @state() private _error?: { code: string; message: string };
 
   protected render() {
-    if (
-      !this.hass.userData?.showAdvanced ||
-      !isComponentLoaded(this.hass, "network")
-    ) {
+    if (!isComponentLoaded(this.hass.config, "network")) {
       return nothing;
     }
 
@@ -55,19 +51,19 @@ class ConfigNetwork extends LitElement {
           ></ha-network>
         </div>
         <div class="card-actions">
-          <mwc-button @click=${this._save}>
+          <ha-button @click=${this._save}>
             ${this.hass.localize(
               "ui.panel.config.core.section.core.core_config.save_button"
             )}
-          </mwc-button>
+          </ha-button>
         </div>
       </ha-card>
     `;
   }
 
-  protected firstUpdated(changedProps: PropertyValues) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
-    if (isComponentLoaded(this.hass, "network")) {
+    if (isComponentLoaded(this.hass.config, "network")) {
       this._load();
     }
   }
@@ -76,7 +72,7 @@ class ConfigNetwork extends LitElement {
     this._error = undefined;
     try {
       const coreNetwork = await getNetworkConfig(this.hass);
-      if (isComponentLoaded(this.hass, "hassio")) {
+      if (isComponentLoaded(this.hass.config, "hassio")) {
         const supervisorNetwork = await fetchNetworkInfo(this.hass);
         const interfaces = new Set(
           supervisorNetwork.interfaces.map((int) => int.interface)

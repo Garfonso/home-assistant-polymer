@@ -49,6 +49,7 @@ export class HaExpansionPanel extends LitElement {
           tabindex=${this.noCollapse ? -1 : 0}
           aria-expanded=${this.expanded}
           aria-controls="sect1"
+          part="summary"
         >
           ${this.leftChevron ? chevronIcon : nothing}
           <slot name="leading-icon"></slot>
@@ -58,6 +59,7 @@ export class HaExpansionPanel extends LitElement {
               <slot class="secondary" name="secondary">${this.secondary}</slot>
             </div>
           </slot>
+          <slot name="event"></slot>
           ${!this.leftChevron ? chevronIcon : nothing}
           <slot name="icons"></slot>
         </div>
@@ -75,7 +77,7 @@ export class HaExpansionPanel extends LitElement {
     `;
   }
 
-  protected willUpdate(changedProps: PropertyValues) {
+  protected willUpdate(changedProps: PropertyValues<this>) {
     super.willUpdate(changedProps);
     if (changedProps.has("expanded")) {
       this._showContent = this.expanded;
@@ -144,7 +146,7 @@ export class HaExpansionPanel extends LitElement {
     .top {
       display: flex;
       align-items: center;
-      border-radius: var(--ha-card-border-radius, 12px);
+      border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg));
     }
 
     .top.expanded {
@@ -161,7 +163,7 @@ export class HaExpansionPanel extends LitElement {
       border-width: 1px;
       border-style: solid;
       border-color: var(--outline-color);
-      border-radius: var(--ha-card-border-radius, 12px);
+      border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg));
     }
 
     .summary-icon {
@@ -170,6 +172,11 @@ export class HaExpansionPanel extends LitElement {
       margin-left: 8px;
       margin-inline-start: 8px;
       margin-inline-end: initial;
+      border-radius: var(--ha-border-radius-circle);
+    }
+
+    #summary:focus-visible ha-svg-icon.summary-icon {
+      background-color: var(--ha-color-fill-neutral-normal-active);
     }
 
     :host([left-chevron]) .summary-icon,
@@ -188,7 +195,7 @@ export class HaExpansionPanel extends LitElement {
       align-items: center;
       cursor: pointer;
       overflow: hidden;
-      font-weight: 500;
+      font-weight: var(--ha-font-weight-medium);
       outline: none;
     }
     #summary.noCollapse {
@@ -202,6 +209,8 @@ export class HaExpansionPanel extends LitElement {
     .header,
     ::slotted([slot="header"]) {
       flex: 1;
+      overflow-wrap: anywhere;
+      color: var(--primary-text-color);
     }
 
     .container {
@@ -218,7 +227,7 @@ export class HaExpansionPanel extends LitElement {
     .secondary {
       display: block;
       color: var(--secondary-text-color);
-      font-size: 12px;
+      font-size: var(--ha-font-size-s);
     }
   `;
 }

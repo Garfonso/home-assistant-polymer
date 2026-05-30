@@ -19,7 +19,6 @@ const SECS_PER_HOUR = SECS_PER_MIN * 60;
 // Adapted from https://github.com/formatjs/formatjs/blob/186cef62f980ec66252ee232f438a42d0b51b9f9/packages/intl-utils/src/diff.ts
 export function selectUnit(
   from: Date | number,
-  // eslint-disable-next-line default-param-last
   to: Date | number = Date.now(),
   locale: FrontendLocaleData,
   thresholds: Partial<Thresholds> = {}
@@ -119,8 +118,8 @@ type Thresholds = Record<
 >;
 
 export const DEFAULT_THRESHOLDS: Thresholds = {
-  second: 45, // seconds to minute
-  minute: 45, // minutes to hour
+  second: 59, // seconds to minute
+  minute: 59, // minutes to hour
   hour: 22, // hour to day
   day: 5, // day to week
   week: 4, // week to months

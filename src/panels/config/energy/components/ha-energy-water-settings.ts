@@ -1,10 +1,10 @@
-import "@material/mwc-button/mwc-button";
-import { mdiDelete, mdiWater, mdiPencil } from "@mdi/js";
+import { mdiDelete, mdiWater, mdiPencil, mdiPlus } from "@mdi/js";
 import type { CSSResultGroup, TemplateResult } from "lit";
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators";
 import { fireEvent } from "../../../../common/dom/fire_event";
 import "../../../../components/ha-card";
+import "../../../../components/ha-button";
 import "../../../../components/ha-icon-button";
 import type {
   EnergyPreferences,
@@ -55,7 +55,7 @@ export class EnergyWaterSettings extends LitElement {
     });
 
     return html`
-      <ha-card outlined>
+      <ha-card>
         <h1 class="card-header">
           <ha-svg-icon .path=${mdiWater}></ha-svg-icon>
           ${this.hass.localize("ui.panel.config.energy.water.title")}
@@ -81,50 +81,57 @@ export class EnergyWaterSettings extends LitElement {
               ></ha-energy-validation-result>
             `
           )}
-          <h3>
-            ${this.hass.localize(
-              "ui.panel.config.energy.water.water_consumption"
-            )}
-          </h3>
-          ${waterSources.map((source) => {
-            const entityState = this.hass.states[source.stat_energy_from];
-            return html`
-              <div class="row" .source=${source}>
-                ${entityState?.attributes.icon
-                  ? html`<ha-icon
-                      .icon=${entityState.attributes.icon}
-                    ></ha-icon>`
-                  : html`<ha-svg-icon .path=${mdiWater}></ha-svg-icon>`}
-                <span class="content"
-                  >${getStatisticLabel(
-                    this.hass,
-                    source.stat_energy_from,
-                    this.statsMetadata?.[source.stat_energy_from]
-                  )}</span
-                >
-                <ha-icon-button
-                  .label=${this.hass.localize(
-                    "ui.panel.config.energy.water.edit_water_source"
-                  )}
-                  @click=${this._editSource}
-                  .path=${mdiPencil}
-                ></ha-icon-button>
-                <ha-icon-button
-                  .label=${this.hass.localize(
-                    "ui.panel.config.energy.water.delete_water_source"
-                  )}
-                  @click=${this._deleteSource}
-                  .path=${mdiDelete}
-                ></ha-icon-button>
-              </div>
-            `;
-          })}
-          <div class="row border-bottom">
-            <ha-svg-icon .path=${mdiWater}></ha-svg-icon>
-            <mwc-button @click=${this._addSource}
+          ${waterSources.length > 0
+            ? html`
+                <div class="items-container">
+                  ${waterSources.map((source) => {
+                    const entityState =
+                      this.hass.states[source.stat_energy_from];
+                    return html`
+                      <div class="row" .source=${source}>
+                        ${entityState?.attributes.icon
+                          ? html`<ha-icon
+                              .icon=${entityState.attributes.icon}
+                            ></ha-icon>`
+                          : html`<ha-svg-icon .path=${mdiWater}></ha-svg-icon>`}
+                        <span class="content"
+                          >${source.name ||
+                          getStatisticLabel(
+                            this.hass,
+                            source.stat_energy_from,
+                            this.statsMetadata?.[source.stat_energy_from]
+                          )}</span
+                        >
+                        <ha-icon-button
+                          .label=${this.hass.localize(
+                            "ui.panel.config.energy.water.edit_water_source"
+                          )}
+                          @click=${this._editSource}
+                          .path=${mdiPencil}
+                        ></ha-icon-button>
+                        <ha-icon-button
+                          .label=${this.hass.localize(
+                            "ui.panel.config.energy.water.delete_water_source"
+                          )}
+                          @click=${this._deleteSource}
+                          .path=${mdiDelete}
+                        ></ha-icon-button>
+                      </div>
+                    `;
+                  })}
+                </div>
+              `
+            : ""}
+          <div class="row">
+            <ha-button
+              @click=${this._addSource}
+              appearance="filled"
+              size="small"
+            >
+              <ha-svg-icon slot="start" .path=${mdiPlus}></ha-svg-icon
               >${this.hass.localize(
                 "ui.panel.config.energy.water.add_water_source"
-              )}</mwc-button
+              )}</ha-button
             >
           </div>
         </div>
@@ -134,6 +141,7 @@ export class EnergyWaterSettings extends LitElement {
 
   private _addSource() {
     showEnergySettingsWaterDialog(this, {
+      statsMetadata: this.statsMetadata,
       water_sources: this.preferences.energy_sources.filter(
         (src) => src.type === "water"
       ) as WaterSourceTypeEnergyPreference[],
@@ -151,8 +159,8 @@ export class EnergyWaterSettings extends LitElement {
     const origSource: WaterSourceTypeEnergyPreference =
       ev.currentTarget.closest(".row").source;
     showEnergySettingsWaterDialog(this, {
+      statsMetadata: this.statsMetadata,
       source: { ...origSource },
-      metadata: this.statsMetadata?.[origSource.stat_energy_from],
       water_sources: this.preferences.energy_sources.filter(
         (src) => src.type === "water"
       ) as WaterSourceTypeEnergyPreference[],

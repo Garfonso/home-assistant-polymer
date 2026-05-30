@@ -6,6 +6,7 @@ import memoizeOne from "memoize-one";
 import { isComponentLoaded } from "../../common/config/is_component_loaded";
 import { createSearchParam } from "../../common/url/search-params";
 import "../../panels/logbook/ha-logbook";
+import { haStyle } from "../../resources/styles";
 import type { HomeAssistant } from "../../types";
 
 @customElement("ha-more-info-logbook")
@@ -21,7 +22,7 @@ export class MoreInfoLogbook extends LitElement {
   private _entityIdAsList = memoizeOne((entityId: string) => [entityId]);
 
   protected render() {
-    if (!isComponentLoaded(this.hass, "logbook") || !this.entityId) {
+    if (!isComponentLoaded(this.hass.config, "logbook") || !this.entityId) {
       return nothing;
     }
     const stateObj = this.hass.states[this.entityId];
@@ -32,9 +33,7 @@ export class MoreInfoLogbook extends LitElement {
 
     return html`
       <div class="header">
-        <div class="title">
-          ${this.hass.localize("ui.dialogs.more_info_control.logbook")}
-        </div>
+        <h2>${this.hass.localize("ui.dialogs.more_info_control.logbook")}</h2>
         <!-- IoB removed show more info -->
       </div>
       <ha-logbook
@@ -50,7 +49,7 @@ export class MoreInfoLogbook extends LitElement {
     `;
   }
 
-  protected willUpdate(changedProps: PropertyValues): void {
+  protected willUpdate(changedProps: PropertyValues<this>): void {
     super.willUpdate(changedProps);
 
     if (changedProps.has("entityId") && this.entityId) {
@@ -66,6 +65,7 @@ export class MoreInfoLogbook extends LitElement {
 
   static get styles() {
     return [
+      haStyle,
       css`
         ha-logbook {
           --logbook-max-height: 250px;
@@ -80,21 +80,14 @@ export class MoreInfoLogbook extends LitElement {
           flex-direction: row;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 8px;
+          margin-bottom: var(--ha-space-2);
         }
         .header > a,
         a:visited {
           color: var(--primary-color);
         }
-        .title {
-          font-family: var(--paper-font-title_-_font-family);
-          -webkit-font-smoothing: var(
-            --paper-font-title_-_-webkit-font-smoothing
-          );
-          font-size: var(--paper-font-subhead_-_font-size);
-          font-weight: var(--paper-font-title_-_font-weight);
-          letter-spacing: var(--paper-font-title_-_letter-spacing);
-          line-height: var(--paper-font-title_-_line-height);
+        h2 {
+          margin: 0;
         }
       `,
     ];

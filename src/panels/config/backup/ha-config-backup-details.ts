@@ -1,4 +1,3 @@
-import type { ActionDetail } from "@material/mwc-list";
 import {
   mdiDelete,
   mdiDotsVertical,
@@ -6,28 +5,30 @@ import {
   mdiHarddisk,
   mdiNas,
 } from "@mdi/js";
+import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
+import { isComponentLoaded } from "../../../common/config/is_component_loaded";
+import { fireEvent } from "../../../common/dom/fire_event";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { navigate } from "../../../common/navigate";
+import "../../../components/animation/ha-fade-in";
 import "../../../components/ha-alert";
 import "../../../components/ha-button";
-import "../../../components/ha-button-menu";
 import "../../../components/ha-card";
-import "../../../components/ha-fade-in";
-import "../../../components/ha-spinner";
+import "../../../components/ha-dropdown";
+import type { HaDropdownSelectEvent } from "../../../components/ha-dropdown";
+import "../../../components/ha-dropdown-item";
 import "../../../components/ha-icon-button";
-import "../../../components/ha-list-item";
-import "../../../components/ha-md-list";
-import "../../../components/ha-md-list-item";
+import "../../../components/ha-spinner";
+import "../../../components/item/ha-list-item-base";
+import "../../../components/list/ha-list-base";
 import type {
   BackupAgent,
   BackupConfig,
   BackupContentAgent,
   BackupContentExtended,
 } from "../../../data/backup";
-import "./components/ha-backup-details-summary";
-import "./components/ha-backup-details-restore";
 import {
   compareAgents,
   computeBackupAgentName,
@@ -36,14 +37,14 @@ import {
   isLocalAgent,
   isNetworkMountAgent,
 } from "../../../data/backup";
+import { showConfirmationDialog } from "../../../dialogs/generic/show-dialog-box";
 import "../../../layouts/hass-subpage";
 import type { HomeAssistant } from "../../../types";
 import { brandsUrl } from "../../../util/brands-url";
+import "./components/ha-backup-details-restore";
+import "./components/ha-backup-details-summary";
 import { showRestoreBackupDialog } from "./dialogs/show-dialog-restore-backup";
-import { fireEvent } from "../../../common/dom/fire_event";
-import { showConfirmationDialog } from "../../../dialogs/generic/show-dialog-box";
 import { downloadBackup } from "./helper/download_backup";
-import { isComponentLoaded } from "../../../common/config/is_component_loaded";
 
 interface Agent extends BackupContentAgent {
   id: string;
@@ -89,7 +90,7 @@ class HaConfigBackupDetails extends LitElement {
 
   @state() private _error?: string;
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
 
     if (this.backupId) {
@@ -104,7 +105,7 @@ class HaConfigBackupDetails extends LitElement {
       return nothing;
     }
 
-    const isHassio = isComponentLoaded(this.hass, "hassio");
+    const isHassio = isComponentLoaded(this.hass.config, "hassio");
 
     return html`
       <hass-subpage
@@ -114,21 +115,21 @@ class HaConfigBackupDetails extends LitElement {
         .header=${this._backup?.name ||
         this.hass.localize("ui.panel.config.backup.details.header")}
       >
-        <ha-button-menu slot="toolbar-icon" @action=${this._handleAction}>
+        <ha-dropdown slot="toolbar-icon" @wa-select=${this._handleAction}>
           <ha-icon-button
             slot="trigger"
             .label=${this.hass.localize("ui.common.menu")}
             .path=${mdiDotsVertical}
           ></ha-icon-button>
-          <ha-list-item graphic="icon">
-            <ha-svg-icon slot="graphic" .path=${mdiDownload}></ha-svg-icon>
+          <ha-dropdown-item value="download">
+            <ha-svg-icon slot="icon" .path=${mdiDownload}></ha-svg-icon>
             ${this.hass.localize("ui.common.download")}
-          </ha-list-item>
-          <ha-list-item graphic="icon" class="warning">
-            <ha-svg-icon slot="graphic" .path=${mdiDelete}></ha-svg-icon>
+          </ha-dropdown-item>
+          <ha-dropdown-item value="delete" variant="danger">
+            <ha-svg-icon slot="icon" .path=${mdiDelete}></ha-svg-icon>
             ${this.hass.localize("ui.common.delete")}
-          </ha-list-item>
-        </ha-button-menu>
+          </ha-dropdown-item>
+        </ha-dropdown>
         <div class="content">
           ${this._error &&
           html`<ha-alert alert-type="error">${this._error}</ha-alert>`}
@@ -170,7 +171,7 @@ class HaConfigBackupDetails extends LitElement {
                       )}
                     </div>
                     <div class="card-content">
-                      <ha-md-list>
+                      <ha-list-base>
                         ${this._agents.map((agent) => {
                           const agentId = agent.id;
 
@@ -185,7 +186,7 @@ class HaConfigBackupDetails extends LitElement {
                           const unencrypted = !agent.protected;
 
                           return html`
-                            <ha-md-list-item>
+                            <ha-list-item-base>
                               ${
                                 isLocalAgent(agentId)
                                   ? html`
@@ -204,13 +205,15 @@ class HaConfigBackupDetails extends LitElement {
                                       `
                                     : html`
                                         <img
-                                          .src=${brandsUrl({
-                                            domain,
-                                            type: "icon",
-                                            useFallback: true,
-                                            darkOptimized:
-                                              this.hass.themes?.darkMode,
-                                          })}
+                                          .src=${brandsUrl(
+                                            {
+                                              domain,
+                                              type: "icon",
+                                              darkOptimized:
+                                                this.hass.themes?.darkMode,
+                                            },
+                                            this.hass.auth.data.hassUrl
+                                          )}
                                           crossorigin="anonymous"
                                           referrerpolicy="no-referrer"
                                           alt=${`${domain} logo`}
@@ -253,9 +256,9 @@ class HaConfigBackupDetails extends LitElement {
                               ${
                                 success
                                   ? html`
-                                      <ha-button-menu
+                                      <ha-dropdown
                                         slot="end"
-                                        @action=${this._handleAgentAction}
+                                        @wa-select=${this._handleAgentAction}
                                         .agent=${agentId}
                                         fixed
                                       >
@@ -266,23 +269,23 @@ class HaConfigBackupDetails extends LitElement {
                                           )}
                                           .path=${mdiDotsVertical}
                                         ></ha-icon-button>
-                                        <ha-list-item graphic="icon">
+                                        <ha-dropdown-item value="download">
                                           <ha-svg-icon
-                                            slot="graphic"
+                                            slot="icon"
                                             .path=${mdiDownload}
                                           ></ha-svg-icon>
                                           ${this.hass.localize(
                                             "ui.panel.config.backup.details.locations.download"
                                           )}
-                                        </ha-list-item>
-                                      </ha-button-menu>
+                                        </ha-dropdown-item>
+                                      </ha-dropdown>
                                     `
                                   : nothing
                               }
-                            </ha-md-list-item>
+                            </ha-list-item-base>
                           `;
                         })}
-                      </ha-md-list>
+                      </ha-list-base>
                     </div>
                   </ha-card>
                 `}
@@ -313,18 +316,19 @@ class HaConfigBackupDetails extends LitElement {
     }
   }
 
-  private _handleAction(ev: CustomEvent<ActionDetail>) {
-    switch (ev.detail.index) {
-      case 0:
+  private _handleAction(ev: HaDropdownSelectEvent) {
+    const action = ev.detail.item.value;
+    switch (action) {
+      case "download":
         this._downloadBackup();
         break;
-      case 1:
+      case "delete":
         this._deleteBackup();
         break;
     }
   }
 
-  private _handleAgentAction(ev: CustomEvent<ActionDetail>) {
+  private _handleAgentAction(ev: HaDropdownSelectEvent) {
     const button = ev.currentTarget;
     const agentId = (button as any).agent;
     this._downloadBackup(agentId);
@@ -356,7 +360,7 @@ class HaConfigBackupDetails extends LitElement {
       padding: 28px 20px 0;
       max-width: 690px;
       margin: 0 auto;
-      gap: 24px;
+      gap: var(--ha-space-6);
       display: grid;
       margin-bottom: 24px;
     }
@@ -370,37 +374,25 @@ class HaConfigBackupDetails extends LitElement {
       display: flex;
       justify-content: flex-end;
     }
-    ha-md-list {
-      background: none;
-      padding: 0;
+    ha-list-item-base {
+      --ha-row-item-padding-inline: 0;
     }
-    ha-md-list-item {
-      --md-list-item-leading-space: 0;
-      --md-list-item-trailing-space: 0;
-      --md-list-item-two-line-container-height: 64px;
-    }
-    ha-md-list-item img {
+    ha-list-item-base img {
       width: 48px;
     }
-    ha-md-list-item ha-svg-icon[slot="start"] {
+    ha-list-item-base ha-svg-icon[slot="start"] {
       --mdc-icon-size: 48px;
       color: var(--primary-text-color);
-    }
-    .warning {
-      color: var(--error-color);
-    }
-    .warning ha-svg-icon {
-      color: var(--error-color);
     }
     ha-button.danger {
       --mdc-theme-primary: var(--error-color);
     }
-    ha-md-list-item [slot="supporting-text"] {
+    ha-list-item-base [slot="supporting-text"] {
       display: flex;
       align-items: center;
       flex-direction: row;
-      gap: 8px;
-      line-height: normal;
+      gap: var(--ha-space-2);
+      line-height: var(--ha-line-height-condensed);
     }
     .dot {
       display: block;
@@ -408,7 +400,7 @@ class HaConfigBackupDetails extends LitElement {
       width: 8px;
       height: 8px;
       background-color: var(--disabled-color);
-      border-radius: 50%;
+      border-radius: var(--ha-border-radius-circle);
       flex: none;
     }
     .dot.success {

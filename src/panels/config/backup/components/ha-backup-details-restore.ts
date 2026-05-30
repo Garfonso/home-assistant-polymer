@@ -2,8 +2,6 @@ import memoizeOne from "memoize-one";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import "../../../../components/ha-card";
-import "../../../../components/ha-md-list";
-import "../../../../components/ha-md-list-item";
 import "../../../../components/ha-button";
 import "./ha-backup-data-picker";
 import type { HomeAssistant } from "../../../../types";
@@ -67,7 +65,8 @@ class HaBackupDetailsRestore extends LitElement {
           <ha-button
             @click=${this._restore}
             .disabled=${this._isRestoreDisabled}
-            destructive
+            variant="danger"
+            appearance="plain"
           >
             ${this.localize(
               `ui.panel.${this.translationKeyPanel}.details.restore.action`
@@ -109,7 +108,7 @@ class HaBackupDetailsRestore extends LitElement {
       max-width: 690px;
       width: 100%;
       margin: 0 auto;
-      gap: 24px;
+      gap: var(--ha-space-6);
       display: grid;
     }
     .card-content {
@@ -118,22 +117,6 @@ class HaBackupDetailsRestore extends LitElement {
     .card-actions {
       display: flex;
       justify-content: flex-end;
-    }
-    ha-md-list {
-      background: none;
-      padding: 0;
-    }
-    ha-md-list-item {
-      --md-list-item-leading-space: 0;
-      --md-list-item-trailing-space: 0;
-      --md-list-item-two-line-container-height: 64px;
-    }
-    ha-md-list-item [slot="supporting-text"] {
-      display: flex;
-      align-items: center;
-      flex-direction: row;
-      gap: 8px;
-      line-height: normal;
     }
   `;
 }

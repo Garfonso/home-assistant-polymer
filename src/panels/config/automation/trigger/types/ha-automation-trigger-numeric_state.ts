@@ -1,7 +1,8 @@
 import type { PropertyValues } from "lit";
-import { html, LitElement } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
+import { ensureArray } from "../../../../../common/array/ensure-array";
 import { createDurationData } from "../../../../../common/datetime/create_duration_data";
 import { fireEvent } from "../../../../../common/dom/fire_event";
 import { hasTemplate } from "../../../../../common/string/has-template";
@@ -10,7 +11,6 @@ import "../../../../../components/ha-form/ha-form";
 import type { SchemaUnion } from "../../../../../components/ha-form/types";
 import type { NumericStateTrigger } from "../../../../../data/automation";
 import type { HomeAssistant } from "../../../../../types";
-import { ensureArray } from "../../../../../common/array/ensure-array";
 
 @customElement("ha-automation-trigger-numeric_state")
 export class HaNumericStateTrigger extends LitElement {
@@ -27,7 +27,6 @@ export class HaNumericStateTrigger extends LitElement {
   private _schema = memoizeOne(
     (
       localize: LocalizeFunc,
-      entityId: string | string[],
       inputAboveIsEntity?: boolean,
       inputBelowIsEntity?: boolean
     ) =>
@@ -39,9 +38,9 @@ export class HaNumericStateTrigger extends LitElement {
         },
         {
           name: "attribute",
+          context: { filter_entity: "entity_id" },
           selector: {
             attribute: {
-              entity_id: entityId ? entityId[0] : undefined,
               hide_attributes: [
                 "access_token",
                 "auto_update",
@@ -224,7 +223,7 @@ export class HaNumericStateTrigger extends LitElement {
       ] as const
   );
 
-  public willUpdate(changedProperties: PropertyValues) {
+  public willUpdate(changedProperties: PropertyValues<this>) {
     this._inputAboveIsEntity =
       this._inputAboveIsEntity ??
       (typeof this.trigger.above === "string" &&
@@ -275,7 +274,6 @@ export class HaNumericStateTrigger extends LitElement {
   public render() {
     const schema = this._schema(
       this.hass.localize,
-      this.trigger.entity_id,
       this._inputAboveIsEntity,
       this._inputBelowIsEntity
     );
@@ -335,6 +333,13 @@ export class HaNumericStateTrigger extends LitElement {
         );
     }
   };
+
+  static styles = css`
+    :host {
+      display: block;
+      margin-bottom: var(--ha-space-3);
+    }
+  `;
 }
 
 declare global {

@@ -1,14 +1,16 @@
+import type { PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
 import { computeAttributeNameDisplay } from "../../common/entity/compute_attribute_display";
+import type { HASSDomEvent } from "../../common/dom/fire_event";
 import { stateActive } from "../../common/entity/state_active";
 import { stateColorCss } from "../../common/entity/state_color";
 import "../../components/ha-control-select";
 import type { ControlSelectOption } from "../../components/ha-control-select";
 import "../../components/ha-control-slider";
-import { UNAVAILABLE } from "../../data/entity";
-import { DOMAIN_ATTRIBUTES_UNITS } from "../../data/entity_attributes";
+import { UNAVAILABLE } from "../../data/entity/entity";
+import { DOMAIN_ATTRIBUTES_UNITS } from "../../data/entity/entity_attributes";
 import type { FanEntity, FanSpeed } from "../../data/fan";
 import {
   computeFanSpeedCount,
@@ -30,7 +32,7 @@ export class HaStateControlFanSpeed extends LitElement {
 
   @state() speedValue?: FanSpeed;
 
-  protected updated(changedProp: Map<string | number | symbol, unknown>): void {
+  protected updated(changedProp: PropertyValues<this>): void {
     if (changedProp.has("stateObj")) {
       const percentage = stateActive(this.stateObj)
         ? (this.stateObj.attributes.percentage ?? 0)
@@ -40,8 +42,8 @@ export class HaStateControlFanSpeed extends LitElement {
     }
   }
 
-  private _speedValueChanged(ev: CustomEvent) {
-    const speed = (ev.detail as any).value as FanSpeed;
+  private _speedValueChanged(ev: HASSDomEvent<HASSDomEvents["value-changed"]>) {
+    const speed = ev.detail.value as FanSpeed;
 
     this.speedValue = speed;
 
@@ -53,9 +55,9 @@ export class HaStateControlFanSpeed extends LitElement {
     });
   }
 
-  private _valueChanged(ev: CustomEvent) {
-    const value = (ev.detail as any).value;
-    if (isNaN(value)) return;
+  private _valueChanged(ev: HASSDomEvent<HASSDomEvents["value-changed"]>) {
+    const { value } = ev.detail;
+    if (typeof value !== "number" || isNaN(value)) return;
 
     this.sliderValue = value;
 
@@ -92,7 +94,7 @@ export class HaStateControlFanSpeed extends LitElement {
           .options=${options}
           .value=${this.speedValue}
           @value-changed=${this._speedValueChanged}
-          .ariaLabel=${computeAttributeNameDisplay(
+          .label=${computeAttributeNameDisplay(
             this.hass.localize,
             this.stateObj,
             this.hass.entities,
@@ -117,7 +119,7 @@ export class HaStateControlFanSpeed extends LitElement {
         .value=${this.sliderValue}
         .step=${this.stateObj.attributes.percentage_step ?? 1}
         @value-changed=${this._valueChanged}
-        .ariaLabel=${computeAttributeNameDisplay(
+        .label=${computeAttributeNameDisplay(
           this.hass.localize,
           this.stateObj,
           this.hass.entities,
@@ -141,18 +143,18 @@ export class HaStateControlFanSpeed extends LitElement {
       max-height: 320px;
       min-height: 200px;
       --control-slider-thickness: 130px;
-      --control-slider-border-radius: 36px;
+      --control-slider-border-radius: var(--ha-border-radius-6xl);
       --control-slider-color: var(--primary-color);
       --control-slider-background: var(--disabled-color);
       --control-slider-background-opacity: 0.2;
-      --control-slider-tooltip-font-size: 20px;
+      --control-slider-tooltip-font-size: var(--ha-font-size-xl);
     }
     ha-control-select {
       height: 45vh;
       max-height: 320px;
       min-height: 200px;
       --control-select-thickness: 130px;
-      --control-select-border-radius: 36px;
+      --control-select-border-radius: var(--ha-border-radius-6xl);
       --control-select-color: var(--primary-color);
       --control-select-background: var(--disabled-color);
       --control-select-background-opacity: 0.2;

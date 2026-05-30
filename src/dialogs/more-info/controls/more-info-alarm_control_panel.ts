@@ -46,8 +46,7 @@ class MoreInfoAlarmControlPanel extends LitElement {
           ? html`
               <div class="status">
                 <div class="icon">
-                  <ha-state-icon .hass=${this.hass} .stateObj=${this.stateObj}>
-                  </ha-state-icon>
+                  <ha-state-icon .stateObj=${this.stateObj}> </ha-state-icon>
                 </div>
               </div>
             `
@@ -99,7 +98,7 @@ class MoreInfoAlarmControlPanel extends LitElement {
           --mdc-icon-size: 80px;
           animation: pulse 1s infinite;
           color: var(--icon-color);
-          border-radius: 50%;
+          border-radius: var(--ha-border-radius-circle);
           width: 144px;
           height: 144px;
           display: flex;
@@ -113,7 +112,7 @@ class MoreInfoAlarmControlPanel extends LitElement {
           left: 0;
           height: 100%;
           width: 100%;
-          border-radius: 50%;
+          border-radius: var(--ha-border-radius-circle);
           background-color: var(--icon-color);
           transition: background-color 180ms ease-in-out;
           opacity: 0.2;
@@ -123,7 +122,7 @@ class MoreInfoAlarmControlPanel extends LitElement {
           min-width: 130px;
           max-width: 200px;
           margin: 0 auto;
-          --control-button-border-radius: 24px;
+          --control-button-border-radius: var(--ha-border-radius-3xl);
         }
       `,
     ];

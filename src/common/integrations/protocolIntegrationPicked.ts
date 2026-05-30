@@ -5,7 +5,7 @@ import { getIntegrationDescriptions } from "../../data/integrations";
 import { showConfigFlowDialog } from "../../dialogs/config-flow/show-dialog-config-flow";
 import { showConfirmationDialog } from "../../dialogs/generic/show-dialog-box";
 import { showMatterAddDeviceDialog } from "../../panels/config/integrations/integration-panels/matter/show-dialog-add-matter-device";
-import { showZWaveJSAddNodeDialog } from "../../panels/config/integrations/integration-panels/zwave_js/show-dialog-zwave_js-add-node";
+import { showZWaveJSAddNodeDialog } from "../../panels/config/integrations/integration-panels/zwave_js/add-node/show-dialog-zwave_js-add-node";
 import type { HomeAssistant } from "../../types";
 import { documentationUrl } from "../../util/documentation-url";
 import { isComponentLoaded } from "../config/is_component_loaded";
@@ -41,7 +41,7 @@ export const protocolIntegrationPicked = async (
         ).filter((e) => !e.disabled_by);
 
     if (
-      !isComponentLoaded(hass, "zwave_js") ||
+      !isComponentLoaded(hass.config, "zwave_js") ||
       (!options?.config_entry && !entries?.length)
     ) {
       // If the component isn't loaded, ask them to load the integration first
@@ -90,7 +90,7 @@ export const protocolIntegrationPicked = async (
         ).filter((e) => !e.disabled_by);
 
     if (
-      !isComponentLoaded(hass, "zha") ||
+      !isComponentLoaded(hass.config, "zha") ||
       (!options?.config_entry && !entries?.length)
     ) {
       // If the component isn't loaded, ask them to load the integration first
@@ -139,7 +139,7 @@ export const protocolIntegrationPicked = async (
           })
         ).filter((e) => !e.disabled_by);
     if (
-      !isComponentLoaded(hass, domain) ||
+      !isComponentLoaded(hass.config, domain) ||
       (!options?.config_entry && !entries?.length)
     ) {
       // If the component isn't loaded, ask them to load the integration first

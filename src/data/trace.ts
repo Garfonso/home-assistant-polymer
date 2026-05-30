@@ -67,6 +67,7 @@ export type ActionTraceStep =
 
 interface BaseTrace {
   domain: string;
+  error?: string;
   item_id: string;
   last_step: string | null;
   run_id: string;
@@ -97,7 +98,6 @@ interface BaseTrace {
 interface BaseTraceExtended {
   trace: Record<string, ActionTraceStep[]>;
   context: Context;
-  error?: string;
 }
 
 export interface AutomationTrace extends BaseTrace {
@@ -106,8 +106,7 @@ export interface AutomationTrace extends BaseTrace {
 }
 
 export interface AutomationTraceExtended
-  extends AutomationTrace,
-    BaseTraceExtended {
+  extends AutomationTrace, BaseTraceExtended {
   config: ManualAutomationConfig;
   blueprint_inputs?: BlueprintAutomationConfig;
 }
@@ -121,6 +120,7 @@ export interface ScriptTraceExtended extends ScriptTrace, BaseTraceExtended {
   blueprint_inputs?: BlueprintScriptConfig;
 }
 
+export type Trace = AutomationTrace | ScriptTrace;
 export type TraceExtended = AutomationTraceExtended | ScriptTraceExtended;
 
 interface TraceTypes {

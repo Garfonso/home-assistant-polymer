@@ -1,24 +1,22 @@
-import "@material/mwc-button/mwc-button";
-import "@material/mwc-list/mwc-list";
 import {
   mdiCrosshairsGps,
   mdiMagnify,
   mdiMapMarker,
   mdiMapSearchOutline,
 } from "@mdi/js";
-import type { CSSResultGroup, TemplateResult } from "lit";
+import type { CSSResultGroup, TemplateResult, PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../common/dom/fire_event";
 import type { LocalizeFunc } from "../common/translations/localize";
 import "../components/ha-alert";
-import "../components/ha-spinner";
-import "../components/ha-formfield";
+import "../components/ha-button";
+import "../components/ha-list";
 import "../components/ha-list-item";
-import "../components/ha-radio";
-import "../components/ha-textfield";
-import type { HaTextField } from "../components/ha-textfield";
+import "../components/ha-spinner";
+import "../components/input/ha-input";
+import type { HaInput } from "../components/input/ha-input";
 import "../components/map/ha-locations-editor";
 import type {
   HaLocationsEditor,
@@ -66,6 +64,8 @@ class OnboardingLocation extends LitElement {
 
   @query("ha-locations-editor", true) private map!: HaLocationsEditor;
 
+  @query("ha-input") private _input?: HTMLElement;
+
   protected render(): TemplateResult {
     const addressAttribution = this.onboardingLocalize(
       "ui.panel.page-onboarding.core-config.location_address",
@@ -104,22 +104,20 @@ class OnboardingLocation extends LitElement {
       </p>
 
       <div class="location-search">
-        <ha-textfield
+        <ha-input
           label=${this.onboardingLocalize(
             "ui.panel.page-onboarding.core-config.address_label"
           )}
           .disabled=${this._working}
-          icon
-          iconTrailing
           @keyup=${this._addressSearch}
         >
-          <ha-svg-icon slot="leadingIcon" .path=${mdiMagnify}></ha-svg-icon>
+          <ha-svg-icon slot="start" .path=${mdiMagnify}></ha-svg-icon>
           ${this._working
-            ? html` <ha-spinner slot="trailingIcon" size="small"></ha-spinner> `
+            ? html`<ha-spinner slot="end" size="small"></ha-spinner>`
             : html`
                 <ha-icon-button
                   @click=${this._handleButtonClick}
-                  slot="trailingIcon"
+                  slot="end"
                   .disabled=${this._working}
                   .label=${this.onboardingLocalize(
                     this._search
@@ -129,10 +127,10 @@ class OnboardingLocation extends LitElement {
                   .path=${this._search ? mdiMapSearchOutline : mdiCrosshairsGps}
                 ></ha-icon-button>
               `}
-        </ha-textfield>
+        </ha-input>
         ${this._places !== undefined
           ? html`
-              <mwc-list activatable>
+              <ha-list activatable>
                 ${this._places?.length
                   ? this._places.map((place) => {
                       const primary = [
@@ -172,7 +170,7 @@ class OnboardingLocation extends LitElement {
                         ? ""
                         : "No results"}</ha-list-item
                     >`}
-              </mwc-list>
+              </ha-list>
             `
           : nothing}
       </div>
@@ -194,21 +192,18 @@ class OnboardingLocation extends LitElement {
       <p class="attribution">${addressAttribution}</p>
 
       <div class="footer">
-        <mwc-button @click=${this._save} unelevated .disabled=${this._working}>
+        <ha-button @click=${this._save} .disabled=${this._working}>
           ${this.onboardingLocalize(
             "ui.panel.page-onboarding.core-config.finish"
           )}
-        </mwc-button>
+        </ha-button>
       </div>
     `;
   }
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
-    setTimeout(
-      () => this.renderRoot.querySelector("ha-textfield")!.focus(),
-      100
-    );
+    setTimeout(() => this._input!.focus(), 100);
     this.addEventListener("keyup", (ev) => {
       if (ev.key === "Enter") {
         this._save(ev);
@@ -216,7 +211,7 @@ class OnboardingLocation extends LitElement {
     });
   }
 
-  protected updated(changedProps) {
+  protected updated(changedProps: PropertyValues) {
     if (changedProps.has("_highlightedMarker") && this._highlightedMarker) {
       const place = this._places?.find(
         (plc) => plc.place_id === this._highlightedMarker
@@ -300,11 +295,11 @@ class OnboardingLocation extends LitElement {
 
   private async _addressSearch(ev: KeyboardEvent) {
     ev.stopPropagation();
-    this._search = (ev.currentTarget as HaTextField).value.length > 0;
+    this._search = ((ev.currentTarget as HaInput).value ?? "").length > 0;
     if (ev.key !== "Enter") {
       return;
     }
-    this._searchAddress((ev.currentTarget as HaTextField).value);
+    this._searchAddress((ev.currentTarget as HaInput).value ?? "");
   }
 
   private async _searchAddress(address: string) {
@@ -478,28 +473,6 @@ class OnboardingLocation extends LitElement {
           margin-top: 32px;
           margin-bottom: 32px;
         }
-        ha-textfield {
-          display: block;
-        }
-        ha-textfield > ha-icon-button {
-          position: absolute;
-          top: 10px;
-          right: 10px;
-          inset-inline-end: 10px;
-          inset-inline-start: initial;
-          --mdc-icon-button-size: 36px;
-          --mdc-icon-size: 20px;
-          color: var(--secondary-text-color);
-          inset-inline-start: initial;
-          inset-inline-end: 10px;
-          direction: var(--direction);
-        }
-        ha-textfield > ha-spinner {
-          position: relative;
-          left: 12px;
-          inset-inline-start: 12px;
-          inset-inline-end: initial;
-        }
         ha-locations-editor {
           display: block;
           height: 300px;
@@ -507,7 +480,7 @@ class OnboardingLocation extends LitElement {
           border-radius: var(--mdc-shape-large, 16px);
           overflow: hidden;
         }
-        mwc-list {
+        ha-list {
           width: 100%;
           border: 1px solid var(--divider-color);
           box-sizing: border-box;
@@ -520,16 +493,22 @@ class OnboardingLocation extends LitElement {
           height: 72px;
         }
         .attribution {
-          /* textfield helper style */
+          /* input helper style */
           margin: 0;
           padding: 4px 16px 12px 16px;
           color: var(--mdc-text-field-label-ink-color, rgba(0, 0, 0, 0.6));
           font-family: var(
             --mdc-typography-caption-font-family,
-            var(--mdc-typography-font-family, Roboto, sans-serif)
+            var(--mdc-typography-font-family, var(--ha-font-family-body))
           );
-          font-size: var(--mdc-typography-caption-font-size, 0.75rem);
-          font-weight: var(--mdc-typography-caption-font-weight, 400);
+          font-size: var(
+            --mdc-typography-caption-font-size,
+            var(--ha-font-size-xs)
+          );
+          font-weight: var(
+            --mdc-typography-caption-font-weight,
+            var(--ha-font-weight-normal)
+          );
           letter-spacing: var(
             --mdc-typography-caption-letter-spacing,
             0.0333333333em

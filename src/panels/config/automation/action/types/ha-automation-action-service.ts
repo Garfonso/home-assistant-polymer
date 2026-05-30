@@ -1,13 +1,13 @@
 import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
-import memoizeOne from "memoize-one";
 import { assert } from "superstruct";
 import { fireEvent } from "../../../../../common/dom/fire_event";
-import { computeDomain } from "../../../../../common/entity/compute_domain";
-import { computeObjectId } from "../../../../../common/entity/compute_object_id";
 import { hasTemplate } from "../../../../../common/string/has-template";
+import "../../../../../components/ha-checkbox";
 import "../../../../../components/ha-service-control";
+import "../../../../../components/input/ha-input";
+import type { HaInput } from "../../../../../components/input/ha-input";
 import type { ServiceAction } from "../../../../../data/script";
 import { serviceActionStruct } from "../../../../../data/script";
 import type { HomeAssistant } from "../../../../../types";
@@ -27,31 +27,11 @@ export class HaServiceAction extends LitElement implements ActionElement {
 
   @state() private _responseChecked = false;
 
-  private _fields = memoizeOne(
-    (
-      serviceDomains: HomeAssistant["services"],
-      domainService: string | undefined
-    ): { fields: any } => {
-      if (!domainService) {
-        return { fields: {} };
-      }
-      const domain = computeDomain(domainService);
-      const service = computeObjectId(domainService);
-      if (!(domain in serviceDomains)) {
-        return { fields: {} };
-      }
-      if (!(service in serviceDomains[domain])) {
-        return { fields: {} };
-      }
-      return { fields: serviceDomains[domain][service].fields };
-    }
-  );
-
   public static get defaultConfig(): ServiceAction {
     return { action: "", data: {} };
   }
 
-  protected willUpdate(changedProperties: PropertyValues) {
+  protected willUpdate(changedProperties: PropertyValues<this>) {
     if (!changedProperties.has("action")) {
       return;
     }
@@ -62,23 +42,11 @@ export class HaServiceAction extends LitElement implements ActionElement {
       return;
     }
 
-    const fields = this._fields(this.hass.services, this.action?.action).fields;
     if (
       this.action &&
-      (Object.entries(this.action).some(
-        ([key, val]) => key !== "data" && hasTemplate(val)
-      ) ||
-        (this.action.data &&
-          Object.entries(this.action.data).some(([key, val]) => {
-            const field = fields[key];
-            if (
-              field?.selector &&
-              ("template" in field.selector || "object" in field.selector)
-            ) {
-              return false;
-            }
-            return hasTemplate(val);
-          })))
+      Object.entries(this.action).some(
+        ([key, val]) => !["data", "target"].includes(key) && hasTemplate(val)
+      )
     ) {
       fireEvent(
         this,
@@ -105,34 +73,46 @@ export class HaServiceAction extends LitElement implements ActionElement {
     const [domain, service] = this._action.action
       ? this._action.action.split(".", 2)
       : [undefined, undefined];
+
+    const optionalResponse =
+      domain && service
+        ? !!this.hass.services[domain]?.[service]?.response?.optional
+        : false;
+
     return html`
       <ha-service-control
         .narrow=${this.narrow}
         .hass=${this.hass}
         .value=${this._action}
         .disabled=${this.disabled}
-        .showAdvanced=${this.hass.userData?.showAdvanced}
         .hidePicker=${!!this._action.metadata}
         @value-changed=${this._actionChanged}
       ></ha-service-control>
       ${domain && service && this.hass.services[domain]?.[service]?.response
         ? html`<ha-settings-row .narrow=${this.narrow}>
-            ${this.hass.services[domain][service].response!.optional
+            ${optionalResponse
               ? html`<ha-checkbox
-                  .checked=${this._action.response_variable ||
+                  .checked=${!!this._action.response_variable ||
                   this._responseChecked}
                   .disabled=${this.disabled}
                   @change=${this._responseCheckboxChanged}
                   slot="prefix"
                 ></ha-checkbox>`
               : html`<div slot="prefix" class="checkbox-spacer"></div>`}
-            <span slot="heading"
+            <span
+              slot="heading"
+              class=${optionalResponse ? "clickable" : ""}
+              @click=${optionalResponse ? this._toggleCheckbox : undefined}
               >${this.hass.localize(
                 "ui.panel.config.automation.editor.actions.type.service.response_variable"
               )}</span
             >
-            <span slot="description">
-              ${this.hass.services[domain][service].response!.optional
+            <span
+              slot="description"
+              class=${optionalResponse ? "clickable" : ""}
+              @click=${optionalResponse ? this._toggleCheckbox : undefined}
+            >
+              ${optionalResponse
                 ? this.hass.localize(
                     "ui.panel.config.automation.editor.actions.type.service.has_optional_response"
                   )
@@ -140,16 +120,15 @@ export class HaServiceAction extends LitElement implements ActionElement {
                     "ui.panel.config.automation.editor.actions.type.service.has_response"
                   )}
             </span>
-            <ha-textfield
+            <ha-input
               .value=${this._action.response_variable || ""}
-              .required=${!this.hass.services[domain][service].response!
-                .optional}
+              .required=${!optionalResponse}
               .disabled=${this.disabled ||
-              (this.hass.services[domain][service].response!.optional &&
+              (optionalResponse &&
                 !this._action.response_variable &&
                 !this._responseChecked)}
               @change=${this._responseVariableChanged}
-            ></ha-textfield>
+            ></ha-input>
           </ha-settings-row>`
         : nothing}
     `;
@@ -178,12 +157,22 @@ export class HaServiceAction extends LitElement implements ActionElement {
     fireEvent(this, "value-changed", { value });
   }
 
-  private _responseVariableChanged(ev) {
-    const value = { ...this.action, response_variable: ev.target.value };
-    if (!ev.target.value) {
+  private _responseVariableChanged(ev: InputEvent) {
+    const value = {
+      ...this.action,
+      response_variable: (ev.target as HaInput).value,
+    };
+    if (!(ev.target as HaInput).value) {
       delete value.response_variable;
     }
     fireEvent(this, "value-changed", { value });
+  }
+
+  private _toggleCheckbox(ev: Event) {
+    const checkbox = (
+      ev.currentTarget as HTMLElement
+    )?.parentElement?.querySelector("ha-checkbox");
+    checkbox?.click();
   }
 
   private _responseCheckboxChanged(ev) {
@@ -205,7 +194,6 @@ export class HaServiceAction extends LitElement implements ActionElement {
       padding: var(--service-control-padding, 0 16px);
     }
     ha-settings-row {
-      --paper-time-input-justify-content: flex-end;
       --settings-row-content-width: 100%;
       --settings-row-prefix-display: contents;
       border-top: var(
@@ -213,13 +201,11 @@ export class HaServiceAction extends LitElement implements ActionElement {
         1px solid var(--divider-color)
       );
     }
-    ha-checkbox {
-      margin-left: -16px;
-      margin-inline-start: -16px;
-      margin-inline-end: initial;
-    }
     .checkbox-spacer {
       width: 32px;
+    }
+    .clickable {
+      cursor: pointer;
     }
   `;
 }

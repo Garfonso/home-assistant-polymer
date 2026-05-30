@@ -3,11 +3,13 @@ import type { PropertyValues, TemplateResult } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
+import { ifDefined } from "lit/directives/if-defined";
 import { styleMap } from "lit/directives/style-map";
 import { fireEvent } from "../common/dom/fire_event";
-import type { FrontendLocaleData } from "../data/translation";
+import { mainWindow } from "../common/dom/get_main_window";
 import { formatNumber } from "../common/number/format_number";
 import { blankBeforeUnit } from "../common/translations/blank_before_unit";
+import type { FrontendLocaleData } from "../data/translation";
 
 declare global {
   interface HASSDomEvents {
@@ -75,6 +77,9 @@ export class HaControlSlider extends LitElement {
   @property({ type: Number })
   public max = 100;
 
+  @property({ type: String })
+  public label?: string;
+
   @state()
   public pressed = false;
 
@@ -86,12 +91,14 @@ export class HaControlSlider extends LitElement {
   valueToPercentage(value: number) {
     const percentage =
       (this.boundedValue(value) - this.min) / (this.max - this.min);
-    return this.inverted ? 1 - percentage : percentage;
+
+    return this._isVisuallyInverted() ? 1 - percentage : percentage;
   }
 
   percentageToValue(percentage: number) {
     return (
-      (this.max - this.min) * (this.inverted ? 1 - percentage : percentage) +
+      (this.max - this.min) *
+        (this._isVisuallyInverted() ? 1 - percentage : percentage) +
       this.min
     );
   }
@@ -104,16 +111,12 @@ export class HaControlSlider extends LitElement {
     return Math.min(Math.max(value, this.min), this.max);
   }
 
-  protected firstUpdated(changedProperties: PropertyValues): void {
+  protected firstUpdated(changedProperties: PropertyValues<this>): void {
     super.firstUpdated(changedProperties);
     this.setupListeners();
-    this.setAttribute("role", "slider");
-    if (!this.hasAttribute("tabindex")) {
-      this.setAttribute("tabindex", "0");
-    }
   }
 
-  protected updated(changedProps: PropertyValues) {
+  protected updated(changedProps: PropertyValues<this>) {
     super.updated(changedProps);
     if (changedProps.has("value")) {
       const valuenow = this.steppedValue(this.value ?? 0);
@@ -197,9 +200,6 @@ export class HaControlSlider extends LitElement {
         this.value = this.steppedValue(this.percentageToValue(percentage));
         fireEvent(this, "value-changed", { value: this.value });
       });
-
-      this.addEventListener("keydown", this._handleKeyDown);
-      this.addEventListener("keyup", this._handleKeyUp);
     }
   }
 
@@ -208,8 +208,6 @@ export class HaControlSlider extends LitElement {
       this._mc.destroy();
       this._mc = undefined;
     }
-    this.removeEventListener("keydown", this._handleKeyDown);
-    this.removeEventListener("keyup", this._handleKeyUp);
   }
 
   private get _tenPercentStep() {
@@ -234,31 +232,40 @@ export class HaControlSlider extends LitElement {
   private _handleKeyDown(e: KeyboardEvent) {
     if (!A11Y_KEY_CODES.has(e.code)) return;
     e.preventDefault();
-    switch (e.code) {
-      case "ArrowRight":
-      case "ArrowUp":
-        this.value = this.boundedValue((this.value ?? 0) + this.step);
-        break;
-      case "ArrowLeft":
-      case "ArrowDown":
-        this.value = this.boundedValue((this.value ?? 0) - this.step);
-        break;
-      case "PageUp":
-        this.value = this.steppedValue(
-          this.boundedValue((this.value ?? 0) + this._tenPercentStep)
-        );
-        break;
-      case "PageDown":
-        this.value = this.steppedValue(
-          this.boundedValue((this.value ?? 0) - this._tenPercentStep)
-        );
-        break;
-      case "Home":
-        this.value = this.min;
-        break;
-      case "End":
-        this.value = this.max;
-        break;
+
+    if (e.code === "Home") {
+      this.value = this.min;
+    } else if (e.code === "End") {
+      this.value = this.max;
+    } else if (e.code === "PageUp") {
+      this.value = this.steppedValue(
+        this.boundedValue((this.value ?? 0) + this._tenPercentStep)
+      );
+    } else if (e.code === "PageDown") {
+      this.value = this.steppedValue(
+        this.boundedValue((this.value ?? 0) - this._tenPercentStep)
+      );
+    } else {
+      const isRtl = mainWindow.document.dir === "rtl";
+      let multiplier = 1;
+      switch (e.code) {
+        case "ArrowRight":
+          multiplier = isRtl ? -1 : 1;
+          break;
+        case "ArrowUp":
+          multiplier = 1;
+          break;
+        case "ArrowLeft":
+          multiplier = isRtl ? 1 : -1;
+          break;
+        case "ArrowDown":
+          multiplier = -1;
+          break;
+      }
+
+      this.value = this.boundedValue(
+        (this.value ?? 0) + this.step * multiplier
+      );
     }
     this._showTooltip();
     fireEvent(this, "slider-moved", { value: this.value });
@@ -323,6 +330,7 @@ export class HaControlSlider extends LitElement {
   }
 
   protected render(): TemplateResult {
+    const valuenow = this.steppedValue(this.value ?? 0);
     return html`
       <div
         class="container${classMap({
@@ -332,7 +340,24 @@ export class HaControlSlider extends LitElement {
           "--value": `${this.valueToPercentage(this.value ?? 0)}`,
         })}
       >
-        <div id="slider" class="slider">
+        <div
+          id="slider"
+          class="slider"
+          role="slider"
+          tabindex="0"
+          aria-label=${ifDefined(this.label)}
+          aria-valuenow=${valuenow.toString()}
+          aria-valuetext=${this._formatValue(valuenow)}
+          aria-valuemin=${ifDefined(
+            this.min != null ? this.min.toString() : undefined
+          )}
+          aria-valuemax=${ifDefined(
+            this.max != null ? this.max.toString() : undefined
+          )}
+          aria-orientation=${this.vertical ? "vertical" : "horizontal"}
+          @keydown=${this._handleKeyDown}
+          @keyup=${this._handleKeyUp}
+        >
           <div class="slider-track-background"></div>
           <slot name="background"></slot>
           ${this.mode === "cursor"
@@ -360,6 +385,16 @@ export class HaControlSlider extends LitElement {
     `;
   }
 
+  private _isVisuallyInverted() {
+    let inverted = this.inverted;
+
+    if (mainWindow.document.dir === "rtl") {
+      inverted = !inverted;
+    }
+
+    return inverted;
+  }
+
   static styles = css`
     :host {
       display: block;
@@ -367,16 +402,10 @@ export class HaControlSlider extends LitElement {
       --control-slider-background: var(--disabled-color);
       --control-slider-background-opacity: 0.2;
       --control-slider-thickness: 40px;
-      --control-slider-border-radius: 10px;
-      --control-slider-tooltip-font-size: 14px;
+      --control-slider-border-radius: var(--ha-border-radius-md);
+      --control-slider-tooltip-font-size: var(--ha-font-size-m);
       height: var(--control-slider-thickness);
       width: 100%;
-      border-radius: var(--control-slider-border-radius);
-      outline: none;
-      transition: box-shadow 180ms ease-in-out;
-    }
-    :host(:focus-visible) {
-      box-shadow: 0 0 0 2px var(--control-slider-color);
     }
     :host([vertical]) {
       width: var(--control-slider-thickness);
@@ -396,7 +425,7 @@ export class HaControlSlider extends LitElement {
       background-color: var(--clear-background-color);
       color: var(--primary-text-color);
       font-size: var(--control-slider-tooltip-font-size);
-      border-radius: 0.8em;
+      border-radius: var(--ha-border-radius-lg);
       padding: 0.2em 0.4em;
       opacity: 0;
       white-space: nowrap;
@@ -420,10 +449,12 @@ export class HaControlSlider extends LitElement {
         )
       );
     }
-    .tooltip.start {
+    .tooltip:dir(ltr).start,
+    .tooltip:dir(rtl).end {
       --slider-tooltip-offset: calc(-0.5 * (var(--handle-spacing)));
     }
-    .tooltip.end {
+    .tooltip:dir(ltr).end,
+    .tooltip:dir(rtl).start {
       --slider-tooltip-offset: calc(0.5 * (var(--handle-spacing)));
     }
     .tooltip.cursor {
@@ -471,8 +502,13 @@ export class HaControlSlider extends LitElement {
       width: 100%;
       border-radius: var(--control-slider-border-radius);
       transform: translateZ(0);
+      transition: box-shadow 180ms ease-in-out;
+      outline: none;
       overflow: hidden;
       cursor: pointer;
+    }
+    .slider:focus-visible {
+      box-shadow: 0 0 0 2px var(--control-slider-color);
     }
     .slider * {
       pointer-events: none;
@@ -494,7 +530,7 @@ export class HaControlSlider extends LitElement {
       width: 100%;
     }
     .slider .slider-track-bar {
-      --border-radius: var(--control-slider-border-radius);
+      --ha-border-radius: var(--control-slider-border-radius);
       --slider-size: 100%;
       position: absolute;
       height: 100%;
@@ -516,6 +552,10 @@ export class HaControlSlider extends LitElement {
       background-color: white;
     }
     .slider .slider-track-bar {
+      --slider-track-bar-border-radius: min(
+        var(--control-slider-border-radius),
+        var(--ha-border-radius-md)
+      );
       top: 0;
       left: 0;
       transform: translate3d(
@@ -523,7 +563,7 @@ export class HaControlSlider extends LitElement {
         0,
         0
       );
-      border-radius: 0 8px 8px 0;
+      border-radius: var(--slider-track-bar-border-radius);
     }
     .slider .slider-track-bar:after {
       top: 0;
@@ -532,13 +572,14 @@ export class HaControlSlider extends LitElement {
       height: 50%;
       width: var(--handle-size);
     }
-    .slider .slider-track-bar.end {
+    .slider:dir(ltr) .slider-track-bar.end,
+    .slider:dir(rtl) .slider-track-bar {
       right: 0;
       left: initial;
       transform: translate3d(calc(var(--value, 0) * var(--slider-size)), 0, 0);
-      border-radius: 8px 0 0 8px;
     }
-    .slider .slider-track-bar.end::after {
+    .slider:dir(ltr) .slider-track-bar.end::after,
+    .slider:dir(rtl) .slider-track-bar::after {
       right: initial;
       left: var(--handle-margin);
     }
@@ -551,7 +592,6 @@ export class HaControlSlider extends LitElement {
         calc((1 - var(--value, 0)) * var(--slider-size)),
         0
       );
-      border-radius: 8px 8px 0 0;
     }
     :host([vertical]) .slider .slider-track-bar:after {
       top: var(--handle-margin);
@@ -569,7 +609,6 @@ export class HaControlSlider extends LitElement {
         calc((0 - var(--value, 0)) * var(--slider-size)),
         0
       );
-      border-radius: 0 0 8px 8px;
     }
     :host([vertical]) .slider .slider-track-bar.end::after {
       top: initial;
@@ -593,7 +632,10 @@ export class HaControlSlider extends LitElement {
       --cursor-size: calc(var(--control-slider-thickness) / 4);
       position: absolute;
       background-color: white;
-      border-radius: var(--handle-size);
+      border-radius: min(
+        var(--handle-size),
+        var(--control-slider-border-radius)
+      );
       transition:
         left 180ms ease-in-out,
         bottom 180ms ease-in-out;

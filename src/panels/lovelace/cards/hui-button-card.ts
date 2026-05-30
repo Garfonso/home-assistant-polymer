@@ -1,44 +1,36 @@
-import { consume } from "@lit-labs/context";
-import type {
-  HassConfig,
-  HassEntities,
-  HassEntity,
-} from "home-assistant-js-websocket";
+import { consume } from "@lit/context";
+import type { HassEntity } from "home-assistant-js-websocket";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
 import { styleMap } from "lit/directives/style-map";
+import { computeCssColor } from "../../../common/color/compute-color";
 import { DOMAINS_TOGGLE } from "../../../common/const";
+import {
+  consumeEntityRegistryEntry,
+  consumeEntityState,
+} from "../../../common/decorators/consume-context-entry";
 import { transform } from "../../../common/decorators/transform";
 import { applyThemesOnElement } from "../../../common/dom/apply_themes_on_element";
 import { fireEvent } from "../../../common/dom/fire_event";
 import { computeDomain } from "../../../common/entity/compute_domain";
 import { computeStateDomain } from "../../../common/entity/compute_state_domain";
-import { computeStateName } from "../../../common/entity/compute_state_name";
+import { stateActive } from "../../../common/entity/state_active";
 import {
   stateColorBrightness,
   stateColorCss,
 } from "../../../common/entity/state_color";
 import { isValidEntityId } from "../../../common/entity/valid_entity_id";
 import { iconColorCSS } from "../../../common/style/icon_color_css";
-import type { LocalizeFunc } from "../../../common/translations/localize";
 import "../../../components/ha-card";
 import "../../../components/ha-ripple";
 import { CLIMATE_HVAC_ACTION_TO_MODE } from "../../../data/climate";
-import {
-  configContext,
-  entitiesContext,
-  localeContext,
-  localizeContext,
-  statesContext,
-  themesContext,
-} from "../../../data/context";
-import type { EntityRegistryDisplayEntry } from "../../../data/entity_registry";
+import { uiContext } from "../../../data/context";
+import type { EntityRegistryDisplayEntry } from "../../../data/entity/entity_registry";
 import type { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
-import type { FrontendLocaleData } from "../../../data/translation";
 import type { Themes } from "../../../data/ws-themes";
-import type { HomeAssistant } from "../../../types";
+import type { HomeAssistant, HomeAssistantUI } from "../../../types";
 import { actionHandler } from "../common/directives/action-handler-directive";
 import { findEntities } from "../common/find-entities";
 import { hasAction } from "../common/has-action";
@@ -49,6 +41,21 @@ import type {
   LovelaceGridOptions,
 } from "../types";
 import type { ButtonCardConfig } from "./types";
+
+const EMPTY_STATE_OBJ = {
+  state: "unavailable",
+  attributes: {
+    friendly_name: "",
+  },
+  entity_id: "___.empty",
+  context: {
+    id: "",
+    parent_id: null,
+    user_id: null,
+  },
+  last_changed: "",
+  last_updated: "",
+} satisfies HassEntity;
 
 export const getEntityDefaultButtonAction = (entityId?: string) =>
   entityId && DOMAINS_TOGGLE.has(computeDomain(entityId))
@@ -86,44 +93,20 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
 
   @state() private _config?: ButtonCardConfig;
 
-  @consume<any>({ context: statesContext, subscribe: true })
-  @transform({
-    transformer: function (this: HuiButtonCard, value: HassEntities) {
-      return this._config?.entity ? value[this._config?.entity] : undefined;
-    },
-    watch: ["_config"],
+  @state()
+  @consumeEntityState({ entityIdPath: ["_config", "entity"] })
+  private _stateObj?: HassEntity;
+
+  @state()
+  @consume({ context: uiContext, subscribe: true })
+  @transform<HomeAssistantUI, Themes>({
+    transformer: ({ themes }) => themes,
   })
-  _stateObj?: HassEntity;
+  private _themes!: Themes;
 
   @state()
-  @consume({ context: themesContext, subscribe: true })
-  _themes!: Themes;
-
-  @state()
-  @consume({ context: localizeContext, subscribe: true })
-  _localize!: LocalizeFunc;
-
-  @state()
-  @consume({ context: localeContext, subscribe: true })
-  _locale!: FrontendLocaleData;
-
-  @state()
-  @consume({ context: configContext, subscribe: true })
-  _hassConfig!: HassConfig;
-
-  @consume<any>({ context: entitiesContext, subscribe: true })
-  @transform<HomeAssistant["entities"], EntityRegistryDisplayEntry>({
-    transformer: function (this: HuiButtonCard, value) {
-      return this._config?.entity ? value[this._config?.entity] : undefined;
-    },
-    watch: ["_config"],
-  })
+  @consumeEntityRegistryEntry({ entityIdPath: ["_config", "entity"] })
   _entity?: EntityRegistryDisplayEntry;
-
-  private _getStateColor(stateObj: HassEntity, config: ButtonCardConfig) {
-    const domain = stateObj ? computeStateDomain(stateObj) : undefined;
-    return config && (config.state_color ?? domain === "light");
-  }
 
   public getCardSize(): number {
     return (
@@ -164,30 +147,30 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
       double_tap_action: { action: "none" },
       show_icon: true,
       show_name: true,
-      state_color: true,
+      color:
+        config.color ?? (config.state_color === false ? "none" : undefined),
       ...config,
     };
   }
 
   protected render() {
-    if (!this._config || !this._localize || !this._locale) {
+    if (!this._config) {
       return nothing;
     }
     const stateObj = this._stateObj;
 
     if (this._config.entity && !stateObj) {
       return html`
-        <hui-warning>
+        <hui-warning .hass=${this.hass}>
           ${createEntityNotFoundWarning(this.hass, this._config.entity)}
         </hui-warning>
       `;
     }
 
-    const name = this._config.show_name
-      ? this._config.name || (stateObj ? computeStateName(stateObj) : "")
-      : "";
-
-    const colored = stateObj && this._getStateColor(stateObj, this._config);
+    const name = this.hass.formatEntityName(
+      stateObj || EMPTY_STATE_OBJ,
+      this._config.name
+    );
 
     return html`
       <ha-card
@@ -197,13 +180,15 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
           hasDoubleClick: hasAction(this._config!.double_tap_action),
         })}
         role="button"
-        aria-label=${this._config.name ||
-        (stateObj ? computeStateName(stateObj) : "")}
+        aria-label=${name}
         tabindex=${ifDefined(
           hasAction(this._config.tap_action) ? "0" : undefined
         )}
         style=${styleMap({
-          "--state-color": colored ? this._computeColor(stateObj) : undefined,
+          "--state-color":
+            this._config.color !== "none"
+              ? this._computeColor(stateObj, this._config)
+              : undefined,
         })}
       >
         <ha-ripple></ha-ripple>
@@ -216,25 +201,24 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
                 )}
                 data-state=${ifDefined(stateObj?.state)}
                 .icon=${this._config.icon}
-                .hass=${this.hass}
                 .stateObj=${stateObj}
                 style=${styleMap({
-                  filter: colored ? stateColorBrightness(stateObj) : undefined,
+                  filter: stateObj ? stateColorBrightness(stateObj) : undefined,
                   height: this._config.icon_height
                     ? this._config.icon_height
-                    : "",
+                    : undefined,
                 })}
               ></ha-state-icon>
             `
-          : ""}
+          : nothing}
         ${this._config.show_name
           ? html`<span tabindex="-1" .title=${name}>${name}</span>`
-          : ""}
+          : nothing}
         ${this._config.show_state && stateObj
           ? html`<span class="state">
               ${this.hass.formatEntityState(stateObj)}
             </span>`
-          : ""}
+          : nothing}
       </ha-card>
     `;
   }
@@ -269,8 +253,8 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
       iconColorCSS,
       css`
         ha-card {
-          --state-inactive-color: var(--paper-item-icon-color, #44739e);
-          --state-color: var(--paper-item-icon-color, #44739e);
+          --state-inactive-color: var(--state-icon-color);
+          --state-color: var(--state-icon-color);
           --ha-ripple-color: var(--state-color);
           --ha-ripple-hover-opacity: 0.04;
           --ha-ripple-pressed-opacity: 0.12;
@@ -280,7 +264,8 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
           align-items: center;
           text-align: center;
           padding: 4% 0;
-          font-size: 16.8px;
+          font-size: var(--ha-font-size-l);
+          line-height: var(--ha-line-height-condensed);
           height: 100%;
           box-sizing: border-box;
           justify-content: center;
@@ -313,12 +298,8 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
 
         ha-card:focus-visible {
           --shadow-default: var(--ha-card-box-shadow, 0 0 0 0 transparent);
-          --shadow-focus: 0 0 0 1px
-            var(--state-color, var(--paper-item-icon-color, #44739e));
-          border-color: var(
-            --state-color,
-            var(--paper-item-icon-color, #44739e)
-          );
+          --shadow-focus: 0 0 0 1px var(--state-color, var(--state-icon-color));
+          border-color: var(--state-color, var(--state-icon-color));
           box-shadow: var(--shadow-default), var(--shadow-focus);
         }
 
@@ -335,7 +316,20 @@ export class HuiButtonCard extends LitElement implements LovelaceCard {
     ];
   }
 
-  private _computeColor(stateObj: HassEntity): string | undefined {
+  private _computeColor(
+    stateObj: HassEntity | undefined,
+    config: ButtonCardConfig
+  ): string | undefined {
+    if (config.color) {
+      return !stateObj || stateActive(stateObj)
+        ? computeCssColor(config.color)
+        : undefined;
+    }
+
+    if (!stateObj) {
+      return undefined;
+    }
+
     if (stateObj.attributes.rgb_color) {
       return `rgb(${stateObj.attributes.rgb_color.join(",")})`;
     }

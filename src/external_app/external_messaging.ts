@@ -1,3 +1,4 @@
+import type { NavigateOptions } from "../common/navigate";
 import type { AutomationConfig } from "../data/automation";
 
 const CALLBACK_EXTERNAL_BUS = "externalBus";
@@ -33,6 +34,13 @@ interface EMMessageResultError {
 
 interface EMOutgoingMessageConfigGet extends EMMessage {
   type: "config/get";
+}
+
+interface EMOutgoingMessageEntityAddToGetActions extends EMMessage {
+  type: "entity/add_to/get_actions";
+  payload: {
+    entity_id: string;
+  };
 }
 
 interface EMOutgoingMessageBarCodeScan extends EMMessage {
@@ -73,6 +81,10 @@ interface EMOutgoingMessageWithAnswer {
   "config/get": {
     request: EMOutgoingMessageConfigGet;
     response: ExternalConfig;
+  };
+  "entity/add_to/get_actions": {
+    request: EMOutgoingMessageEntityAddToGetActions;
+    response: ExternalEntityAddToActions;
   };
 }
 
@@ -135,6 +147,10 @@ interface EMOutgoingMessageAssistShow extends EMMessage {
   };
 }
 
+interface EMOutgoingMessageAssistSettings extends EMMessage {
+  type: "assist/settings";
+}
+
 interface EMOutgoingMessageImprovScan extends EMMessage {
   type: "improv/scan";
 }
@@ -156,6 +172,26 @@ interface EMOutgoingMessageThreadStoreInPlatformKeychain extends EMMessage {
   };
 }
 
+interface EMOutgoingMessageAddEntityTo extends EMMessage {
+  type: "entity/add_to";
+  payload: {
+    entity_id: string;
+    app_payload: string; // Opaque string received from get_actions
+  };
+}
+
+interface EMOutgoingMessageFocusElement extends EMMessage {
+  type: "focus_element";
+  payload: {
+    element_id: string;
+  };
+}
+
+// These types are handled internally by the Android app via postMessage.
+// They are not sent by the frontend and should not be used directly.
+// They are intentionally listed here to prevent anyone from using them unintentionally.
+type RejectedEMMessageType = "onHomeAssistantSetTheme" | "handleBlob";
+
 type EMOutgoingMessageWithoutAnswer =
   | EMMessageResultError
   | EMMessageResultSuccess
@@ -176,33 +212,45 @@ type EMOutgoingMessageWithoutAnswer =
   | EMOutgoingMessageThemeUpdate
   | EMOutgoingMessageThreadStoreInPlatformKeychain
   | EMOutgoingMessageImprovScan
-  | EMOutgoingMessageImprovConfigureDevice;
+  | EMOutgoingMessageImprovConfigureDevice
+  | EMOutgoingMessageAddEntityTo
+  | EMOutgoingMessageFocusElement
+  | EMOutgoingMessageAssistSettings;
 
-interface EMIncomingMessageRestart {
+export interface EMIncomingMessageRestart {
   id: number;
   type: "command";
   command: "restart";
 }
+export interface EMIncomingMessageNavigate {
+  id: number;
+  type: "command";
+  command: "navigate";
+  payload: {
+    path: string;
+    options?: NavigateOptions;
+  };
+}
 
-interface EMIncomingMessageShowNotifications {
+export interface EMIncomingMessageShowNotifications {
   id: number;
   type: "command";
   command: "notifications/show";
 }
 
-interface EMIncomingMessageToggleSidebar {
+export interface EMIncomingMessageToggleSidebar {
   id: number;
   type: "command";
   command: "sidebar/toggle";
 }
 
-interface EMIncomingMessageShowSidebar {
+export interface EMIncomingMessageShowSidebar {
   id: number;
   type: "command";
   command: "sidebar/show";
 }
 
-interface EMIncomingMessageShowAutomationEditor {
+export interface EMIncomingMessageShowAutomationEditor {
   id: number;
   type: "command";
   command: "automation/editor/show";
@@ -250,21 +298,31 @@ export interface ImprovDiscoveredDevice {
   name: string;
 }
 
-interface EMIncomingMessageImprovDeviceDiscovered extends EMMessage {
+export interface EMIncomingMessageImprovDeviceDiscovered extends EMMessage {
   id: number;
   type: "command";
   command: "improv/discovered_device";
   payload: ImprovDiscoveredDevice;
 }
 
-interface EMIncomingMessageImprovDeviceSetupDone extends EMMessage {
+export interface EMIncomingMessageImprovDeviceSetupDone extends EMMessage {
   id: number;
   type: "command";
   command: "improv/device_setup_done";
 }
 
+export interface EMIncomingMessageKioskModeSet {
+  id: number;
+  type: "command";
+  command: "kiosk_mode/set";
+  payload: {
+    enable: boolean;
+  };
+}
+
 export type EMIncomingMessageCommands =
   | EMIncomingMessageRestart
+  | EMIncomingMessageNavigate
   | EMIncomingMessageShowNotifications
   | EMIncomingMessageToggleSidebar
   | EMIncomingMessageShowSidebar
@@ -272,7 +330,8 @@ export type EMIncomingMessageCommands =
   | EMIncomingMessageBarCodeScanResult
   | EMIncomingMessageBarCodeScanAborted
   | EMIncomingMessageImprovDeviceDiscovered
-  | EMIncomingMessageImprovDeviceSetupDone;
+  | EMIncomingMessageImprovDeviceSetupDone
+  | EMIncomingMessageKioskModeSet;
 
 type EMIncomingMessage =
   | EMMessageResultSuccess
@@ -282,17 +341,31 @@ type EMIncomingMessage =
 type EMIncomingMessageHandler = (msg: EMIncomingMessageCommands) => boolean;
 
 export interface ExternalConfig {
-  hasSettingsScreen: boolean;
-  hasSidebar: boolean;
-  canWriteTag: boolean;
-  hasExoPlayer: boolean;
-  canCommissionMatter: boolean;
-  canImportThreadCredentials: boolean;
-  canTransferThreadCredentialsToKeychain: boolean;
-  hasAssist: boolean;
-  hasBarCodeScanner: number;
-  canSetupImprov: boolean;
-  downloadFileSupported: boolean;
+  hasSettingsScreen?: boolean;
+  hasSidebar?: boolean;
+  canWriteTag?: boolean;
+  hasExoPlayer?: boolean;
+  canCommissionMatter?: boolean;
+  canImportThreadCredentials?: boolean;
+  canTransferThreadCredentialsToKeychain?: boolean;
+  hasAssist?: boolean;
+  hasBarCodeScanner?: number;
+  canSetupImprov?: boolean;
+  appVersion?: string;
+  hasEntityAddTo?: boolean; // Supports "Add to" from more-info dialog, with action coming from external app
+  hasAssistSettings?: boolean; // Shows the "This device" section in voice assistant settings
+}
+
+export interface ExternalEntityAddToAction {
+  enabled: boolean;
+  name: string; // Translated name of the action to be displayed in the UI
+  details?: string; // Optional translated details of the action to be displayed in the UI
+  mdi_icon: string; // MDI icon name to be displayed in the UI (e.g., "mdi:car")
+  app_payload: string; // Opaque string to be sent back when the action is selected
+}
+
+export interface ExternalEntityAddToActions {
+  actions: ExternalEntityAddToAction[];
 }
 
 export class ExternalMessaging {
@@ -325,8 +398,16 @@ export class ExternalMessaging {
    * Send message to external app that expects a response.
    * @param msg message to send
    */
-  public sendMessage<T extends keyof EMOutgoingMessageWithAnswer>(
-    msg: EMOutgoingMessageWithAnswer[T]["request"]
+  public sendMessage<
+    T extends keyof EMOutgoingMessageWithAnswer,
+    TType extends string = EMOutgoingMessageWithAnswer[T]["request"]["type"],
+  >(
+    msg: EMOutgoingMessageWithAnswer[T]["request"] & {
+      type: TType &
+        (TType extends RejectedEMMessageType
+          ? "ERROR: message type is rejected"
+          : {});
+    }
   ): Promise<EMOutgoingMessageWithAnswer[T]["response"]> {
     const msgId = ++this.msgId;
     msg.id = msgId;
@@ -344,7 +425,14 @@ export class ExternalMessaging {
    * Send message to external app without expecting a response.
    * @param msg message to send
    */
-  public fireMessage(msg: EMOutgoingMessageWithoutAnswer) {
+  public fireMessage<T extends string>(
+    msg: EMOutgoingMessageWithoutAnswer & {
+      type: T &
+        (T extends RejectedEMMessageType
+          ? "ERROR: message type is rejected"
+          : {});
+    }
+  ) {
     if (!msg.id) {
       msg.id = ++this.msgId;
     }
@@ -405,7 +493,11 @@ export class ExternalMessaging {
       // eslint-disable-next-line no-console
       console.log("Sending message to external app", msg);
     }
-    if (window.externalApp) {
+    if (window.externalAppV2) {
+      window.externalAppV2.postMessage(
+        JSON.stringify({ type: "externalBus", payload: msg })
+      );
+    } else if (window.externalApp) {
       window.externalApp.externalBus(JSON.stringify(msg));
     } else {
       window.webkit!.messageHandlers.externalBus.postMessage(msg);

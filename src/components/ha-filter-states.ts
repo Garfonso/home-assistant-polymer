@@ -1,7 +1,6 @@
-import "@material/mwc-list/mwc-list";
 import type { List, SelectedDetail } from "@material/mwc-list";
 import { mdiFilterVariantRemove } from "@mdi/js";
-import type { CSSResultGroup } from "lit";
+import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
 import { fireEvent } from "../common/dom/fire_event";
@@ -11,6 +10,7 @@ import "./ha-check-list-item";
 import "./ha-expansion-panel";
 import "./ha-icon";
 import "./ha-icon-button";
+import "./ha-list";
 
 @customElement("ha-filter-states")
 export class HaFilterStates extends LitElement {
@@ -32,7 +32,7 @@ export class HaFilterStates extends LitElement {
 
   @state() private _shouldRender = false;
 
-  @query("mwc-list") private _list!: List;
+  @query("ha-list") private _list!: List;
 
   protected render() {
     if (!this.states) {
@@ -58,7 +58,7 @@ export class HaFilterStates extends LitElement {
         </div>
         ${this._shouldRender
           ? html`
-              <mwc-list
+              <ha-list
                 @selected=${this._statesSelected}
                 multi
                 class="ha-scrollbar"
@@ -79,20 +79,20 @@ export class HaFilterStates extends LitElement {
                       ${item.label}
                     </ha-check-list-item>`
                 )}
-              </mwc-list>
+              </ha-list>
             `
           : nothing}
       </ha-expansion-panel>
     `;
   }
 
-  protected willUpdate(changed) {
+  protected willUpdate(changed: PropertyValues<this>) {
     if (changed.has("expanded") && this.expanded) {
       this._shouldRender = true;
     }
   }
 
-  protected updated(changed) {
+  protected updated(changed: PropertyValues<this>) {
     if ((changed.has("expanded") || changed.has("states")) && this.expanded) {
       setTimeout(async () => {
         if (!this.expanded) return;
@@ -158,7 +158,7 @@ export class HaFilterStates extends LitElement {
           height: 0;
         }
         ha-expansion-panel {
-          --ha-card-border-radius: 0;
+          --ha-card-border-radius: var(--ha-border-radius-square);
           --expansion-panel-content-padding: 0;
         }
         .header {
@@ -176,11 +176,11 @@ export class HaFilterStates extends LitElement {
           margin-inline-end: 0;
           min-width: 16px;
           box-sizing: border-box;
-          border-radius: 50%;
-          font-weight: 400;
-          font-size: 11px;
+          border-radius: var(--ha-border-radius-circle);
+          font-size: var(--ha-font-size-xs);
+          font-weight: var(--ha-font-weight-normal);
           background-color: var(--primary-color);
-          line-height: 16px;
+          line-height: var(--ha-line-height-normal);
           text-align: center;
           padding: 0px 2px;
           color: var(--text-primary-color);

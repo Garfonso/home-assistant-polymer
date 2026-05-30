@@ -1,4 +1,3 @@
-import "@material/mwc-button/mwc-button";
 import { STATE_NOT_RUNNING } from "home-assistant-js-websocket";
 import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
@@ -21,7 +20,7 @@ export class HuiStartingCard extends LitElement implements LovelaceCard {
   // eslint-disable-next-line @typescript-eslint/no-empty-function
   public setConfig(_config: LovelaceCardConfig): void {}
 
-  protected updated(changedProperties: PropertyValues) {
+  protected updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
     if (!changedProperties.has("hass") || !this.hass!.config) {
       return;

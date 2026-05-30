@@ -1,23 +1,24 @@
-import "@material/mwc-button/mwc-button";
-import "@material/mwc-formfield/mwc-formfield";
-import "@material/mwc-list/mwc-list-item";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
 import { fireEvent } from "../../../common/dom/fire_event";
+import { computeDeviceName } from "../../../common/entity/compute_device_name";
+import { computeEntityEntryName } from "../../../common/entity/compute_entity_name";
+import { getEntityEntryContext } from "../../../common/entity/context/get_entity_context";
 import "../../../components/ha-alert";
+import "../../../components/ha-button";
 import type { ConfigEntry } from "../../../data/config_entries";
 import {
   deleteConfigEntry,
   getConfigEntry,
 } from "../../../data/config_entries";
-import { updateDeviceRegistryEntry } from "../../../data/device_registry";
-import type { ExtEntityRegistryEntry } from "../../../data/entity_registry";
+import { updateDeviceRegistryEntry } from "../../../data/device/device_registry";
+import type { ExtEntityRegistryEntry } from "../../../data/entity/entity_registry";
 import {
   removeEntityRegistryEntry,
   updateEntityRegistryEntry,
-} from "../../../data/entity_registry";
+} from "../../../data/entity/entity_registry";
 import { fetchIntegrationManifest } from "../../../data/integration";
 import {
   showAlertDialog,
@@ -29,8 +30,7 @@ import type { HomeAssistant } from "../../../types";
 import { showDeviceRegistryDetailDialog } from "../devices/device-registry-detail/show-dialog-device-registry-detail";
 import "./entity-registry-settings-editor";
 import type { EntityRegistrySettingsEditor } from "./entity-registry-settings-editor";
-
-const invalidDomainUpdate = false;
+import { getDeleteConfirmationText } from "./get-delete-confirmation-text";
 
 @customElement("entity-registry-settings")
 export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
@@ -44,10 +44,12 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
 
   @state() private _submitting?: boolean;
 
+  @state() private _dirty = false;
+
   @query("entity-registry-settings-editor")
   private _registryEditor?: EntityRegistrySettingsEditor;
 
-  protected willUpdate(changedProps: PropertyValues): void {
+  protected willUpdate(changedProps: PropertyValues<this>): void {
     super.willUpdate(changedProps);
     if (changedProps.has("entry")) {
       this._fetchHelperConfigEntry();
@@ -89,27 +91,31 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
               ${device?.disabled_by
                 ? html`${this.hass!.localize(
                       "ui.dialogs.entity_registry.editor.device_disabled"
-                    )}<mwc-button
+                    )}<ha-button
+                      size="small"
+                      variant="warning"
                       @click=${this._openDeviceSettings}
                       slot="action"
                     >
                       ${this.hass!.localize(
                         "ui.dialogs.entity_registry.editor.open_device_settings"
                       )}
-                    </mwc-button>`
+                    </ha-button>`
                 : this.entry.disabled_by
                   ? html`${this.hass!.localize(
                       "ui.dialogs.entity_registry.editor.entity_disabled"
                     )}${["user", "integration"].includes(
                       this.entry.disabled_by!
                     )
-                      ? html`<mwc-button
+                      ? html`<ha-button
+                          size="small"
+                          variant="warning"
                           slot="action"
                           @click=${this._enableEntry}
                         >
                           ${this.hass!.localize(
                             "ui.dialogs.entity_registry.editor.enable_entity"
-                          )}</mwc-button
+                          )}</ha-button
                         >`
                       : ""}`
                   : this.hass!.localize(
@@ -126,31 +132,34 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
           .hass=${this.hass}
           .entry=${this.entry}
           .helperConfigEntry=${this._helperConfigEntry}
-          .disabled=${this._submitting}
+          .disabled=${!!this._submitting}
           @change=${this._entityRegistryChanged}
         ></entity-registry-settings-editor>
       </div>
       <div class="buttons">
-        <mwc-button
-          class="warning"
+        <ha-button
+          variant="danger"
+          appearance="plain"
           @click=${this._confirmDeleteEntry}
           .disabled=${this._submitting ||
           (!this._helperConfigEntry && !stateObj?.attributes.restored)}
         >
           ${this.hass.localize("ui.dialogs.entity_registry.editor.delete")}
-        </mwc-button>
-        <mwc-button
+        </ha-button>
+        <ha-button
           @click=${this._updateEntry}
-          .disabled=${invalidDomainUpdate || this._submitting}
+          .disabled=${!this._dirty || !!this._submitting}
+          .loading=${!!this._submitting}
         >
           ${this.hass.localize("ui.dialogs.entity_registry.editor.update")}
-        </mwc-button>
+        </ha-button>
       </div>
     `;
   }
 
   private _entityRegistryChanged() {
     this._error = undefined;
+    this._dirty = this._registryEditor?.dirty ?? false;
   }
 
   private _openDeviceSettings() {
@@ -211,11 +220,32 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
   }
 
   private async _confirmDeleteEntry(): Promise<void> {
+    let name = computeEntityEntryName(this.entry, this.hass.devices);
+    if (!name) {
+      const { device } = getEntityEntryContext(
+        this.entry,
+        this.hass.entities,
+        this.hass.devices,
+        this.hass.areas,
+        this.hass.floors
+      );
+      if (device) {
+        name = computeDeviceName(device);
+      }
+    }
+
+    const confirmationText = await getDeleteConfirmationText(
+      this.hass,
+      this.entry,
+      name
+    );
+
     if (
       !(await showConfirmationDialog(this, {
-        text: this.hass.localize(
-          "ui.dialogs.entity_registry.editor.confirm_delete"
+        title: this.hass.localize(
+          "ui.dialogs.entity_registry.editor.confirm_delete_title"
         ),
+        text: confirmationText,
         confirmText: this.hass.localize("ui.common.delete"),
         dismissText: this.hass.localize("ui.common.cancel"),
         destructive: true,
@@ -246,20 +276,21 @@ export class EntityRegistrySettings extends SubscribeMixin(LitElement) {
           display: block;
         }
         .container {
-          padding: 8px 24px 20px 24px;
+          padding: var(--ha-space-2) var(--ha-space-6) var(--ha-space-5)
+            var(--ha-space-6);
         }
         .buttons {
           box-sizing: border-box;
           display: flex;
-          padding: 8px 16px 8px 24px;
+          padding: var(--ha-space-4);
           justify-content: space-between;
-          padding-bottom: max(env(safe-area-inset-bottom), 8px);
+          padding-bottom: max(var(--safe-area-inset-bottom), var(--ha-space-4));
           background-color: var(--mdc-theme-surface, #fff);
           border-top: 1px solid var(--divider-color);
           position: sticky;
           bottom: 0px;
         }
-        ha-alert mwc-button {
+        ha-alert ha-button {
           width: max-content;
         }
       `,

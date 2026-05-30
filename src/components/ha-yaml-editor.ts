@@ -3,14 +3,16 @@ import { DEFAULT_SCHEMA, dump, load } from "js-yaml";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
+import type { ContextType } from "@lit/context";
+import { consume } from "@lit/context";
 import { fireEvent } from "../common/dom/fire_event";
-import type { HomeAssistant } from "../types";
-import { haStyle } from "../resources/styles";
-import "./ha-code-editor";
-import { showToast } from "../util/toast";
 import { copyToClipboard } from "../common/util/copy-clipboard";
-import type { HaCodeEditor } from "./ha-code-editor";
+import { haStyle } from "../resources/styles";
+import { showToast } from "../util/toast";
 import "./ha-button";
+import "./ha-code-editor";
+import type { HaCodeEditor } from "./ha-code-editor";
+import { internationalizationContext } from "../data/context";
 
 const isEmpty = (obj: Record<string, unknown>): boolean => {
   if (typeof obj !== "object" || obj === null) {
@@ -26,8 +28,6 @@ const isEmpty = (obj: Record<string, unknown>): boolean => {
 
 @customElement("ha-yaml-editor")
 export class HaYamlEditor extends LitElement {
-  @property({ attribute: false }) public hass!: HomeAssistant;
-
   @property() public value?: any;
 
   @property({ attribute: false }) public yamlSchema: Schema = DEFAULT_SCHEMA;
@@ -43,6 +43,12 @@ export class HaYamlEditor extends LitElement {
 
   @property({ attribute: "read-only", type: Boolean }) public readOnly = false;
 
+  @property({ type: Boolean, attribute: "disable-fullscreen" })
+  public disableFullscreen = false;
+
+  @property({ type: Boolean, attribute: "in-dialog" })
+  public inDialog = false;
+
   @property({ type: Boolean }) public required = false;
 
   @property({ attribute: "copy-clipboard", type: Boolean })
@@ -52,6 +58,10 @@ export class HaYamlEditor extends LitElement {
   public hasExtraActions = false;
 
   @state() private _yaml = "";
+
+  @state()
+  @consume({ context: internationalizationContext, subscribe: true })
+  private _i18n?: ContextType<typeof internationalizationContext>;
 
   @query("ha-code-editor") _codeEditor?: HaCodeEditor;
 
@@ -90,6 +100,13 @@ export class HaYamlEditor extends LitElement {
     }
   }
 
+  public disableCodeEditorFullscreen(): void {
+    this.disableFullscreen = true;
+    if (this._codeEditor) {
+      this._codeEditor.disableFullscreen = true;
+    }
+  }
+
   protected render() {
     if (this._yaml === undefined) {
       return nothing;
@@ -99,14 +116,17 @@ export class HaYamlEditor extends LitElement {
         ? html`<p>${this.label}${this.required ? " *" : ""}</p>`
         : nothing}
       <ha-code-editor
-        .hass=${this.hass}
         .value=${this._yaml}
         .readOnly=${this.readOnly}
+        .disableFullscreen=${this.disableFullscreen}
+        .inDialog=${this.inDialog}
         mode="yaml"
+        lint
         autocomplete-entities
         autocomplete-icons
         .error=${this.isValid === false}
         @value-changed=${this._onChange}
+        @editor-save=${this._onEditorSave}
         dir="ltr"
       ></ha-code-editor>
       ${this.copyClipboard || this.hasExtraActions
@@ -114,8 +134,8 @@ export class HaYamlEditor extends LitElement {
             <div class="card-actions">
               ${this.copyClipboard
                 ? html`
-                    <ha-button @click=${this._copyYaml}>
-                      ${this.hass.localize(
+                    <ha-button appearance="plain" @click=${this._copyYaml}>
+                      ${this._i18n!.localize(
                         "ui.components.yaml-editor.copy_to_clipboard"
                       )}
                     </ha-button>
@@ -131,9 +151,13 @@ export class HaYamlEditor extends LitElement {
   private _onChange(ev: CustomEvent): void {
     ev.stopPropagation();
     this._yaml = ev.detail.value;
-    let parsed;
+    let parsed: unknown;
     let isValid = true;
-    let errorMsg;
+    let errorMsg: string | undefined;
+    let yamlError: {
+      mark?: { position: number; line: number; column: number };
+      message?: string;
+    } | null = null;
 
     if (this._yaml) {
       try {
@@ -141,11 +165,13 @@ export class HaYamlEditor extends LitElement {
       } catch (err: any) {
         // Invalid YAML
         isValid = false;
-        errorMsg = `${this.hass.localize("ui.components.yaml-editor.error", { reason: err.reason })}${err.mark ? ` (${this.hass.localize("ui.components.yaml-editor.error_location", { line: err.mark.line + 1, column: err.mark.column + 1 })})` : ""}`;
+        yamlError = err;
+        errorMsg = `${this._i18n!.localize("ui.components.yaml-editor.error", { reason: err.reason })}${err.mark ? ` (${this._i18n!.localize("ui.components.yaml-editor.error_location", { line: err.mark.line + 1, column: err.mark.column + 1 })})` : ""}`;
       }
     } else {
       parsed = {};
     }
+    this._codeEditor?.setYamlError(yamlError);
 
     this.value = parsed;
     this.isValid = isValid;
@@ -161,11 +187,24 @@ export class HaYamlEditor extends LitElement {
     return this._yaml;
   }
 
+  get codemirror() {
+    return this._codeEditor?.codemirror;
+  }
+
+  get hasComments(): boolean {
+    return this._codeEditor?.hasComments ?? false;
+  }
+
+  private _onEditorSave(ev: CustomEvent): void {
+    fireEvent(this, "editor-save");
+    ev.stopPropagation();
+  }
+
   private async _copyYaml(): Promise<void> {
     if (this.yaml) {
       await copyToClipboard(this.yaml);
       showToast(this, {
-        message: this.hass.localize("ui.common.copied_clipboard"),
+        message: this._i18n!.localize("ui.common.copied_clipboard"),
       });
     }
   }
@@ -177,14 +216,16 @@ export class HaYamlEditor extends LitElement {
         .card-actions {
           border-radius: var(
             --actions-border-radius,
-            0px 0px var(--ha-card-border-radius, 12px)
-              var(--ha-card-border-radius, 12px)
+            var(--ha-border-radius-square) var(--ha-border-radius-square)
+              var(--ha-card-border-radius, var(--ha-border-radius-lg))
+              var(--ha-card-border-radius, var(--ha-border-radius-lg))
           );
           border: 1px solid var(--divider-color);
           padding: 5px 16px;
         }
         ha-code-editor {
           flex-grow: 1;
+          min-height: 0;
         }
       `,
     ];

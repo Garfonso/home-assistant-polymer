@@ -4,12 +4,12 @@ import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { ensureArray } from "../../common/array/ensure-array";
 import { fireEvent } from "../../common/dom/fire_event";
-import type { EntitySources } from "../../data/entity_sources";
-import { fetchEntitySourcesWithCache } from "../../data/entity_sources";
+import type { EntitySources } from "../../data/entity/entity_sources";
+import { fetchEntitySourcesWithCache } from "../../data/entity/entity_sources";
 import type { EntitySelector } from "../../data/selector";
 import {
-  filterSelectorEntities,
   computeCreateDomains,
+  filterSelectorEntities,
 } from "../../data/selector";
 import type { HomeAssistant } from "../../types";
 import "../entity/ha-entities-picker";
@@ -29,6 +29,8 @@ export class HaEntitySelector extends LitElement {
 
   @property() public helper?: string;
 
+  @property() public placeholder?: any;
+
   @property({ type: Boolean }) public disabled = false;
 
   @property({ type: Boolean }) public required = true;
@@ -42,8 +44,8 @@ export class HaEntitySelector extends LitElement {
     );
   }
 
-  protected willUpdate(changedProperties: PropertyValues): void {
-    if (changedProperties.has("selector") && this.value !== undefined) {
+  protected willUpdate(changedProperties: PropertyValues<this>): void {
+    if (changedProperties.get("selector") && this.value !== undefined) {
       if (this.selector.entity?.multiple && !Array.isArray(this.value)) {
         this.value = [this.value];
         fireEvent(this, "value-changed", { value: this.value });
@@ -62,27 +64,30 @@ export class HaEntitySelector extends LitElement {
     if (!this.selector.entity?.multiple) {
       return html`<ha-entity-picker
         .hass=${this.hass}
-        .value=${this.value}
+        .value=${typeof this.value === "string" ? this.value : ""}
         .label=${this.label}
+        .placeholder=${this.placeholder}
         .helper=${this.helper}
         .includeEntities=${this.selector.entity?.include_entities}
         .excludeEntities=${this.selector.entity?.exclude_entities}
+        .extraOptions=${this.selector.entity?.extra_options}
         .entityFilter=${this._filterEntities}
         .createDomains=${this._createDomains}
         .disabled=${this.disabled}
         .required=${this.required}
-        allow-custom-entity
       ></ha-entity-picker>`;
     }
 
     return html`
-      ${this.label ? html`<label>${this.label}</label>` : ""}
       <ha-entities-picker
         .hass=${this.hass}
         .value=${this.value}
+        .label=${this.label}
+        .placeholder=${this.placeholder}
         .helper=${this.helper}
         .includeEntities=${this.selector.entity.include_entities}
         .excludeEntities=${this.selector.entity.exclude_entities}
+        .reorder=${this.selector.entity.reorder ?? false}
         .entityFilter=${this._filterEntities}
         .createDomains=${this._createDomains}
         .disabled=${this.disabled}
@@ -91,7 +96,7 @@ export class HaEntitySelector extends LitElement {
     `;
   }
 
-  protected updated(changedProps: PropertyValues): void {
+  protected updated(changedProps: PropertyValues<this>): void {
     super.updated(changedProps);
     if (
       changedProps.has("selector") &&

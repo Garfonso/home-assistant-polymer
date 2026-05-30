@@ -1,11 +1,14 @@
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
+import { createDurationData } from "../../../../common/datetime/create_duration_data";
 import { fireEvent } from "../../../../common/dom/fire_event";
 import "../../../../components/ha-checkbox";
-import "../../../../components/ha-formfield";
+import "../../../../components/ha-duration-input";
+import type { HaDurationData } from "../../../../components/ha-duration-input";
 import "../../../../components/ha-icon-picker";
-import "../../../../components/ha-textfield";
+import "../../../../components/input/ha-input";
+import type { ForDict } from "../../../../data/automation";
 import type { DurationDict, Timer } from "../../../../data/timer";
 import { haStyle } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
@@ -16,6 +19,8 @@ class HaTimerForm extends LitElement {
 
   @property({ type: Boolean }) public new = false;
 
+  @property({ type: Boolean }) public disabled = false;
+
   private _item?: Timer;
 
   @state() private _name!: string;
@@ -24,7 +29,11 @@ class HaTimerForm extends LitElement {
 
   @state() private _duration!: string | number | DurationDict;
 
+  @state() private _duration_data!: HaDurationData | undefined;
+
   @state() private _restore!: boolean;
+
+  @query("[dialogInitialFocus]") private _focusElement?: HTMLElement;
 
   set item(item: Timer) {
     this._item = item;
@@ -39,14 +48,12 @@ class HaTimerForm extends LitElement {
       this._duration = "00:00:00";
       this._restore = false;
     }
+
+    this._setDurationData();
   }
 
   public focus() {
-    this.updateComplete.then(() =>
-      (
-        this.shadowRoot?.querySelector("[dialogInitialFocus]") as HTMLElement
-      )?.focus()
-    );
+    this.updateComplete.then(() => this._focusElement?.focus());
   }
 
   protected render() {
@@ -56,20 +63,21 @@ class HaTimerForm extends LitElement {
 
     return html`
       <div class="form">
-        <ha-textfield
+        <ha-input
           .value=${this._name}
           .configValue=${"name"}
           @input=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.name"
           )}
-          autoValidate
+          auto-validate
           required
           .validationMessage=${this.hass!.localize(
             "ui.dialogs.helper_settings.required_error_msg"
           )}
           dialogInitialFocus
-        ></ha-textfield>
+          .disabled=${this.disabled}
+        ></ha-input>
         <ha-icon-picker
           .hass=${this.hass}
           .value=${this._icon}
@@ -78,27 +86,22 @@ class HaTimerForm extends LitElement {
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.icon"
           )}
+          .disabled=${this.disabled}
         ></ha-icon-picker>
-        <ha-textfield
+        <ha-duration-input
           .configValue=${"duration"}
-          .value=${this._duration}
-          @input=${this._valueChanged}
-          .label=${this.hass.localize(
-            "ui.dialogs.helper_settings.timer.duration"
-          )}
-        ></ha-textfield>
-        <ha-formfield
-          .label=${this.hass.localize(
-            "ui.dialogs.helper_settings.timer.restore"
-          )}
+          .data=${this._duration_data}
+          @value-changed=${this._valueChanged}
+          .disabled=${this.disabled}
+        ></ha-duration-input>
+        <ha-checkbox
+          .configValue=${"restore"}
+          .checked=${this._restore}
+          @change=${this._toggleRestore}
+          .disabled=${this.disabled}
         >
-          <ha-checkbox
-            .configValue=${"restore"}
-            .checked=${this._restore}
-            @click=${this._toggleRestore}
-          >
-          </ha-checkbox>
-        </ha-formfield>
+          ${this.hass.localize("ui.dialogs.helper_settings.timer.restore")}
+        </ha-checkbox>
       </div>
     `;
   }
@@ -124,11 +127,30 @@ class HaTimerForm extends LitElement {
     });
   }
 
-  private _toggleRestore() {
-    this._restore = !this._restore;
+  private _toggleRestore(ev) {
+    this._restore = ev.target.checked;
     fireEvent(this, "value-changed", {
       value: { ...this._item, restore: this._restore },
     });
+  }
+
+  private _setDurationData() {
+    let durationInput: string | number | ForDict;
+
+    if (typeof this._duration === "object" && this._duration !== null) {
+      const d = this._duration as DurationDict;
+      durationInput = {
+        hours: typeof d.hours === "string" ? parseFloat(d.hours) : d.hours,
+        minutes:
+          typeof d.minutes === "string" ? parseFloat(d.minutes) : d.minutes,
+        seconds:
+          typeof d.seconds === "string" ? parseFloat(d.seconds) : d.seconds,
+      };
+    } else {
+      durationInput = this._duration;
+    }
+
+    this._duration_data = createDurationData(durationInput);
   }
 
   static get styles(): CSSResultGroup {
@@ -138,9 +160,13 @@ class HaTimerForm extends LitElement {
         .form {
           color: var(--primary-text-color);
         }
-        ha-textfield {
+        ha-duration-input {
           display: block;
           margin: 8px 0;
+        }
+        ha-checkbox {
+          min-height: 40px;
+          justify-content: center;
         }
       `,
     ];

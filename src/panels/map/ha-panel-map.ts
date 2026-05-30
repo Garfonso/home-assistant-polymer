@@ -21,7 +21,7 @@ class HaPanelMap extends LitElement {
 
   protected render() {
     return html`
-      <ha-top-app-bar-fixed>
+      <ha-top-app-bar-fixed .narrow=${this.narrow}>
         <ha-menu-button
           slot="navigationIcon"
           .hass=${this.hass}
@@ -50,7 +50,7 @@ class HaPanelMap extends LitElement {
     navigate("/config/zone?historyBack=1");
   }
 
-  public willUpdate(changedProps: PropertyValues) {
+  public willUpdate(changedProps: PropertyValues<this>) {
     super.willUpdate(changedProps);
     if (!changedProps.has("hass")) {
       return;

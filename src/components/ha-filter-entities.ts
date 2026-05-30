@@ -1,22 +1,24 @@
-import "@material/mwc-list/mwc-list";
 import { mdiFilterVariantRemove } from "@mdi/js";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../common/dom/fire_event";
 import { computeStateDomain } from "../common/entity/compute_state_domain";
 import { computeStateName } from "../common/entity/compute_state_name";
 import { stringCompare } from "../common/string/compare";
+import { deepEqual } from "../common/util/deep-equal";
 import type { RelatedResult } from "../data/search";
 import { findRelated } from "../data/search";
 import { haStyleScrollbar } from "../resources/styles";
 import { loadVirtualizer } from "../resources/virtualizer";
 import type { HomeAssistant } from "../types";
 import "./ha-check-list-item";
-import "./ha-state-icon";
 import "./ha-expansion-panel";
-import "./search-input-outlined";
+import "./ha-list";
+import "./ha-state-icon";
+import "./input/ha-input-search";
+import type { HaInputSearch } from "./input/ha-input-search";
 
 @customElement("ha-filter-entities")
 export class HaFilterEntities extends LitElement {
@@ -34,14 +36,20 @@ export class HaFilterEntities extends LitElement {
 
   @state() private _filter?: string;
 
-  public willUpdate(properties: PropertyValues) {
+  @query("ha-list") private _list?: HTMLElement;
+
+  public willUpdate(properties: PropertyValues<this>) {
     super.willUpdate(properties);
 
     if (!this.hasUpdated) {
       loadVirtualizer();
-      if (this.value?.length) {
-        this._findRelated();
-      }
+    }
+
+    if (
+      properties.has("value") &&
+      !deepEqual(this.value, properties.get("value"))
+    ) {
+      this._findRelated();
     }
   }
 
@@ -65,13 +73,13 @@ export class HaFilterEntities extends LitElement {
         </div>
         ${this._shouldRender
           ? html`
-              <search-input-outlined
-                .hass=${this.hass}
-                .filter=${this._filter}
-                @value-changed=${this._handleSearchChange}
+              <ha-input-search
+                appearance="outlined"
+                .value=${this._filter}
+                @input=${this._handleSearchChange}
               >
-              </search-input-outlined>
-              <mwc-list class="ha-scrollbar" multi>
+              </ha-input-search>
+              <ha-list class="ha-scrollbar" multi>
                 <lit-virtualizer
                   .items=${this._entities(
                     this.hass.states,
@@ -82,21 +90,24 @@ export class HaFilterEntities extends LitElement {
                   .keyFunction=${this._keyFunction}
                   .renderItem=${this._renderItem}
                   @click=${this._handleItemClick}
+                  @keydown=${this._handleItemKeydown}
                 >
                 </lit-virtualizer>
-              </mwc-list>
+              </ha-list>
             `
           : nothing}
       </ha-expansion-panel>
     `;
   }
 
-  protected updated(changed) {
+  protected updated(changed: PropertyValues<this>) {
     if (changed.has("expanded") && this.expanded) {
       setTimeout(() => {
         if (!this.expanded) return;
-        this.renderRoot.querySelector("mwc-list")!.style.height =
-          `${this.clientHeight - 49 - 32}px`; // 32px is the height of the search input
+        this._list!.style.height = `${this.clientHeight - 49 - 4 - 32}px`;
+        // 49px - height of a header + 1px
+        // 4px - padding-top of the search-input
+        // 32px - height of the search input
       }, 300);
     }
   }
@@ -107,17 +118,21 @@ export class HaFilterEntities extends LitElement {
     !entity
       ? nothing
       : html`<ha-check-list-item
+          tabindex="0"
           .value=${entity.entity_id}
           .selected=${this.value?.includes(entity.entity_id) ?? false}
           graphic="icon"
         >
-          <ha-state-icon
-            slot="graphic"
-            .hass=${this.hass}
-            .stateObj=${entity}
-          ></ha-state-icon>
+          <ha-state-icon slot="graphic" .stateObj=${entity}></ha-state-icon>
           ${computeStateName(entity)}
         </ha-check-list-item>`;
+
+  private _handleItemKeydown(ev: KeyboardEvent) {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      this._handleItemClick(ev);
+    }
+  }
 
   private _handleItemClick(ev) {
     const listItem = ev.target.closest("ha-check-list-item");
@@ -131,7 +146,6 @@ export class HaFilterEntities extends LitElement {
       this.value = [...(this.value || []), value];
     }
     listItem.selected = this.value?.includes(value);
-    this._findRelated();
   }
 
   private _expandedWillChange(ev) {
@@ -142,8 +156,9 @@ export class HaFilterEntities extends LitElement {
     this.expanded = ev.detail.expanded;
   }
 
-  private _handleSearchChange(ev: CustomEvent) {
-    this._filter = ev.detail.value.toLowerCase();
+  private _handleSearchChange(ev: InputEvent) {
+    const target = ev.target as HaInputSearch;
+    this._filter = (target.value ?? "").toLowerCase();
   }
 
   private _entities = memoizeOne(
@@ -178,11 +193,11 @@ export class HaFilterEntities extends LitElement {
     const relatedPromises: Promise<RelatedResult>[] = [];
 
     if (!this.value?.length) {
+      this.value = [];
       fireEvent(this, "data-table-filter-changed", {
         value: [],
         items: undefined,
       });
-      this.value = [];
       return;
     }
 
@@ -227,7 +242,7 @@ export class HaFilterEntities extends LitElement {
           height: 0;
         }
         ha-expansion-panel {
-          --ha-card-border-radius: 0;
+          --ha-card-border-radius: var(--ha-border-radius-square);
           --expansion-panel-content-padding: 0;
         }
         .header {
@@ -245,11 +260,11 @@ export class HaFilterEntities extends LitElement {
           margin-inline-end: 0;
           min-width: 16px;
           box-sizing: border-box;
-          border-radius: 50%;
-          font-weight: 400;
-          font-size: 11px;
+          border-radius: var(--ha-border-radius-circle);
+          font-size: var(--ha-font-size-xs);
+          font-weight: var(--ha-font-weight-normal);
           background-color: var(--primary-color);
-          line-height: 16px;
+          line-height: var(--ha-line-height-normal);
           text-align: center;
           padding: 0px 2px;
           color: var(--text-primary-color);
@@ -258,9 +273,9 @@ export class HaFilterEntities extends LitElement {
           --mdc-list-item-graphic-margin: 16px;
           width: 100%;
         }
-        search-input-outlined {
+        ha-input-search {
           display: block;
-          padding: 0 8px;
+          padding: var(--ha-space-1) var(--ha-space-2) 0;
         }
       `,
     ];

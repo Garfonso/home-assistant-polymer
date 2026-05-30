@@ -3,26 +3,24 @@ import type { PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
-import { findEntities } from "../common/find-entities";
+import { UNAVAILABLE, UNKNOWN } from "../../../data/entity/entity";
 import type { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import type { HomeAssistant } from "../../../types";
 import { computeTooltip } from "../common/compute-tooltip";
 import { actionHandler } from "../common/directives/action-handler-directive";
+import { findEntities } from "../common/find-entities";
 import { handleAction } from "../common/handle-action";
 import { hasAction } from "../common/has-action";
-import { isUnavailableState } from "../../../data/entity";
 import { hasConfigOrEntityChanged } from "../common/has-changed";
 import { createEntityNotFoundWarning } from "../components/hui-warning";
 import "../components/hui-warning-element";
-import type { LovelaceElement, StateLabelElementConfig } from "./types";
 import type { LovelacePictureElementEditor } from "../types";
+import type { LovelaceElement, StateLabelElementConfig } from "./types";
 
 @customElement("hui-state-label-element")
 class HuiStateLabelElement extends LitElement implements LovelaceElement {
   public static async getConfigElement(): Promise<LovelacePictureElementEditor> {
-    await import(
-      "../editor/config-elements/elements/hui-state-label-element-editor"
-    );
+    await import("../editor/config-elements/elements/hui-state-label-element-editor");
     return document.createElement("hui-state-label-element-editor");
   }
 
@@ -34,7 +32,7 @@ class HuiStateLabelElement extends LitElement implements LovelaceElement {
     const includeDomains = ["light", "switch", "sensor"];
     const maxEntities = 1;
     const entityFilter = (stateObj: HassEntity): boolean =>
-      !isUnavailableState(stateObj.state);
+      stateObj.state !== UNAVAILABLE && stateObj.state !== UNKNOWN;
     const foundEntities = findEntities(
       hass,
       maxEntities,
@@ -56,10 +54,14 @@ class HuiStateLabelElement extends LitElement implements LovelaceElement {
       throw Error("Entity required");
     }
 
-    this._config = { tap_action: { action: "more-info" }, ...config };
+    this._config = {
+      tap_action: { action: "more-info" },
+      hold_action: { action: "more-info" },
+      ...config,
+    };
   }
 
-  protected shouldUpdate(changedProps: PropertyValues): boolean {
+  protected shouldUpdate(changedProps: PropertyValues<this>): boolean {
     return hasConfigOrEntityChanged(this, changedProps);
   }
 
@@ -126,7 +128,7 @@ class HuiStateLabelElement extends LitElement implements LovelaceElement {
     div:focus {
       outline: none;
       background: var(--divider-color);
-      border-radius: 100%;
+      border-radius: var(--ha-border-radius-pill);
     }
   `;
 }

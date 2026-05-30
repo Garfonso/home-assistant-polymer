@@ -4,7 +4,7 @@ import { customElement, property, state } from "lit/decorators";
 import "../../../../../../components/ha-expansion-panel";
 import type { ConfigEntry } from "../../../../../../data/config_entries";
 import { getConfigEntries } from "../../../../../../data/config_entries";
-import type { DeviceRegistryEntry } from "../../../../../../data/device_registry";
+import type { DeviceRegistryEntry } from "../../../../../../data/device/device_registry";
 import type { ZWaveJSNodeStatus } from "../../../../../../data/zwave_js";
 import {
   fetchZwaveNodeStatus,
@@ -26,7 +26,7 @@ export class HaDeviceInfoZWaveJS extends SubscribeMixin(LitElement) {
 
   @state() private _node?: ZWaveJSNodeStatus;
 
-  public willUpdate(changedProperties: PropertyValues) {
+  public willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);
     if (changedProperties.has("device")) {
       this._fetchNodeDetails();

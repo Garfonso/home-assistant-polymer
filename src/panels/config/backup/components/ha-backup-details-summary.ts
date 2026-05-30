@@ -1,15 +1,17 @@
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
-import "../../../../components/ha-card";
-import "../../../../components/ha-md-list";
-import "../../../../components/ha-md-list-item";
-import type { HomeAssistant } from "../../../../types";
 import { formatDateTime } from "../../../../common/datetime/format_date_time";
+import { capitalizeFirstLetter } from "../../../../common/string/capitalize-first-letter";
+import "../../../../components/ha-alert";
+import "../../../../components/ha-card";
+import "../../../../components/item/ha-list-item-base";
+import "../../../../components/list/ha-list-base";
 import {
   computeBackupSize,
   computeBackupType,
   type BackupContentExtended,
 } from "../../../../data/backup";
+import type { HomeAssistant } from "../../../../types";
 import { bytesToString } from "../../../../util/bytes-to-string";
 
 @customElement("ha-backup-details-summary")
@@ -28,14 +30,37 @@ class HaBackupDetailsSummary extends LitElement {
       this.hass.config
     );
 
+    const errors: { title: string; items: string[] }[] = [];
+    if (this.backup.failed_addons?.length) {
+      errors.push({
+        title: this.hass.localize(
+          "ui.panel.config.backup.details.summary.error.failed_apps"
+        ),
+        items: this.backup.failed_addons.map(
+          (addon) => `${addon.name || addon.slug} (${addon.version})`
+        ),
+      });
+    }
+    if (this.backup.failed_folders?.length) {
+      errors.push({
+        title: this.hass.localize(
+          "ui.panel.config.backup.details.summary.error.failed_folders"
+        ),
+        items: this.backup.failed_folders.map((folder) =>
+          this._localizeFolder(folder)
+        ),
+      });
+    }
+
     return html`
       <ha-card>
         <div class="card-header">
           ${this.hass.localize("ui.panel.config.backup.details.summary.title")}
         </div>
         <div class="card-content">
-          <ha-md-list class="summary">
-            <ha-md-list-item>
+          ${errors.length ? this._renderErrorSummary(errors) : nothing}
+          <ha-list-base class="summary">
+            <ha-list-item-base>
               <span slot="headline">
                 ${this.hass.localize("ui.panel.config.backup.backup_type")}
               </span>
@@ -44,8 +69,8 @@ class HaBackupDetailsSummary extends LitElement {
                   `ui.panel.config.backup.type.${computeBackupType(this.backup, this.isHassio)}`
                 )}
               </span>
-            </ha-md-list-item>
-            <ha-md-list-item>
+            </ha-list-item-base>
+            <ha-list-item-base>
               <span slot="headline">
                 ${this.hass.localize(
                   "ui.panel.config.backup.details.summary.size"
@@ -54,19 +79,58 @@ class HaBackupDetailsSummary extends LitElement {
               <span slot="supporting-text">
                 ${bytesToString(computeBackupSize(this.backup))}
               </span>
-            </ha-md-list-item>
-            <ha-md-list-item>
+            </ha-list-item-base>
+            <ha-list-item-base>
               <span slot="headline">
                 ${this.hass.localize(
                   "ui.panel.config.backup.details.summary.created"
                 )}
               </span>
               <span slot="supporting-text">${formattedDate}</span>
-            </ha-md-list-item>
-          </ha-md-list>
+            </ha-list-item-base>
+          </ha-list-base>
         </div>
       </ha-card>
     `;
+  }
+
+  private _renderErrorSummary(errors: { title: string; items: string[] }[]) {
+    return html`
+      <ha-alert
+        alert-type="error"
+        .title=${this.hass.localize(
+          "ui.panel.config.backup.details.summary.error.title"
+        )}
+      >
+        ${errors.map(
+          ({ title, items }) => html`
+            <br />
+            <b>${title}:</b>
+            <ul>
+              ${items.map((item) => html`<li>${item}</li>`)}
+            </ul>
+          `
+        )}
+      </ha-alert>
+    `;
+  }
+
+  private _localizeFolder(folder: string): string {
+    switch (folder) {
+      case "media":
+        return this.hass.localize(`ui.panel.config.backup.data_picker.media`);
+      case "share":
+        return this.hass.localize(
+          `ui.panel.config.backup.data_picker.share_folder`
+        );
+      case "ssl":
+        return this.hass.localize(`ui.panel.config.backup.data_picker.ssl`);
+      case "addons/local":
+        return this.hass.localize(
+          `ui.panel.config.backup.data_picker.local_apps`
+        );
+    }
+    return capitalizeFirstLetter(folder);
   }
 
   static styles = css`
@@ -74,7 +138,7 @@ class HaBackupDetailsSummary extends LitElement {
       max-width: 690px;
       width: 100%;
       margin: 0 auto;
-      gap: 24px;
+      gap: var(--ha-space-6);
       display: grid;
     }
     .card-content {
@@ -84,28 +148,22 @@ class HaBackupDetailsSummary extends LitElement {
       display: flex;
       justify-content: flex-end;
     }
-    ha-md-list {
-      background: none;
-      padding: 0;
+    ha-list-base {
+      --ha-row-item-padding-inline: 0;
+      padding-bottom: var(--ha-space-3);
     }
-    ha-md-list-item {
-      --md-list-item-leading-space: 0;
-      --md-list-item-trailing-space: 0;
-      --md-list-item-two-line-container-height: 64px;
+    ha-list-base.summary ha-list-item-base::part(headline) {
+      font-size: var(--ha-font-size-s);
+      color: var(--ha-color-text-secondary);
     }
-    ha-md-list.summary ha-md-list-item {
-      --md-list-item-supporting-text-size: 1rem;
-      --md-list-item-label-text-size: 0.875rem;
-
-      --md-list-item-label-text-color: var(--secondary-text-color);
-      --md-list-item-supporting-text-color: var(--primary-text-color);
-    }
-    ha-md-list-item [slot="supporting-text"] {
+    ha-list-item-base [slot="supporting-text"] {
+      font-size: var(--ha-font-size-m);
+      color: var(--ha-color-text-primary);
       display: flex;
       align-items: center;
       flex-direction: row;
-      gap: 8px;
-      line-height: normal;
+      gap: var(--ha-space-2);
+      line-height: var(--ha-line-height-condensed);
     }
   `;
 }

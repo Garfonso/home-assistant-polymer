@@ -1,12 +1,13 @@
-import type { TemplateResult } from "lit";
+import type { TemplateResult, PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
 import { hsv2rgb, rgb2hex, rgb2hsv } from "../../common/color/convert-color";
+import type { HASSDomEvent } from "../../common/dom/fire_event";
 import { stateActive } from "../../common/entity/state_active";
 import { stateColorCss } from "../../common/entity/state_color";
 import "../../components/ha-control-slider";
-import { UNAVAILABLE } from "../../data/entity";
+import { UNAVAILABLE } from "../../data/entity/entity";
 import type { LightEntity } from "../../data/light";
 import type { HomeAssistant } from "../../types";
 
@@ -18,7 +19,7 @@ export class HaStateControlLightBrightness extends LitElement {
 
   @state() value?: number;
 
-  protected updated(changedProp: Map<string | number | symbol, unknown>): void {
+  protected updated(changedProp: PropertyValues<this>): void {
     if (changedProp.has("stateObj")) {
       this.value =
         this.stateObj.attributes.brightness != null
@@ -30,9 +31,9 @@ export class HaStateControlLightBrightness extends LitElement {
     }
   }
 
-  private _valueChanged(ev: CustomEvent) {
-    const value = (ev.detail as any).value;
-    if (isNaN(value)) return;
+  private _valueChanged(ev: HASSDomEvent<HASSDomEvents["value-changed"]>) {
+    const { value } = ev.detail;
+    if (typeof value !== "number" || isNaN(value)) return;
 
     this.hass.callService("light", "turn_on", {
       entity_id: this.stateObj!.entity_id,
@@ -67,7 +68,7 @@ export class HaStateControlLightBrightness extends LitElement {
         max="100"
         .showHandle=${stateActive(this.stateObj)}
         @value-changed=${this._valueChanged}
-        .ariaLabel=${this.hass.formatEntityAttributeName(
+        .label=${this.hass.formatEntityAttributeName(
           this.stateObj,
           "brightness"
         )}
@@ -90,11 +91,11 @@ export class HaStateControlLightBrightness extends LitElement {
       max-height: 320px;
       min-height: 200px;
       --control-slider-thickness: 130px;
-      --control-slider-border-radius: 36px;
+      --control-slider-border-radius: var(--ha-border-radius-6xl);
       --control-slider-color: var(--primary-color);
       --control-slider-background: var(--disabled-color);
       --control-slider-background-opacity: 0.2;
-      --control-slider-tooltip-font-size: 20px;
+      --control-slider-tooltip-font-size: var(--ha-font-size-xl);
     }
   `;
 }

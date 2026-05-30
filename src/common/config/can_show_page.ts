@@ -5,7 +5,6 @@ import { isComponentLoaded } from "./is_component_loaded";
 
 export const canShowPage = (hass: HomeAssistant, page: PageNavigation) =>
   (isCore(page) || isLoadedIntegration(hass, page)) &&
-  !hideAdvancedPage(hass, page) &&
   isNotLoadedIntegration(hass, page);
 
 export const isLoadedIntegration = (
@@ -14,7 +13,7 @@ export const isLoadedIntegration = (
 ) =>
   !page.component ||
   ensureArray(page.component).some((integration) =>
-    isComponentLoaded(hass, integration)
+    isComponentLoaded(hass.config, integration)
   );
 
 export const isNotLoadedIntegration = (
@@ -23,12 +22,7 @@ export const isNotLoadedIntegration = (
 ) =>
   !page.not_component ||
   !ensureArray(page.not_component).some((integration) =>
-    isComponentLoaded(hass, integration)
+    isComponentLoaded(hass.config, integration)
   );
 
 export const isCore = (page: PageNavigation) => page.core;
-export const isAdvancedPage = (page: PageNavigation) => page.advancedOnly;
-export const userWantsAdvanced = (hass: HomeAssistant) =>
-  hass.userData?.showAdvanced;
-export const hideAdvancedPage = (hass: HomeAssistant, page: PageNavigation) =>
-  isAdvancedPage(page) && !userWantsAdvanced(hass);

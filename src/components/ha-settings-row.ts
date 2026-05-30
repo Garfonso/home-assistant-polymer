@@ -1,5 +1,6 @@
+import { HasSlotController } from "@home-assistant/webawesome/dist/internal/slot";
 import type { TemplateResult } from "lit";
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
 
 @customElement("ha-settings-row")
@@ -14,38 +15,57 @@ export class HaSettingsRow extends LitElement {
   @property({ type: Boolean, attribute: "wrap-heading", reflect: true })
   public wrapHeading = false;
 
+  @property({ type: Boolean, reflect: true }) public empty = false;
+
+  private readonly _hasSlotController = new HasSlotController(
+    this,
+    "description"
+  );
+
   protected render(): TemplateResult {
+    const hasDescription = this._hasSlotController.test("description");
+
     return html`
       <div class="prefix-wrap">
         <slot name="prefix"></slot>
         <div
           class="body"
-          ?two-line=${!this.threeLine}
+          part="heading"
+          ?two-line=${!this.threeLine && hasDescription}
           ?three-line=${this.threeLine}
         >
           <slot name="heading"></slot>
-          <div class="secondary"><slot name="description"></slot></div>
+          ${hasDescription
+            ? html`<span class="secondary"
+                ><slot name="description"></slot
+              ></span>`
+            : nothing}
         </div>
       </div>
-      <div class="content"><slot></slot></div>
+      <div class="content">
+        <slot></slot>
+      </div>
     `;
   }
 
   static styles = css`
     :host {
       display: flex;
-      padding: 0 16px;
+      padding: 0 var(--ha-space-4);
       align-content: normal;
       align-self: auto;
       align-items: center;
     }
     .body {
-      padding-top: 8px;
-      padding-bottom: 8px;
+      padding-top: var(--settings-row-body-padding-top, var(--ha-space-2));
+      padding-bottom: var(
+        --settings-row-body-padding-bottom,
+        var(--ha-space-2)
+      );
       padding-left: 0;
       padding-inline-start: 0;
-      padding-right: 16px;
-      padding-inline-end: 16px;
+      padding-right: var(--ha-space-4);
+      padding-inline-end: var(--ha-space-4);
       overflow: hidden;
       display: var(--layout-vertical_-_display, flex);
       flex-direction: var(--layout-vertical_-_flex-direction, column);
@@ -54,7 +74,7 @@ export class HaSettingsRow extends LitElement {
       flex-basis: var(--layout-flex_-_flex-basis, 0.000000001px);
     }
     .body[three-line] {
-      min-height: var(--paper-item-body-three-line-min-height, 88px);
+      min-height: 88px;
     }
     :host(:not([wrap-heading])) body > * {
       overflow: hidden;
@@ -63,19 +83,23 @@ export class HaSettingsRow extends LitElement {
     }
     .body > .secondary {
       display: block;
-      padding-top: 4px;
+      padding-top: var(--ha-space-1);
       font-family: var(
         --mdc-typography-body2-font-family,
-        var(--mdc-typography-font-family, Roboto, sans-serif)
+        var(--mdc-typography-font-family, var(--ha-font-family-body))
       );
-      -webkit-font-smoothing: antialiased;
-      font-size: var(--mdc-typography-body2-font-size, 0.875rem);
-      font-weight: var(--mdc-typography-body2-font-weight, 400);
+      font-size: var(--mdc-typography-body2-font-size, var(--ha-font-size-s));
+      -webkit-font-smoothing: var(--ha-font-smoothing);
+      -moz-osx-font-smoothing: var(--ha-moz-osx-font-smoothing);
+      font-weight: var(
+        --mdc-typography-body2-font-weight,
+        var(--ha-font-weight-normal)
+      );
       line-height: normal;
       color: var(--secondary-text-color);
     }
     .body[two-line] {
-      min-height: calc(var(--paper-item-body-two-line-min-height, 72px) - 16px);
+      min-height: calc(72px - 16px);
       flex: 1;
     }
     .content {
@@ -85,7 +109,11 @@ export class HaSettingsRow extends LitElement {
       display: var(--settings-row-content-display, flex);
       justify-content: flex-end;
       flex: 1;
-      padding: 16px 0;
+      min-width: 0;
+      padding: var(--settings-row-content-padding-block, var(--ha-space-4)) 0;
+    }
+    :host([empty]) .content {
+      display: none;
     }
     .content ::slotted(*) {
       width: var(--settings-row-content-width);
@@ -94,15 +122,16 @@ export class HaSettingsRow extends LitElement {
       align-items: normal;
       flex-direction: column;
       border-top: 1px solid var(--divider-color);
-      padding-bottom: 8px;
+      padding-bottom: var(--ha-space-2);
     }
     ::slotted(ha-switch) {
-      padding: 16px 0;
+      padding: var(--settings-row-switch-padding-block, var(--ha-space-4)) 0;
     }
     .secondary {
       white-space: normal;
     }
     .prefix-wrap {
+      flex: var(--settings-row-prefix-flex, 1);
       display: var(--settings-row-prefix-display);
     }
     :host([narrow]) .prefix-wrap {

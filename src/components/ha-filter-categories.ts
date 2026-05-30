@@ -1,6 +1,4 @@
-import "@material/mwc-list/mwc-list";
-import "@material/mwc-list/mwc-list-item";
-import type { ActionDetail, SelectedDetail } from "@material/mwc-list";
+import type { SelectedDetail } from "@material/mwc-list";
 import {
   mdiDelete,
   mdiDotsVertical,
@@ -10,10 +8,11 @@ import {
   mdiTag,
 } from "@mdi/js";
 import type { UnsubscribeFunc } from "home-assistant-js-websocket";
-import type { CSSResultGroup } from "lit";
+import type { CSSResultGroup, PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
 import { fireEvent } from "../common/dom/fire_event";
+import { stopPropagation } from "../common/dom/stop_propagation";
 import type { CategoryRegistryEntry } from "../data/category_registry";
 import {
   createCategoryRegistryEntry,
@@ -26,11 +25,13 @@ import { SubscribeMixin } from "../mixins/subscribe-mixin";
 import { showCategoryRegistryDetailDialog } from "../panels/config/category/show-dialog-category-registry-detail";
 import { haStyleScrollbar } from "../resources/styles";
 import type { HomeAssistant } from "../types";
+import "./ha-dropdown";
+import type { HaDropdownSelectEvent } from "./ha-dropdown";
+import "./ha-dropdown-item";
 import "./ha-expansion-panel";
 import "./ha-icon";
-import "./ha-button-menu";
+import "./ha-list";
 import "./ha-list-item";
-import { stopPropagation } from "../common/dom/stop_propagation";
 
 @customElement("ha-filter-categories")
 export class HaFilterCategories extends SubscribeMixin(LitElement) {
@@ -47,6 +48,8 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
   @state() private _categories: CategoryRegistryEntry[] = [];
 
   @state() private _shouldRender = false;
+
+  @query("ha-list") private _list?: HTMLElement;
 
   protected hassSubscribeRequiredHostProps = ["scope"];
 
@@ -82,7 +85,7 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
         </div>
         ${this._shouldRender
           ? html`
-              <mwc-list
+              <ha-list
                 @selected=${this._categorySelected}
                 class="ha-scrollbar"
                 activatable
@@ -115,40 +118,39 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
                             slot="graphic"
                           ></ha-svg-icon>`}
                       ${category.name}
-                      <ha-button-menu
+                      <ha-dropdown
                         @click=${stopPropagation}
-                        @action=${this._handleAction}
+                        @wa-select=${this._handleAction}
                         slot="meta"
-                        fixed
                         .categoryId=${category.category_id}
                       >
                         <ha-icon-button
                           .path=${mdiDotsVertical}
                           slot="trigger"
+                          .label=${this.hass.localize("ui.common.menu")}
                         ></ha-icon-button>
-                        <mwc-list-item graphic="icon"
-                          ><ha-svg-icon
+                        <ha-dropdown-item value="edit">
+                          <ha-svg-icon
+                            slot="icon"
                             .path=${mdiPencil}
-                            slot="graphic"
-                          ></ha-svg-icon
-                          >${this.hass.localize(
+                          ></ha-svg-icon>
+                          ${this.hass.localize(
                             "ui.panel.config.category.editor.edit"
-                          )}</mwc-list-item
-                        >
-                        <mwc-list-item graphic="icon" class="warning"
-                          ><ha-svg-icon
-                            class="warning"
+                          )}
+                        </ha-dropdown-item>
+                        <ha-dropdown-item value="delete" variant="danger">
+                          <ha-svg-icon
+                            slot="icon"
                             .path=${mdiDelete}
-                            slot="graphic"
-                          ></ha-svg-icon
-                          >${this.hass.localize(
+                          ></ha-svg-icon>
+                          ${this.hass.localize(
                             "ui.panel.config.category.editor.delete"
-                          )}</mwc-list-item
-                        >
-                      </ha-button-menu>
+                          )}
+                        </ha-dropdown-item>
+                      </ha-dropdown>
                     </ha-list-item>`
                 )}
-              </mwc-list>
+              </ha-list>
             `
           : nothing}
       </ha-expansion-panel>
@@ -165,23 +167,23 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
     `;
   }
 
-  protected updated(changed) {
+  protected updated(changed: PropertyValues<this>) {
     if (changed.has("expanded") && this.expanded) {
       setTimeout(() => {
         if (!this.expanded) return;
-        this.renderRoot.querySelector("mwc-list")!.style.height =
-          `${this.clientHeight - (49 + 48)}px`;
+        this._list!.style.height = `${this.clientHeight - (49 + 48)}px`;
       }, 300);
     }
   }
 
-  private _handleAction(ev: CustomEvent<ActionDetail>) {
+  private _handleAction(ev: HaDropdownSelectEvent) {
     const categoryId = (ev.currentTarget as any).categoryId;
-    switch (ev.detail.index) {
-      case 0:
+    const action = ev.detail.item.value;
+    switch (action) {
+      case "edit":
         this._editCategory(categoryId);
         break;
-      case 1:
+      case "delete":
         this._deleteCategory(categoryId);
         break;
     }
@@ -285,7 +287,7 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
           height: 0;
         }
         ha-expansion-panel {
-          --ha-card-border-radius: 0;
+          --ha-card-border-radius: var(--ha-border-radius-square);
           --expansion-panel-content-padding: 0;
         }
         .header {
@@ -303,19 +305,26 @@ export class HaFilterCategories extends SubscribeMixin(LitElement) {
           margin-inline-end: 0;
           min-width: 16px;
           box-sizing: border-box;
-          border-radius: 50%;
-          font-weight: 400;
-          font-size: 11px;
+          border-radius: var(--ha-border-radius-circle);
+          font-size: var(--ha-font-size-xs);
+          font-weight: var(--ha-font-weight-normal);
           background-color: var(--primary-color);
-          line-height: 16px;
+          line-height: var(--ha-line-height-normal);
           text-align: center;
           padding: 0px 2px;
           color: var(--text-primary-color);
         }
-        mwc-list {
+        ha-list {
           --mdc-list-item-meta-size: auto;
-          --mdc-list-side-padding-right: 4px;
-          --mdc-icon-button-size: 36px;
+          --mdc-list-side-padding-right: var(--ha-space-1);
+          --mdc-list-side-padding-left: var(--ha-space-4);
+          --ha-icon-button-size: 36px;
+        }
+        ha-list-item {
+          --mdc-list-item-graphic-margin: var(--ha-space-4);
+        }
+        ha-dropdown-item {
+          font-size: var(--ha-font-size-m);
         }
         .warning {
           color: var(--error-color);

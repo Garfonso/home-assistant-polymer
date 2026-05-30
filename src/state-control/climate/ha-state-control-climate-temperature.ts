@@ -5,6 +5,7 @@ import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { styleMap } from "lit/directives/style-map";
 import { UNIT_F } from "../../common/const";
+import type { HASSDomEvent } from "../../common/dom/fire_event";
 import { stateActive } from "../../common/entity/state_active";
 import { stateColorCss } from "../../common/entity/state_color";
 import { supportsFeature } from "../../common/entity/supports-feature";
@@ -22,7 +23,7 @@ import {
   CLIMATE_HVAC_ACTION_TO_MODE,
   ClimateEntityFeature,
 } from "../../data/climate";
-import { UNAVAILABLE } from "../../data/entity";
+import { UNAVAILABLE } from "../../data/entity/entity";
 import type { HomeAssistant } from "../../types";
 import {
   createStateControlCircularSliderController,
@@ -62,7 +63,7 @@ export class HaStateControlClimateTemperature extends LitElement {
 
   private _sizeController = createStateControlCircularSliderController(this);
 
-  protected willUpdate(changedProp: PropertyValues): void {
+  protected willUpdate(changedProp: PropertyValues<this>): void {
     super.willUpdate(changedProp);
     if (changedProp.has("stateObj")) {
       this._targetTemperature = {
@@ -88,9 +89,9 @@ export class HaStateControlClimateTemperature extends LitElement {
     return this.stateObj.attributes.max_temp;
   }
 
-  private _valueChanged(ev: CustomEvent) {
-    const value = (ev.detail as any).value;
-    if (isNaN(value)) return;
+  private _valueChanged(ev: HASSDomEvent<HASSDomEvents["value-changed"]>) {
+    const { value } = ev.detail;
+    if (typeof value !== "number" || isNaN(value)) return;
     const target = ev.type.replace("-changed", "");
     this._targetTemperature = {
       ...this._targetTemperature,
@@ -100,9 +101,9 @@ export class HaStateControlClimateTemperature extends LitElement {
     this._callService(target);
   }
 
-  private _valueChanging(ev: CustomEvent) {
-    const value = (ev.detail as any).value;
-    if (isNaN(value)) return;
+  private _valueChanging(ev: HASSDomEvent<HASSDomEvents["value-changing"]>) {
+    const { value } = ev.detail;
+    if (typeof value !== "number" || isNaN(value)) return;
     const target = ev.type.replace("-changing", "");
     this._targetTemperature = {
       ...this._targetTemperature,
@@ -366,7 +367,7 @@ export class HaStateControlClimateTemperature extends LitElement {
           >
             ${this._renderTarget(this._targetTemperature.low!, "normal", true)}
           </button>
-          <span>⸱</span>
+          <span>·</span>
           <button
             @click=${this._handleSelectTemp}
             .target=${"high"}
@@ -537,7 +538,7 @@ export class HaStateControlClimateTemperature extends LitElement {
         .dual {
           display: flex;
           flex-direction: row;
-          gap: 24px;
+          gap: var(--ha-space-6);
         }
         .target-button {
           outline: none;
@@ -562,11 +563,11 @@ export class HaStateControlClimateTemperature extends LitElement {
           opacity: 1;
         }
         .container.md .dual {
-          gap: 16px;
+          gap: var(--ha-space-4);
         }
         .container.sm .dual,
         .container.xs .dual {
-          gap: 8px;
+          gap: var(--ha-space-2);
         }
         .container.sm .target-icon {
           display: none;

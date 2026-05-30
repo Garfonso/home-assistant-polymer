@@ -1,15 +1,22 @@
+import { mdiPlus } from "@mdi/js";
 import type { PropertyValues, TemplateResult } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { stopPropagation } from "../../common/dom/stop_propagation";
 import type { LocalizeFunc } from "../../common/translations/localize";
 import type { HomeAssistant } from "../../types";
+import "../ha-button";
+import "../ha-dropdown";
+import type { HaDropdownSelectEvent } from "../ha-dropdown";
+import "../ha-dropdown-item";
+import "../ha-svg-icon";
 import "./ha-form";
+import type { HaForm } from "./ha-form";
 import type {
-  HaFormOptionalActionsSchema,
   HaFormDataContainer,
   HaFormElement,
+  HaFormOptionalActionsSchema,
   HaFormSchema,
 } from "./types";
 
@@ -42,12 +49,18 @@ export class HaFormOptionalActions extends LitElement implements HaFormElement {
 
   @state() private _displayActions?: string[];
 
+  @query("ha-form") private _form?: HaForm;
+
   public async focus() {
     await this.updateComplete;
-    this.renderRoot.querySelector("ha-form")?.focus();
+    this._form?.focus();
   }
 
-  protected updated(changedProps: PropertyValues): void {
+  public reportValidity(): boolean {
+    return this._form ? this._form.reportValidity() : true;
+  }
+
+  protected updated(changedProps: PropertyValues<this>): void {
     super.updated(changedProps);
     if (changedProps.has("data")) {
       const displayActions = this._displayActions ?? NO_ACTIONS;
@@ -112,38 +125,33 @@ export class HaFormOptionalActions extends LitElement implements HaFormElement {
         : nothing}
       ${hiddenActions.length > 0
         ? html`
-            <ha-button-menu
-              @action=${this._handleAddAction}
-              fixed
+            <ha-dropdown
+              @wa-select=${this._handleAddAction}
               @closed=${stopPropagation}
             >
-              <ha-button slot="trigger">
+              <ha-button slot="trigger" appearance="filled" size="small">
+                <ha-svg-icon .path=${mdiPlus} slot="start"></ha-svg-icon>
                 ${this.localize?.("ui.components.form-optional-actions.add") ||
                 "Add interaction"}
               </ha-button>
               ${hiddenActions.map((action) => {
                 const actionSchema = schemaMap.get(action);
                 return html`
-                  <ha-list-item>
+                  <ha-dropdown-item .value=${action}>
                     ${this.computeLabel && actionSchema
                       ? this.computeLabel(actionSchema)
                       : action}
-                  </ha-list-item>
+                  </ha-dropdown-item>
                 `;
               })}
-            </ha-button-menu>
+            </ha-dropdown>
           `
         : nothing}
     `;
   }
 
-  private _handleAddAction(ev: CustomEvent) {
-    const hiddenActions = this._hiddenActions(
-      this.schema.schema,
-      this._displayActions ?? NO_ACTIONS
-    );
-    const index = ev.detail.index;
-    const action = hiddenActions[index];
+  private _handleAddAction(ev: HaDropdownSelectEvent) {
+    const action = ev.detail.item.value;
     this._displayActions = [...(this._displayActions ?? []), action];
   }
 
@@ -151,10 +159,13 @@ export class HaFormOptionalActions extends LitElement implements HaFormElement {
     :host {
       display: flex !important;
       flex-direction: column;
-      gap: 24px;
+      gap: var(--ha-space-6);
     }
     :host ha-form {
       display: block;
+    }
+    ha-dropdown {
+      display: inline-block;
     }
   `;
 }

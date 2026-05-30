@@ -1,13 +1,14 @@
-import type { TemplateResult } from "lit";
+import type { TemplateResult, PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
 import { computeAttributeNameDisplay } from "../../common/entity/compute_attribute_display";
+import type { HASSDomEvent } from "../../common/dom/fire_event";
 import { stateColorCss } from "../../common/entity/state_color";
 import "../../components/ha-control-slider";
 import type { CoverEntity } from "../../data/cover";
-import { UNAVAILABLE } from "../../data/entity";
-import { DOMAIN_ATTRIBUTES_UNITS } from "../../data/entity_attributes";
+import { UNAVAILABLE } from "../../data/entity/entity";
+import { DOMAIN_ATTRIBUTES_UNITS } from "../../data/entity/entity_attributes";
 import type { HomeAssistant } from "../../types";
 
 @customElement("ha-state-control-valve-position")
@@ -18,7 +19,7 @@ export class HaStateControlValvePosition extends LitElement {
 
   @state() value?: number;
 
-  protected updated(changedProp: Map<string | number | symbol, unknown>): void {
+  protected updated(changedProp: PropertyValues<this>): void {
     if (changedProp.has("stateObj")) {
       const currentPosition = this.stateObj?.attributes.current_position;
       this.value =
@@ -26,9 +27,9 @@ export class HaStateControlValvePosition extends LitElement {
     }
   }
 
-  private _valueChanged(ev: CustomEvent) {
-    const value = (ev.detail as any).value;
-    if (isNaN(value)) return;
+  private _valueChanged(ev: HASSDomEvent<HASSDomEvents["value-changed"]>) {
+    const { value } = ev.detail;
+    if (typeof value !== "number" || isNaN(value)) return;
 
     this.hass.callService("valve", "set_valve_position", {
       entity_id: this.stateObj!.entity_id,
@@ -48,7 +49,7 @@ export class HaStateControlValvePosition extends LitElement {
         max="100"
         show-handle
         @value-changed=${this._valueChanged}
-        .ariaLabel=${computeAttributeNameDisplay(
+        .label=${computeAttributeNameDisplay(
           this.hass.localize,
           this.stateObj,
           this.hass.entities,
@@ -72,11 +73,11 @@ export class HaStateControlValvePosition extends LitElement {
       max-height: 320px;
       min-height: 200px;
       --control-slider-thickness: 130px;
-      --control-slider-border-radius: 36px;
+      --control-slider-border-radius: var(--ha-border-radius-6xl);
       --control-slider-color: var(--primary-color);
       --control-slider-background: var(--disabled-color);
       --control-slider-background-opacity: 0.2;
-      --control-slider-tooltip-font-size: 20px;
+      --control-slider-tooltip-font-size: var(--ha-font-size-xl);
     }
   `;
 }

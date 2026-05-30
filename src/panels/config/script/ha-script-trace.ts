@@ -1,4 +1,5 @@
-import "@material/mwc-list/mwc-list-item";
+import "@home-assistant/webawesome/dist/components/divider/divider";
+import { consume } from "@lit/context";
 import {
   mdiDotsVertical,
   mdiDownload,
@@ -8,14 +9,19 @@ import {
   mdiRayStartArrow,
   mdiRefresh,
 } from "@mdi/js";
-import type { CSSResultGroup, TemplateResult } from "lit";
-import { css, html, LitElement } from "lit";
+import type { CSSResultGroup, TemplateResult, PropertyValues } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
-import { classMap } from "lit/directives/class-map";
-import { repeat } from "lit/directives/repeat";
 import { isComponentLoaded } from "../../../common/config/is_component_loaded";
-import { formatDateTimeWithSeconds } from "../../../common/datetime/format_date_time";
+import { fireEvent } from "../../../common/dom/fire_event";
+import { navigate } from "../../../common/navigate";
+import "../../../components/ha-button";
+import "../../../components/ha-dropdown";
+import type { HaDropdownSelectEvent } from "../../../components/ha-dropdown";
+import "../../../components/ha-dropdown-item";
 import "../../../components/ha-icon-button";
+import "../../../components/ha-tab-group";
+import "../../../components/ha-tab-group-tab";
 import "../../../components/trace/ha-trace-blueprint-config";
 import "../../../components/trace/ha-trace-config";
 import "../../../components/trace/ha-trace-logbook";
@@ -26,19 +32,21 @@ import type {
   HatScriptGraph,
   NodeInfo,
 } from "../../../components/trace/hat-script-graph";
-import { traceTabStyles } from "../../../components/trace/trace-tab-styles";
+import { fullEntitiesContext } from "../../../data/context";
+import type { EntityRegistryEntry } from "../../../data/entity/entity_registry";
 import type { LogbookEntry } from "../../../data/logbook";
 import { getLogbookDataForContext } from "../../../data/logbook";
 import type { ScriptEntity } from "../../../data/script";
 import type { ScriptTrace, ScriptTraceExtended } from "../../../data/trace";
 import { loadTrace, loadTraces } from "../../../data/trace";
 import { showAlertDialog } from "../../../dialogs/generic/show-dialog-box";
+import "../../../layouts/hass-subpage";
 import { haStyle } from "../../../resources/styles";
 import type { HomeAssistant, Route } from "../../../types";
-import "../../../layouts/hass-subpage";
-import "../../../components/ha-button-menu";
-import { fireEvent } from "../../../common/dom/fire_event";
-import type { EntityRegistryEntry } from "../../../data/entity_registry";
+import { fileDownload } from "../../../util/file_download";
+import "../../../components/ha-trace-picker";
+
+const TABS = ["details", "timeline", "logbook", "config"] as const;
 
 @customElement("ha-script-trace")
 export class HaScriptTrace extends LitElement {
@@ -54,7 +62,9 @@ export class HaScriptTrace extends LitElement {
 
   @property({ attribute: false }) public route!: Route;
 
-  @property({ attribute: false }) public entityRegistry!: EntityRegistryEntry[];
+  @state()
+  @consume({ context: fullEntitiesContext, subscribe: true })
+  _entityRegistry!: EntityRegistryEntry[];
 
   @state() private _entityId?: string;
 
@@ -68,12 +78,7 @@ export class HaScriptTrace extends LitElement {
 
   @state() private _logbookEntries?: LogbookEntry[];
 
-  @state() private _view:
-    | "details"
-    | "config"
-    | "timeline"
-    | "logbook"
-    | "blueprint" = "details";
+  @state() private _view: (typeof TABS)[number] | "blueprint" = "details";
 
   @query("hat-script-graph") private _graph?: HatScriptGraph;
 
@@ -98,79 +103,68 @@ export class HaScriptTrace extends LitElement {
 
     return html`
       ${devButtons}
-      <hass-subpage .hass=${this.hass} .narrow=${this.narrow} .header=${title}>
+      <hass-subpage
+        .hass=${this.hass}
+        .narrow=${this.narrow}
+        .header=${title}
+        .scrollable=${this.narrow}
+      >
         ${!this.narrow && this.scriptId
           ? html`
-              <a
+              <ha-button
                 class="trace-link"
-                href="/config/script/edit/${this.scriptId}"
+                @click=${this._navigateToScript}
                 slot="toolbar-icon"
+                appearance="plain"
               >
-                <mwc-button>
-                  ${this.hass.localize(
-                    "ui.panel.config.script.trace.edit_script"
-                  )}
-                </mwc-button>
-              </a>
+                ${this.hass.localize(
+                  "ui.panel.config.script.trace.edit_script"
+                )}
+              </ha-button>
             `
-          : ""}
+          : nothing}
 
-        <ha-button-menu slot="toolbar-icon">
+        <ha-dropdown
+          slot="toolbar-icon"
+          @wa-select=${this._handleDropdownSelect}
+        >
           <ha-icon-button
             slot="trigger"
             .label=${this.hass.localize("ui.common.menu")}
             .path=${mdiDotsVertical}
           ></ha-icon-button>
 
-          <mwc-list-item
-            graphic="icon"
-            .disabled=${!stateObj}
-            @click=${this._showInfo}
-          >
+          <ha-dropdown-item .disabled=${!stateObj} value="show_info">
             ${this.hass.localize("ui.panel.config.script.editor.show_info")}
             <ha-svg-icon
-              slot="graphic"
+              slot="icon"
               .path=${mdiInformationOutline}
             ></ha-svg-icon>
-          </mwc-list-item>
+          </ha-dropdown-item>
 
           ${this.narrow && this.scriptId
-            ? html`
-                <a
-                  class="trace-link"
-                  href="/config/script/edit/${this.scriptId}"
-                >
-                  <mwc-list-item graphic="icon">
-                    ${this.hass.localize(
-                      "ui.panel.config.script.trace.edit_script"
-                    )}
-                    <ha-svg-icon
-                      slot="graphic"
-                      .path=${mdiPencil}
-                    ></ha-svg-icon>
-                  </mwc-list-item>
-                </a>
-              `
-            : ""}
+            ? html`<ha-dropdown-item value="edit_script">
+                ${this.hass.localize(
+                  "ui.panel.config.script.trace.edit_script"
+                )}
+                <ha-svg-icon slot="icon" .path=${mdiPencil}></ha-svg-icon>
+              </ha-dropdown-item> `
+            : nothing}
 
-          <li divider role="separator"></li>
+          <wa-divider></wa-divider>
 
-          <mwc-list-item graphic="icon" @click=${this._refreshTraces}>
+          <ha-dropdown-item value="refresh">
             ${this.hass.localize("ui.panel.config.automation.trace.refresh")}
-            <ha-svg-icon slot="graphic" .path=${mdiRefresh}></ha-svg-icon>
-          </mwc-list-item>
+            <ha-svg-icon slot="icon" .path=${mdiRefresh}></ha-svg-icon>
+          </ha-dropdown-item>
 
-          <mwc-list-item
-            graphic="icon"
-            .disabled=${!this._trace}
-            @click=${this._downloadTrace}
-          >
+          <ha-dropdown-item .disabled=${!this._trace} value="download_trace">
             ${this.hass.localize(
               "ui.panel.config.automation.trace.download_trace"
             )}
-            <ha-svg-icon slot="graphic" .path=${mdiDownload}></ha-svg-icon>
-          </mwc-list-item>
-        </ha-button-menu>
+            <ha-svg-icon slot="icon" .path=${mdiDownload}></ha-svg-icon>
+          </ha-dropdown-item>
+        </ha-dropdown>
 
         <div class="toolbar">
           ${this._traces && this._traces.length > 0
@@ -184,20 +178,12 @@ export class HaScriptTrace extends LitElement {
                   @click=${this._pickOlderTrace}
                   .path=${mdiRayEndArrow}
                 ></ha-icon-button>
-                <select .value=${this._runId} @change=${this._pickTrace}>
-                  ${repeat(
-                    this._traces,
-                    (trace) => trace.run_id,
-                    (trace) =>
-                      html`<option value=${trace.run_id}>
-                        ${formatDateTimeWithSeconds(
-                          new Date(trace.timestamp.start),
-                          this.hass.locale,
-                          this.hass.config
-                        )}
-                      </option>`
-                  )}
-                </select>
+                <ha-trace-picker
+                  .hass=${this.hass}
+                  .traces=${this._traces}
+                  .value=${this._runId}
+                  @value-changed=${this._pickTrace}
+                ></ha-trace-picker>
                 <ha-icon-button
                   .disabled=${this._traces[0].run_id === this._runId}
                   .label=${this.hass!.localize(
@@ -232,59 +218,36 @@ export class HaScriptTrace extends LitElement {
                     </div>
 
                     <div class="info">
-                      <div class="tabs top">
-                        ${[
-                          [
-                            "details",
-                            this.hass.localize(
-                              "ui.panel.config.automation.trace.tabs.details"
-                            ),
-                          ],
-                          [
-                            "timeline",
-                            this.hass.localize(
-                              "ui.panel.config.automation.trace.tabs.timeline"
-                            ),
-                          ],
-                          [
-                            "logbook",
-                            this.hass.localize(
-                              "ui.panel.config.automation.trace.tabs.logbook"
-                            ),
-                          ],
-                          [
-                            "config",
-                            this.hass.localize(
-                              "ui.panel.config.automation.trace.tabs.script_config"
-                            ),
-                          ],
-                        ].map(
-                          ([view, label]) => html`
-                            <button
-                              tabindex="0"
-                              .view=${view}
-                              class=${classMap({ active: this._view === view })}
-                              @click=${this._showTab}
+                      <ha-tab-group @wa-tab-show=${this._handleTabChanged}>
+                        ${TABS.map(
+                          (view) => html`
+                            <ha-tab-group-tab
+                              slot="nav"
+                              .active=${this._view === view}
+                              .panel=${view}
                             >
-                              ${label}
-                            </button>
+                              ${this.hass.localize(
+                                `ui.panel.config.automation.trace.tabs.${
+                                  view === "config" ? "script_config" : view
+                                }`
+                              )}
+                            </ha-tab-group-tab>
                           `
                         )}
                         ${this._trace.blueprint_inputs
                           ? html`
-                              <button
-                                tabindex="0"
-                                .view=${"blueprint"}
-                                class=${classMap({
-                                  active: this._view === "blueprint",
-                                })}
-                                @click=${this._showTab}
+                              <ha-tab-group-tab
+                                slot="nav"
+                                .active=${this._view === "blueprint"}
+                                panel="blueprint"
                               >
-                                Blueprint Config
-                              </button>
+                                ${this.hass!.localize(
+                                  `ui.panel.config.automation.trace.tabs.blueprint_config`
+                                )}
+                              </ha-tab-group-tab>
                             `
                           : ""}
-                      </div>
+                      </ha-tab-group>
                       ${this._selected === undefined ||
                       this._logbookEntries === undefined ||
                       trackedNodes === undefined
@@ -304,7 +267,6 @@ export class HaScriptTrace extends LitElement {
                           : this._view === "config"
                             ? html`
                                 <ha-trace-config
-                                  .hass=${this.hass}
                                   .trace=${this._trace}
                                 ></ha-trace-config>
                               `
@@ -320,7 +282,6 @@ export class HaScriptTrace extends LitElement {
                               : this._view === "blueprint"
                                 ? html`
                                     <ha-trace-blueprint-config
-                                      .hass=${this.hass}
                                       .trace=${this._trace}
                                     ></ha-trace-blueprint-config>
                                   `
@@ -340,7 +301,7 @@ export class HaScriptTrace extends LitElement {
     `;
   }
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
 
     if (!this.scriptId) {
@@ -350,12 +311,12 @@ export class HaScriptTrace extends LitElement {
     const params = new URLSearchParams(location.search);
     this._loadTraces(params.get("run_id") || undefined);
 
-    this._entityId = this.entityRegistry.find(
+    this._entityId = this._entityRegistry.find(
       (entry) => entry.unique_id === this.scriptId
     )?.entity_id;
   }
 
-  public willUpdate(changedProps) {
+  public willUpdate(changedProps: PropertyValues) {
     super.willUpdate(changedProps);
 
     // Only reset if scriptId has changed and we had one before.
@@ -367,7 +328,7 @@ export class HaScriptTrace extends LitElement {
       if (this.scriptId) {
         this._loadTraces();
 
-        this._entityId = this.entityRegistry.find(
+        this._entityId = this._entityRegistry.find(
           (entry) => entry.unique_id === this.scriptId
         )?.entity_id;
       }
@@ -393,7 +354,7 @@ export class HaScriptTrace extends LitElement {
   }
 
   private _pickTrace(ev) {
-    this._runId = ev.target.value;
+    this._runId = ev.detail.value;
     this._selected = undefined;
   }
 
@@ -453,7 +414,7 @@ export class HaScriptTrace extends LitElement {
       this.scriptId,
       this._runId!
     );
-    this._logbookEntries = isComponentLoaded(this.hass, "logbook")
+    this._logbookEntries = isComponentLoaded(this.hass.config, "logbook")
       ? await getLogbookDataForContext(
           this.hass,
           trace.timestamp.start,
@@ -465,21 +426,20 @@ export class HaScriptTrace extends LitElement {
   }
 
   private _downloadTrace() {
-    const aEl = document.createElement("a");
-    aEl.download = `trace ${this._entityId} ${
-      this._trace!.timestamp.start
-    }.json`;
-    aEl.href = `data:application/json;charset=utf-8,${encodeURI(
-      JSON.stringify(
-        {
-          trace: this._trace,
-          logbookEntries: this._logbookEntries,
-        },
-        undefined,
-        2
-      )
-    )}`;
-    aEl.click();
+    const json = JSON.stringify(
+      {
+        trace: this._trace,
+        logbookEntries: this._logbookEntries,
+      },
+      undefined,
+      2
+    );
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    fileDownload(
+      url,
+      `trace ${this._entityId} ${this._trace!.timestamp.start}.json`
+    );
   }
 
   private _importTrace() {
@@ -509,8 +469,8 @@ export class HaScriptTrace extends LitElement {
     this._logbookEntries = traceInfo.logbookEntries;
   }
 
-  private _showTab(ev: Event) {
-    this._view = (ev.target as any).view;
+  private _handleTabChanged(ev: CustomEvent) {
+    this._view = ev.detail.name as typeof this._view;
   }
 
   private _timelinePathPicked(ev: CustomEvent) {
@@ -528,10 +488,38 @@ export class HaScriptTrace extends LitElement {
     fireEvent(this, "hass-more-info", { entityId: this._entityId });
   }
 
+  private _navigateToScript() {
+    if (this.scriptId) {
+      navigate(`/config/script/edit/${this.scriptId}`);
+    }
+  }
+
+  private _handleDropdownSelect(ev: HaDropdownSelectEvent) {
+    const action = ev.detail?.item?.value;
+
+    if (!action) {
+      return;
+    }
+
+    switch (action) {
+      case "show_info":
+        this._showInfo();
+        break;
+      case "refresh":
+        this._refreshTraces();
+        break;
+      case "download_trace":
+        this._downloadTrace();
+        break;
+      case "edit_script":
+        this._navigateToScript();
+        break;
+    }
+  }
+
   static get styles(): CSSResultGroup {
     return [
       haStyle,
-      traceTabStyles,
       css`
         .toolbar {
           display: flex;
@@ -545,14 +533,18 @@ export class HaScriptTrace extends LitElement {
         }
 
         .main {
-          min-height: calc(100% - var(--header-height));
+          flex: 1;
+          min-height: 0;
           display: flex;
+          overflow: hidden;
           background-color: var(--card-background-color);
         }
 
         :host([narrow]) .main {
+          flex: none;
           height: auto;
           flex-direction: column;
+          overflow: visible;
         }
 
         .container {
@@ -561,18 +553,48 @@ export class HaScriptTrace extends LitElement {
 
         .graph {
           border-right: 1px solid var(--divider-color);
-          overflow-x: auto;
           max-width: 50%;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+        }
+        hat-script-graph {
+          flex: 1;
+          min-width: 0;
+          min-height: 0;
         }
         :host([narrow]) .graph {
           max-width: 100%;
+          overflow: visible;
+          height: auto;
+        }
+        :host([narrow]) hat-script-graph {
+          overflow: visible;
+          flex: none;
         }
         .info {
           flex: 1;
+          overflow-y: auto;
           background-color: var(--card-background-color);
+        }
+        ha-tab-group {
+          background-color: var(--primary-background-color);
+          border-bottom: 1px solid var(--divider-color);
+          direction: var(--direction);
+        }
+        ha-tab-group-tab::part(base) {
+          padding: 2px 16px;
+        }
+        :host([narrow]) .info {
+          overflow: visible;
         }
         .trace-link {
           text-decoration: none;
+        }
+        ha-trace-picker {
+          flex-grow: 1;
+          max-width: 500px;
         }
       `,
     ];

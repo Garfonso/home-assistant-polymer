@@ -1,43 +1,60 @@
-import type { HassEntity } from "home-assistant-js-websocket";
-import type { PropertyValues } from "lit";
-import { html, LitElement, nothing } from "lit";
-import { customElement, property, query, state } from "lit/decorators";
-import memoizeOne from "memoize-one";
-import { stopPropagation } from "../../../common/dom/stop_propagation";
+import { customElement } from "lit/decorators";
 import { computeDomain } from "../../../common/entity/compute_domain";
-import "../../../components/ha-control-select-menu";
-import type { HaControlSelectMenu } from "../../../components/ha-control-select-menu";
-import { UNAVAILABLE } from "../../../data/entity";
 import type { InputSelectEntity } from "../../../data/input_select";
 import type { SelectEntity } from "../../../data/select";
 import type { HomeAssistant } from "../../../types";
 import type { LovelaceCardFeature, LovelaceCardFeatureEditor } from "../types";
-import { cardFeatureStyles } from "./common/card-feature-styles";
 import { filterModes } from "./common/filter-modes";
-import type { SelectOptionsCardFeatureConfig } from "./types";
+import {
+  HuiModeSelectCardFeatureBase,
+  type HuiModeSelectOption,
+} from "./hui-mode-select-card-feature-base";
+import type {
+  LovelaceCardFeatureContext,
+  SelectOptionsCardFeatureConfig,
+} from "./types";
 
-export const supportsSelectOptionsCardFeature = (stateObj: HassEntity) => {
+type SelectOptionEntity = SelectEntity | InputSelectEntity;
+
+export const supportsSelectOptionsCardFeature = (
+  hass: HomeAssistant,
+  context: LovelaceCardFeatureContext
+) => {
+  const stateObj = context.entity_id
+    ? hass.states[context.entity_id]
+    : undefined;
+  if (!stateObj) return false;
   const domain = computeDomain(stateObj.entity_id);
   return domain === "select" || domain === "input_select";
 };
 
 @customElement("hui-select-options-card-feature")
 class HuiSelectOptionsCardFeature
-  extends LitElement
+  extends HuiModeSelectCardFeatureBase<
+    SelectOptionEntity,
+    SelectOptionsCardFeatureConfig
+  >
   implements LovelaceCardFeature
 {
-  @property({ attribute: false }) public hass?: HomeAssistant;
+  protected readonly _attribute = "option";
 
-  @property({ attribute: false }) public stateObj?:
-    | SelectEntity
-    | InputSelectEntity;
+  protected readonly _modesAttribute = "options";
 
-  @state() private _config?: SelectOptionsCardFeatureConfig;
+  protected get _configuredModes() {
+    return this._config?.options;
+  }
 
-  @state() _currentOption?: string;
+  protected readonly _serviceDomain = "select";
 
-  @query("ha-control-select-menu", true)
-  private _haSelect!: HaControlSelectMenu;
+  protected readonly _serviceAction = "select_option";
+
+  protected get _label(): string {
+    return this.hass!.localize("ui.card.select.option");
+  }
+
+  protected readonly _allowIconsStyle = false;
+
+  protected readonly _showDropdownOptionIcons = false;
 
   static getStubConfig(): SelectOptionsCardFeatureConfig {
     return {
@@ -46,116 +63,45 @@ class HuiSelectOptionsCardFeature
   }
 
   public static async getConfigElement(): Promise<LovelaceCardFeatureEditor> {
-    await import(
-      "../editor/config-elements/hui-select-options-card-feature-editor"
-    );
+    await import("../editor/config-elements/hui-select-options-card-feature-editor");
     return document.createElement("hui-select-options-card-feature-editor");
   }
 
-  public setConfig(config: SelectOptionsCardFeatureConfig): void {
-    if (!config) {
-      throw new Error("Invalid configuration");
-    }
-    this._config = config;
+  protected _getValue(stateObj: SelectOptionEntity): string | undefined {
+    return stateObj.state;
   }
 
-  protected willUpdate(changedProp: PropertyValues): void {
-    super.willUpdate(changedProp);
-    if (changedProp.has("stateObj") && this.stateObj) {
-      this._currentOption = this.stateObj.state;
-    }
-  }
-
-  protected updated(changedProps: PropertyValues) {
-    super.updated(changedProps);
-    if (changedProps.has("hass")) {
-      const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
-      if (
-        this.hass &&
-        this.hass.formatEntityAttributeValue !==
-          oldHass?.formatEntityAttributeValue
-      ) {
-        this._haSelect.layoutOptions();
-      }
-    }
-  }
-
-  private async _valueChanged(ev: CustomEvent) {
-    const option = (ev.target as any).value as string;
-
-    const oldOption = this.stateObj!.state;
-
-    if (
-      option === oldOption ||
-      !this.stateObj!.attributes.options.includes(option)
-    )
-      return;
-
-    this._currentOption = option;
-
-    try {
-      await this._setOption(option);
-    } catch (_err) {
-      this._currentOption = oldOption;
-    }
-  }
-
-  private async _setOption(option: string) {
-    const domain = computeDomain(this.stateObj!.entity_id);
-    await this.hass!.callService(domain, "select_option", {
-      entity_id: this.stateObj!.entity_id,
-      option: option,
-    });
-  }
-
-  protected render() {
-    if (
-      !this._config ||
-      !this.hass ||
-      !this.stateObj ||
-      !supportsSelectOptionsCardFeature(this.stateObj)
-    ) {
-      return nothing;
+  protected _getOptions(): HuiModeSelectOption[] {
+    if (!this._stateObj || !this.hass) {
+      return [];
     }
 
-    const stateObj = this.stateObj;
+    return filterModes(
+      this._stateObj.attributes.options,
+      this._config?.options
+    ).map((option) => ({
+      value: option,
+      label: this.hass!.formatEntityState(this._stateObj!, option),
+    }));
+  }
 
-    const options = this._getOptions(
-      this.stateObj.attributes.options,
-      this._config.options
+  protected _getServiceDomain(stateObj: SelectOptionEntity): string {
+    return computeDomain(stateObj.entity_id);
+  }
+
+  protected _isValueValid(
+    value: string,
+    stateObj: SelectOptionEntity
+  ): boolean {
+    return stateObj.attributes.options.includes(value);
+  }
+
+  protected _isSupported(): boolean {
+    return !!(
+      this.hass &&
+      this.context &&
+      supportsSelectOptionsCardFeature(this.hass, this.context)
     );
-
-    return html`
-      <ha-control-select-menu
-        show-arrow
-        hide-label
-        .label=${this.hass.localize("ui.card.select.option")}
-        .value=${stateObj.state}
-        .options=${options}
-        .disabled=${this.stateObj.state === UNAVAILABLE}
-        fixedMenuPosition
-        naturalMenuWidth
-        @selected=${this._valueChanged}
-        @closed=${stopPropagation}
-      >
-        ${options.map(
-          (option) => html`
-            <ha-list-item .value=${option}>
-              ${this.hass!.formatEntityState(stateObj, option)}
-            </ha-list-item>
-          `
-        )}
-      </ha-control-select-menu>
-    `;
-  }
-
-  private _getOptions = memoizeOne(
-    (attributeOptions: string[], configOptions: string[] | undefined) =>
-      filterModes(attributeOptions, configOptions)
-  );
-
-  static get styles() {
-    return cardFeatureStyles;
   }
 }
 

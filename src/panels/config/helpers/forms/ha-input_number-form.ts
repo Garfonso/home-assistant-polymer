@@ -1,21 +1,36 @@
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
 import { fireEvent } from "../../../../common/dom/fire_event";
-import "../../../../components/ha-formfield";
 import "../../../../components/ha-icon-picker";
-import "../../../../components/ha-radio";
-import type { HaRadio } from "../../../../components/ha-radio";
-import "../../../../components/ha-textfield";
+import "../../../../components/radio/ha-radio-group";
+import type { HaRadioGroup } from "../../../../components/radio/ha-radio-group";
+import "../../../../components/radio/ha-radio-option";
+import "../../../../components/ha-selector/ha-selector-select";
+import "../../../../components/input/ha-input";
 import type { InputNumber } from "../../../../data/input_number";
+import { unitOfMeasurementOptions } from "../../../../data/number";
+import type { SelectSelector } from "../../../../data/selector";
 import { haStyle } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
+
+const UNIT_SELECTOR: SelectSelector = {
+  select: {
+    mode: "dropdown",
+    translation_key: "sensor_unit_of_measurement",
+    custom_value: true,
+    sort: true,
+    options: unitOfMeasurementOptions,
+  },
+} as const;
 
 @customElement("ha-input_number-form")
 class HaInputNumberForm extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ type: Boolean }) public new = false;
+
+  @property({ type: Boolean }) public disabled = false;
 
   private _item?: Partial<InputNumber>;
 
@@ -33,6 +48,8 @@ class HaInputNumberForm extends LitElement {
 
   // eslint-disable-next-line: variable-name
   @state() private _unit_of_measurement?: string;
+
+  @query("[dialogInitialFocus]") private _focusElement?: HTMLElement;
 
   /* Configuring initial value is intentionally not supported because the behavior
      compared to restoring the value after restart is hard to explain */
@@ -61,11 +78,7 @@ class HaInputNumberForm extends LitElement {
   }
 
   public focus() {
-    this.updateComplete.then(() =>
-      (
-        this.shadowRoot?.querySelector("[dialogInitialFocus]") as HTMLElement
-      )?.focus()
-    );
+    this.updateComplete.then(() => this._focusElement?.focus());
   }
 
   protected render() {
@@ -75,31 +88,32 @@ class HaInputNumberForm extends LitElement {
 
     return html`
       <div class="form">
-        <ha-textfield
+        <ha-input
           .value=${this._name}
           .configValue=${"name"}
           @input=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.name"
           )}
-          autoValidate
+          auto-validate
           required
           .validationMessage=${this.hass!.localize(
             "ui.dialogs.helper_settings.required_error_msg"
           )}
           dialogInitialFocus
-        ></ha-textfield>
+          .disabled=${this.disabled}
+        ></ha-input>
         <ha-icon-picker
-          .hass=${this.hass}
           .value=${this._icon}
           .configValue=${"icon"}
           @value-changed=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.icon"
           )}
+          .disabled=${this.disabled}
         ></ha-icon-picker>
-        <ha-textfield
-          .value=${this._min}
+        <ha-input
+          .value=${this._min !== undefined ? String(this._min) : ""}
           .configValue=${"min"}
           type="number"
           step="any"
@@ -107,9 +121,10 @@ class HaInputNumberForm extends LitElement {
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.input_number.min"
           )}
-        ></ha-textfield>
-        <ha-textfield
-          .value=${this._max}
+          .disabled=${this.disabled}
+        ></ha-input>
+        <ha-input
+          .value=${this._max !== undefined ? String(this._max) : ""}
           .configValue=${"max"}
           type="number"
           step="any"
@@ -117,66 +132,63 @@ class HaInputNumberForm extends LitElement {
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.input_number.max"
           )}
-        ></ha-textfield>
-        ${this.hass.userData?.showAdvanced
-          ? html`
-              <div class="layout horizontal center justified">
-                ${this.hass.localize(
-                  "ui.dialogs.helper_settings.input_number.mode"
-                )}
-                <ha-formfield
-                  .label=${this.hass.localize(
-                    "ui.dialogs.helper_settings.input_number.slider"
-                  )}
-                >
-                  <ha-radio
-                    name="mode"
-                    value="slider"
-                    .checked=${this._mode === "slider"}
-                    @change=${this._modeChanged}
-                  ></ha-radio>
-                </ha-formfield>
-                <ha-formfield
-                  .label=${this.hass.localize(
-                    "ui.dialogs.helper_settings.input_number.box"
-                  )}
-                >
-                  <ha-radio
-                    name="mode"
-                    value="box"
-                    .checked=${this._mode === "box"}
-                    @change=${this._modeChanged}
-                  ></ha-radio>
-                </ha-formfield>
-              </div>
-              <ha-textfield
-                .value=${this._step}
-                .configValue=${"step"}
-                type="number"
-                step="any"
-                @input=${this._valueChanged}
-                .label=${this.hass!.localize(
-                  "ui.dialogs.helper_settings.input_number.step"
-                )}
-              ></ha-textfield>
+          .disabled=${this.disabled}
+        ></ha-input>
 
-              <ha-textfield
-                .value=${this._unit_of_measurement || ""}
-                .configValue=${"unit_of_measurement"}
-                @input=${this._valueChanged}
-                .label=${this.hass!.localize(
-                  "ui.dialogs.helper_settings.input_number.unit_of_measurement"
-                )}
-              ></ha-textfield>
-            `
-          : ""}
+        <ha-radio-group
+          orientation="horizontal"
+          class="mode"
+          .label=${this.hass.localize(
+            "ui.dialogs.helper_settings.input_number.mode"
+          )}
+          .value=${this._mode}
+          .disabled=${this.disabled}
+          name="mode"
+          @change=${this._modeChanged}
+        >
+          <ha-radio-option value="slider">
+            ${this.hass.localize(
+              "ui.dialogs.helper_settings.input_number.slider"
+            )}
+          </ha-radio-option>
+          <ha-radio-option value="box">
+            ${this.hass.localize("ui.dialogs.helper_settings.input_number.box")}
+          </ha-radio-option>
+        </ha-radio-group>
+        <ha-input
+          .value=${this._step !== undefined ? String(this._step) : ""}
+          .configValue=${"step"}
+          type="number"
+          step="any"
+          @input=${this._valueChanged}
+          .label=${this.hass!.localize(
+            "ui.dialogs.helper_settings.input_number.step"
+          )}
+          .disabled=${this.disabled}
+        ></ha-input>
+
+        <ha-selector-select
+          .hass=${this.hass}
+          .label=${this.hass!.localize(
+            "ui.dialogs.helper_settings.input_number.unit_of_measurement"
+          )}
+          .selector=${UNIT_SELECTOR}
+          .disabled=${this.disabled}
+          .value=${this._unit_of_measurement || ""}
+          .configValue=${"unit_of_measurement"}
+          @value-changed=${this._valueChanged}
+        >
+        </ha-selector-select>
       </div>
     `;
   }
 
-  private _modeChanged(ev: CustomEvent) {
+  private _modeChanged(ev: Event) {
     fireEvent(this, "value-changed", {
-      value: { ...this._item, mode: (ev.target as HaRadio).value },
+      value: {
+        ...this._item,
+        mode: (ev.currentTarget as HaRadioGroup).value,
+      },
     });
   }
 
@@ -213,10 +225,19 @@ class HaInputNumberForm extends LitElement {
         .form {
           color: var(--primary-text-color);
         }
+        ha-input {
+          --ha-input-padding-bottom: 0;
+        }
 
-        ha-textfield {
+        ha-icon-picker,
+        ha-input:not([required]) {
           display: block;
-          margin-bottom: 8px;
+          margin-bottom: var(--ha-space-5);
+          --ha-input-padding-bottom: 0;
+        }
+
+        .mode {
+          margin-bottom: var(--ha-space-4);
         }
       `,
     ];

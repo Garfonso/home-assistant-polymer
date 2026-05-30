@@ -1,17 +1,18 @@
-import "@material/mwc-list/mwc-list";
 import { mdiDotsVertical, mdiDownload, mdiRefresh, mdiText } from "@mdi/js";
+import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../../../common/dom/fire_event";
 import type { LocalizeFunc } from "../../../common/translations/localize";
 import "../../../components/buttons/ha-call-service-button";
-import "../../../components/buttons/ha-progress-button";
-import "../../../components/ha-button-menu";
 import "../../../components/ha-card";
-import "../../../components/ha-spinner";
+import "../../../components/ha-dropdown";
+import "../../../components/ha-dropdown-item";
 import "../../../components/ha-icon-button";
+import "../../../components/ha-list";
 import "../../../components/ha-list-item";
+import "../../../components/ha-spinner";
 import { getSignedPath } from "../../../data/auth";
 import { getErrorLogDownloadUrl } from "../../../data/error_log";
 import { domainToName } from "../../../data/integration";
@@ -25,6 +26,7 @@ import type { HomeAssistant } from "../../../types";
 import { fileDownload } from "../../../util/file_download";
 import { showSystemLogDetailDialog } from "./show-dialog-system-log-detail";
 import { formatSystemLogTime } from "./util";
+import type { HaDropdownSelectEvent } from "../../../components/ha-dropdown";
 
 @customElement("system-log-card")
 export class SystemLogCard extends LitElement {
@@ -122,19 +124,19 @@ export class SystemLogCard extends LitElement {
                       .label=${this.hass.localize("ui.common.refresh")}
                     ></ha-icon-button>
 
-                    <ha-button-menu @action=${this._handleOverflowAction}>
-                      <ha-icon-button slot="trigger" .path=${mdiDotsVertical}>
-                      </ha-icon-button>
-                      <ha-list-item graphic="icon">
-                        <ha-svg-icon
-                          slot="graphic"
-                          .path=${mdiText}
-                        ></ha-svg-icon>
+                    <ha-dropdown @wa-select=${this._handleOverflowAction}>
+                      <ha-icon-button
+                        slot="trigger"
+                        .path=${mdiDotsVertical}
+                        .label=${this.hass.localize("ui.common.menu")}
+                      ></ha-icon-button>
+                      <ha-dropdown-item value="show-full-logs">
+                        <ha-svg-icon slot="icon" .path=${mdiText}></ha-svg-icon>
                         ${this.hass.localize(
                           "ui.panel.config.logs.show_full_logs"
                         )}
-                      </ha-list-item>
-                    </ha-button-menu>
+                      </ha-dropdown-item>
+                    </ha-dropdown>
                   </div>
                 </div>
                 ${this._items.length === 0
@@ -150,7 +152,7 @@ export class SystemLogCard extends LitElement {
                           { term: this.filter }
                         )}
                       </div>`
-                    : html`<mwc-list
+                    : html`<ha-list
                         >${filteredItems.map(
                           (item, idx) => html`
                             <ha-list-item
@@ -184,7 +186,7 @@ export class SystemLogCard extends LitElement {
                               </span>
                             </ha-list-item>
                           `
-                        )}</mwc-list
+                        )}</ha-list
                       >`}
 
                 <div class="card-actions">
@@ -203,7 +205,7 @@ export class SystemLogCard extends LitElement {
     `;
   }
 
-  protected firstUpdated(changedProps): void {
+  protected firstUpdated(changedProps: PropertyValues<this>): void {
     super.firstUpdated(changedProps);
     this.fetchData();
     this.loaded = true;
@@ -222,14 +224,16 @@ export class SystemLogCard extends LitElement {
     }
   }
 
-  private _handleOverflowAction() {
-    // @ts-ignore
-    fireEvent(this, "switch-log-view");
+  private _handleOverflowAction(ev: HaDropdownSelectEvent) {
+    if (ev.detail.item.value === "show-full-logs") {
+      // @ts-ignore
+      fireEvent(this, "switch-log-view");
+    }
   }
 
   private async _downloadLogs() {
     const timeString = new Date().toISOString().replace(/:/g, "-");
-    const downloadUrl = getErrorLogDownloadUrl;
+    const downloadUrl = getErrorLogDownloadUrl(this.hass);
     const logFileName = `home-assistant_${timeString}.log`;
     const signedUrl = await getSignedPath(this.hass, downloadUrl);
     fileDownload(signedUrl.path, logFileName);
@@ -248,7 +252,7 @@ export class SystemLogCard extends LitElement {
     :host {
       direction: var(--direction);
     }
-    mwc-list {
+    ha-list {
       direction: ltr;
     }
 
@@ -266,12 +270,12 @@ export class SystemLogCard extends LitElement {
     .card-header {
       color: var(--ha-card-header-color, var(--primary-text-color));
       font-family: var(--ha-card-header-font-family, inherit);
-      font-size: var(--ha-card-header-font-size, 24px);
+      font-size: var(--ha-card-header-font-size, var(--ha-font-size-2xl));
       letter-spacing: -0.012em;
-      line-height: 48px;
+      line-height: var(--ha-line-height-expanded);
       display: block;
       margin-block-start: 0px;
-      font-weight: normal;
+      font-weight: var(--ha-font-weight-normal);
     }
 
     .system-log-intro {

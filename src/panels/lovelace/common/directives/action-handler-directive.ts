@@ -1,6 +1,7 @@
-/* eslint-disable max-classes-per-file */
+import type { AttributePart } from "lit";
 import { noChange } from "lit";
-import type { AttributePart, DirectiveParameters } from "lit/directive";
+import { customElement } from "lit/decorators";
+import type { DirectiveParameters } from "lit/directive";
 import { directive, Directive } from "lit/directive";
 import { fireEvent } from "../../../../common/dom/fire_event";
 import { deepEqual } from "../../../../common/util/deep-equal";
@@ -32,6 +33,7 @@ declare global {
   }
 }
 
+@customElement("action-handler")
 class ActionHandler extends HTMLElement implements ActionHandlerType {
   public holdTime = 500;
 
@@ -43,6 +45,7 @@ class ActionHandler extends HTMLElement implements ActionHandlerType {
 
   private dblClickTimeout?: number;
 
+  // eslint-disable-next-line lit/lifecycle-super -- not a LitElement
   public connectedCallback() {
     Object.assign(this.style, {
       position: "fixed",
@@ -174,14 +177,16 @@ class ActionHandler extends HTMLElement implements ActionHandlerType {
         ) {
           this.dblClickTimeout = window.setTimeout(() => {
             this.dblClickTimeout = undefined;
-            fireEvent(target, "action", { action: "tap" });
+            if (options.hasTap !== false) {
+              fireEvent(target, "action", { action: "tap" });
+            }
           }, 250);
         } else {
           clearTimeout(this.dblClickTimeout);
           this.dblClickTimeout = undefined;
           fireEvent(target, "action", { action: "double_tap" });
         }
-      } else {
+      } else if (options.hasTap !== false) {
         fireEvent(target, "action", { action: "tap" });
       }
     };
@@ -223,8 +228,6 @@ class ActionHandler extends HTMLElement implements ActionHandlerType {
     });
   }
 }
-
-customElements.define("action-handler", ActionHandler);
 
 const getActionHandler = (): ActionHandlerType => {
   const body = document.body;

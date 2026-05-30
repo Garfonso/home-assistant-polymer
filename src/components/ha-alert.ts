@@ -6,8 +6,10 @@ import {
   mdiInformationOutline,
 } from "@mdi/js";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property } from "lit/decorators";
+import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
+import { consumeLocalize } from "../common/decorators/consume-context-entry";
+import type { LocalizeFunc } from "../common/translations/localize";
 import { fireEvent } from "../common/dom/fire_event";
 import "./ha-icon-button";
 import "./ha-svg-icon";
@@ -38,6 +40,10 @@ class HaAlert extends LitElement {
 
   @property({ type: Boolean }) public dismissable = false;
 
+  @state()
+  @consumeLocalize()
+  private _localize?: LocalizeFunc;
+
   @property({ type: Boolean }) public narrow = false;
 
   public render() {
@@ -65,7 +71,7 @@ class HaAlert extends LitElement {
               ${this.dismissable
                 ? html`<ha-icon-button
                     @click=${this._dismissClicked}
-                    label="Dismiss alert"
+                    .label=${this._localize?.("ui.common.dismiss_alert")}
                     .path=${mdiClose}
                   ></ha-icon-button>`
                 : nothing}
@@ -86,6 +92,10 @@ class HaAlert extends LitElement {
       padding: 8px;
       display: flex;
     }
+    .icon {
+      height: var(--ha-alert-icon-size, 24px);
+      width: var(--ha-alert-icon-size, 24px);
+    }
     .issue-type::after {
       position: absolute;
       top: 0;
@@ -95,10 +105,7 @@ class HaAlert extends LitElement {
       opacity: 0.12;
       pointer-events: none;
       content: "";
-      border-radius: 4px;
-    }
-    .icon {
-      z-index: 1;
+      border-radius: var(--ha-border-radius-sm);
     }
     .icon.no-title {
       align-self: center;
@@ -122,19 +129,19 @@ class HaAlert extends LitElement {
     .main-content {
       overflow-wrap: anywhere;
       word-break: break-word;
+      line-height: normal;
       margin-left: 8px;
       margin-right: 0;
       margin-inline-start: 8px;
-      margin-inline-end: 0;
+      margin-inline-end: 8px;
     }
     .title {
       margin-top: 2px;
-      font-weight: bold;
+      font-weight: var(--ha-font-weight-bold);
     }
-    .action mwc-button,
     .action ha-icon-button {
       --mdc-theme-primary: var(--primary-text-color);
-      --mdc-icon-button-size: 36px;
+      --ha-icon-button-size: 36px;
     }
     .issue-type.info > .icon {
       color: var(--info-color);

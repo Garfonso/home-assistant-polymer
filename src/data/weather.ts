@@ -21,6 +21,7 @@ import {
   mdiWeatherWindyVariant,
 } from "@mdi/js";
 import type {
+  Connection,
   HassConfig,
   HassEntityAttributeBase,
   HassEntityBase,
@@ -28,6 +29,13 @@ import type {
 import type { SVGTemplateResult, TemplateResult } from "lit";
 import { css, html, svg } from "lit";
 import { styleMap } from "lit/directives/style-map";
+import {
+  UNIT_HPA,
+  UNIT_IN,
+  UNIT_INHG,
+  UNIT_KM,
+  UNIT_MM,
+} from "../common/const";
 import { supportsFeature } from "../common/entity/supports-feature";
 import { round } from "../common/number/round";
 import "../components/ha-svg-icon";
@@ -43,7 +51,7 @@ export type ModernForecastType = "hourly" | "daily" | "twice_daily";
 
 export type ForecastType = ModernForecastType | "legacy";
 
-interface ForecastAttribute {
+export interface ForecastAttribute {
   temperature: number;
   datetime: string;
   templow?: number;
@@ -55,6 +63,16 @@ interface ForecastAttribute {
   pressure?: number;
   wind_speed?: string;
 }
+
+export type ForecastPrecipitationType = "amount" | "probability";
+
+export const getForecastPrecipitation = (
+  entry: ForecastAttribute,
+  type: ForecastPrecipitationType
+) =>
+  type === "probability"
+    ? entry.precipitation_probability
+    : entry.precipitation;
 
 interface WeatherEntityAttributes extends HassEntityAttributeBase {
   attribution?: string;
@@ -81,6 +99,12 @@ export interface ForecastEvent {
 export interface WeatherEntity extends HassEntityBase {
   attributes: WeatherEntityAttributes;
 }
+
+export const WEATHER_TEMPERATURE_ATTRIBUTES = new Set<string>([
+  "temperature",
+  "apparent_temperature",
+  "dew_point",
+]);
 
 export const weatherSVGs = new Set<string>([
   "clear-night",
@@ -146,7 +170,12 @@ const cloudyStates = new Set<string>([
   "lightning-rainy",
 ]);
 
-const rainStates = new Set<string>(["hail", "rainy", "pouring"]);
+const rainStates = new Set<string>([
+  "hail",
+  "rainy",
+  "pouring",
+  "lightning-rainy",
+]);
 
 const windyStates = new Set<string>(["windy", "windy-variant"]);
 
@@ -223,12 +252,12 @@ export const getWeatherUnit = (
     case "precipitation":
       return (
         stateObj.attributes.precipitation_unit ||
-        (lengthUnit === "km" ? "mm" : "in")
+        (lengthUnit === UNIT_KM ? UNIT_MM : UNIT_IN)
       );
     case "pressure":
       return (
         stateObj.attributes.pressure_unit ||
-        (lengthUnit === "km" ? "hPa" : "inHg")
+        (lengthUnit === UNIT_KM ? UNIT_HPA : UNIT_INHG)
       );
     case "apparent_temperature":
     case "dew_point":
@@ -251,9 +280,15 @@ export const getWeatherUnit = (
 export const getSecondaryWeatherAttribute = (
   hass: HomeAssistant,
   stateObj: WeatherEntity,
-  forecast: ForecastAttribute[]
+  forecast: ForecastAttribute[],
+  temperatureFractionDigits?: number
 ): TemplateResult | undefined => {
-  const extrema = getWeatherExtrema(hass, stateObj, forecast);
+  const extrema = getWeatherExtrema(
+    hass,
+    stateObj,
+    forecast,
+    temperatureFractionDigits
+  );
 
   if (extrema) {
     return extrema;
@@ -293,7 +328,8 @@ export const getSecondaryWeatherAttribute = (
 const getWeatherExtrema = (
   hass: HomeAssistant,
   stateObj: WeatherEntity,
-  forecast: ForecastAttribute[]
+  forecast: ForecastAttribute[],
+  temperatureFractionDigits?: number
 ): TemplateResult | undefined => {
   if (!forecast?.length) {
     return undefined;
@@ -308,13 +344,22 @@ const getWeatherExtrema = (
       break;
     }
     if (!tempHigh || fc.temperature > tempHigh) {
-      tempHigh = fc.temperature;
+      tempHigh =
+        temperatureFractionDigits === undefined
+          ? fc.temperature
+          : round(fc.temperature, temperatureFractionDigits);
     }
-    if (!tempLow || (fc.templow && fc.templow < tempLow)) {
-      tempLow = fc.templow;
+    if (fc.templow !== undefined && (!tempLow || fc.templow < tempLow)) {
+      tempLow =
+        temperatureFractionDigits === undefined
+          ? fc.templow
+          : round(fc.templow, temperatureFractionDigits);
     }
     if (!fc.templow && (!tempLow || fc.temperature < tempLow)) {
-      tempLow = fc.temperature;
+      tempLow =
+        temperatureFractionDigits === undefined
+          ? fc.temperature
+          : round(fc.temperature, temperatureFractionDigits);
     }
   }
 
@@ -665,12 +710,12 @@ export const getForecast = (
 };
 
 export const subscribeForecast = (
-  hass: HomeAssistant,
+  connection: Connection,
   entity_id: string,
   forecast_type: ModernForecastType,
   callback: (forecastevent: ForecastEvent) => void
 ) =>
-  hass.connection.subscribeMessage<ForecastEvent>(callback, {
+  connection.subscribeMessage<ForecastEvent>(callback, {
     type: "weather/subscribe_forecast",
     forecast_type,
     entity_id,

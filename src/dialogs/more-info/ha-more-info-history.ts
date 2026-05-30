@@ -7,6 +7,7 @@ import { computeDomain } from "../../common/entity/compute_domain";
 import { createSearchParam } from "../../common/url/search-params";
 import "../../components/chart/state-history-charts";
 import "../../components/chart/statistics-chart";
+import "../../components/ha-alert";
 import type { HistoryResult } from "../../data/history";
 import {
   computeHistory,
@@ -19,6 +20,7 @@ import type {
 } from "../../data/recorder";
 import { fetchStatistics, getStatisticMetadata } from "../../data/recorder";
 import { getSensorNumericDeviceClasses } from "../../data/sensor";
+import { haStyle } from "../../resources/styles";
 import type { HomeAssistant } from "../../types";
 
 declare global {
@@ -47,7 +49,7 @@ export class MoreInfoHistory extends LitElement {
 
   private _subscribed?: Promise<(() => Promise<void>) | undefined>;
 
-  private _error?: string;
+  @state() private _error?: { code: string; message: string };
 
   private _metadata?: Record<string, StatisticsMetaData>;
 
@@ -56,10 +58,19 @@ export class MoreInfoHistory extends LitElement {
       return nothing;
     }
 
-    return html`${isComponentLoaded(this.hass, "history")
+    return html`${isComponentLoaded(this.hass.config, "history")
       ? html`<div class="header">
-            <div class="title">
-              ${this.hass.localize("ui.dialogs.more_info_control.history")}
+            <div>
+              <h2>
+                ${this.hass.localize("ui.dialogs.more_info_control.history")}
+              </h2>
+              ${this._statistics
+                ? html`<div class="header-secondary">
+                    ${this.hass.localize(
+                      "ui.dialogs.more_info_control.aggregate"
+                    )}
+                  </div>`
+                : nothing}
             </div>
             ${true || __DEMO__ // IoB disable this link.. doesn't lead anywhere.
               ? nothing
@@ -70,7 +81,10 @@ export class MoreInfoHistory extends LitElement {
                 >`}
           </div>
           ${this._error
-            ? html`<div class="errors">${this._error}</div>`
+            ? html`<ha-alert alert-type="error">
+                ${this.hass.localize("ui.components.history_charts.error")}:
+                ${this._error.message || this._error.code}
+              </ha-alert>`
             : this._statistics
               ? html`<statistics-chart
                   .hass=${this.hass}
@@ -93,7 +107,7 @@ export class MoreInfoHistory extends LitElement {
       : ""}`;
   }
 
-  protected willUpdate(changedProps: PropertyValues): void {
+  protected willUpdate(changedProps: PropertyValues<this>): void {
     super.willUpdate(changedProps);
 
     if (changedProps.has("entityId")) {
@@ -113,6 +127,20 @@ export class MoreInfoHistory extends LitElement {
       this._showMoreHref = `/history?${createSearchParam(params)}`;
 
       this._getStateHistory();
+    } else if (
+      changedProps.has("hass") &&
+      this.entityId &&
+      !this._subscribed &&
+      !this._error
+    ) {
+      // Retry when components become available after backend restart
+      const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
+      if (
+        oldHass &&
+        oldHass.config.components !== this.hass.config.components
+      ) {
+        this._getStateHistory();
+      }
     }
   }
 
@@ -131,7 +159,7 @@ export class MoreInfoHistory extends LitElement {
   private _unsubscribeHistory() {
     clearInterval(this._interval);
     if (this._subscribed) {
-      this._subscribed.then((unsub) => unsub?.());
+      this._subscribed.then((unsub) => unsub?.()).catch(() => undefined);
       this._subscribed = undefined;
     }
   }
@@ -142,10 +170,18 @@ export class MoreInfoHistory extends LitElement {
     }
   }
 
-  private _setRedrawTimer() {
-    // redraw the graph every minute to update the time axis
+  private _setUpdateTimer() {
     clearInterval(this._interval);
-    this._interval = window.setInterval(() => this._redrawGraph(), 1000 * 60);
+    this._interval = window.setInterval(() => {
+      // If using statistics, refresh the data
+      if (this._statistics) {
+        this._fetchStatistics();
+      }
+      // If using history, redraw the graph to update the time axis
+      if (this._stateHistory) {
+        this._redrawGraph();
+      }
+    }, 1000 * 60);
   }
 
   private async _getStatisticsMetaData(statisticIds: string[] | undefined) {
@@ -160,9 +196,33 @@ export class MoreInfoHistory extends LitElement {
     return statisticsMetaData;
   }
 
+  private async _fetchStatistics(): Promise<boolean> {
+    // Fire off the metadata and fetch at the same time
+    // to avoid waiting in sequence so the UI responds
+    // faster.
+    const _metadata = this._getStatisticsMetaData([this.entityId]);
+    const _statistics = fetchStatistics(
+      this.hass!,
+      subHours(new Date(), 24),
+      undefined,
+      [this.entityId],
+      "5minute",
+      undefined,
+      statTypes
+    );
+    const [metadata, statistics] = await Promise.all([_metadata, _statistics]);
+    if (metadata && Object.keys(metadata).length) {
+      this._metadata = metadata;
+      this._statistics = statistics;
+      this._statNames = { [this.entityId]: "" };
+      return true;
+    }
+    return false;
+  }
+
   private async _getStateHistory(): Promise<void> {
     if (
-      isComponentLoaded(this.hass, "recorder") &&
+      isComponentLoaded(this.hass.config, "recorder") &&
       computeDomain(this.entityId) === "sensor"
     ) {
       const stateObj = this.hass.states[this.entityId];
@@ -170,41 +230,43 @@ export class MoreInfoHistory extends LitElement {
       // has not opted into statistics so there is no need to check as it
       // requires another round-trip to the server.
       if (stateObj && stateObj.attributes.state_class) {
-        // Fire off the metadata and fetch at the same time
-        // to avoid waiting in sequence so the UI responds
-        // faster.
-        const _metadata = this._getStatisticsMetaData([this.entityId]);
-        const _statistics = fetchStatistics(
-          this.hass!,
-          subHours(new Date(), 24),
-          undefined,
-          [this.entityId],
-          "5minute",
-          undefined,
-          statTypes
-        );
-        const [metadata, statistics] = await Promise.all([
-          _metadata,
-          _statistics,
-        ]);
-        if (metadata && Object.keys(metadata).length) {
-          this._metadata = metadata;
-          this._statistics = statistics;
-          this._statNames = { [this.entityId]: "" };
+        const hasStatistics = await this._fetchStatistics();
+        if (hasStatistics) {
+          // Using statistics, set up refresh timer
+          this._setUpdateTimer();
           return;
         }
       }
     }
 
-    if (!isComponentLoaded(this.hass, "history")) {
+    if (!isComponentLoaded(this.hass.config, "history")) {
       return;
     }
     if (this._subscribed) {
       this._unsubscribeHistory();
     }
 
-    const { numeric_device_classes: sensorNumericDeviceClasses } =
-      await getSensorNumericDeviceClasses(this.hass);
+    // Mark as subscribing before the await to prevent re-entrant calls
+    const sentinel = Promise.resolve(undefined) as NonNullable<
+      typeof this._subscribed
+    >;
+    this._subscribed = sentinel;
+
+    let sensorNumericDeviceClasses: string[];
+    try {
+      ({ numeric_device_classes: sensorNumericDeviceClasses } =
+        await getSensorNumericDeviceClasses(this.hass));
+    } catch (_err) {
+      if (this._subscribed === sentinel) {
+        this._subscribed = undefined;
+      }
+      return;
+    }
+
+    // Bail out if a newer call replaced our sentinel while we were awaiting
+    if (this._subscribed !== sentinel) {
+      return;
+    }
 
     this._subscribed = subscribeHistoryStatesTimeWindow(
       this.hass!,
@@ -228,30 +290,32 @@ export class MoreInfoHistory extends LitElement {
       this._error = err;
       return undefined;
     });
-    this._setRedrawTimer();
+    this._setUpdateTimer();
   }
 
-  static styles = css`
-    .header {
-      display: flex;
-      flex-direction: row;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 8px;
-    }
-    .header > a,
-    a:visited {
-      color: var(--primary-color);
-    }
-    .title {
-      font-family: var(--paper-font-title_-_font-family);
-      -webkit-font-smoothing: var(--paper-font-title_-_-webkit-font-smoothing);
-      font-size: var(--paper-font-subhead_-_font-size);
-      font-weight: var(--paper-font-title_-_font-weight);
-      letter-spacing: var(--paper-font-title_-_letter-spacing);
-      line-height: var(--paper-font-title_-_line-height);
-    }
-  `;
+  static styles = [
+    haStyle,
+    css`
+      .header {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: var(--ha-space-2);
+      }
+      .header > a,
+      a:visited {
+        color: var(--primary-color);
+      }
+      .header-secondary {
+        font-size: var(--ha-font-size-s);
+        color: var(--secondary-text-color);
+      }
+      h2 {
+        margin: 0;
+      }
+    `,
+  ];
 }
 
 declare global {

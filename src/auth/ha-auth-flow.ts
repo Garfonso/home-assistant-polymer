@@ -1,15 +1,14 @@
 /* eslint-disable lit/prefer-static-styles */
-import "@material/mwc-button";
 import { genClientId } from "home-assistant-js-websocket";
 import type { PropertyValues } from "lit";
 import { html, LitElement, nothing } from "lit";
+import { customElement, property, query, state } from "lit/decorators";
 import { keyed } from "lit/directives/keyed";
-import { customElement, property, state } from "lit/decorators";
 import type { LocalizeFunc } from "../common/translations/localize";
 import "../components/ha-alert";
+import "../components/ha-button";
 import "../components/ha-checkbox";
 import { computeInitialHaFormData } from "../components/ha-form/compute-initial-ha-form-data";
-import "../components/ha-formfield";
 import type { AuthProvider } from "../data/auth";
 import {
   autocompleteLoginFields,
@@ -23,6 +22,7 @@ import type {
   DataEntryFlowStepForm,
 } from "../data/data_entry_flow";
 import "./ha-auth-form";
+import type { HaAuthForm } from "./ha-auth-form";
 
 type State = "loading" | "error" | "step";
 
@@ -52,14 +52,19 @@ export class HaAuthFlow extends LitElement {
 
   @state() private _submitting = false;
 
+  @query("ha-auth-form") private _form?: HaAuthForm;
+
+  @query("ha-form") private _haForm?: HTMLElement;
+
   createRenderRoot() {
     return this;
   }
 
-  willUpdate(changedProps: PropertyValues) {
+  willUpdate(changedProps: PropertyValues<this>) {
     super.willUpdate(changedProps);
 
-    if (!this.hasUpdated) {
+    if (!this.hasUpdated && this.clientId === genClientId()) {
+      // Preselect store token when logging in to own instance
       this._storeToken = this.initStoreToken;
     }
 
@@ -93,11 +98,6 @@ export class HaAuthFlow extends LitElement {
   protected render() {
     return html`
       <style>
-        ha-auth-flow .store-token {
-          margin-left: -16px;
-          margin-inline-start: -16px;
-          margin-inline-end: initial;
-        }
         a.forgot-password {
           color: var(--primary-color);
           text-decoration: none;
@@ -117,12 +117,18 @@ export class HaAuthFlow extends LitElement {
           display: block;
           margin-top: 16px;
         }
+        .action {
+          margin-top: var(--ha-space-5);
+        }
+        .action ha-button {
+          width: 100%;
+        }
       </style>
       <form>${this._renderForm()}</form>
     `;
   }
 
-  protected firstUpdated(changedProps: PropertyValues) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
 
     if (this.clientId == null || this.redirectUri == null) {
@@ -144,7 +150,7 @@ export class HaAuthFlow extends LitElement {
     });
   }
 
-  protected updated(changedProps: PropertyValues): void {
+  protected updated(changedProps: PropertyValues<this>): void {
     super.updated(changedProps);
     if (changedProps.has("authProvider")) {
       this._providerChanged(this.authProvider);
@@ -156,9 +162,8 @@ export class HaAuthFlow extends LitElement {
 
     // 100ms to give all the form elements time to initialize.
     setTimeout(() => {
-      const form = this.renderRoot.querySelector("ha-form");
-      if (form) {
-        (form as any).focus();
+      if (this._haForm) {
+        (this._haForm as any).focus();
       }
     }, 100);
   }
@@ -173,15 +178,14 @@ export class HaAuthFlow extends LitElement {
         return html`
           ${this._renderStep(this.step)}
           <div class="action">
-            <mwc-button
-              raised
+            <ha-button
               @click=${this._handleSubmit}
-              .disabled=${this._submitting}
+              .loading=${this._submitting}
             >
               ${this.step.type === "form"
                 ? this.localize("ui.panel.page-authorize.form.next")
                 : this.localize("ui.panel.page-authorize.form.start_over")}
-            </mwc-button>
+            </ha-button>
           </div>
         `;
       case "error":
@@ -192,9 +196,9 @@ export class HaAuthFlow extends LitElement {
             })}
           </ha-alert>
           <div class="action">
-            <mwc-button raised @click=${this._startOver}>
+            <ha-button @click=${this._startOver}>
               ${this.localize("ui.panel.page-authorize.form.start_over")}
-            </mwc-button>
+            </ha-button>
           </div>
         `;
       case "loading":
@@ -238,33 +242,27 @@ export class HaAuthFlow extends LitElement {
               @value-changed=${this._stepDataChanged}
             ></ha-auth-form>`
           )}
-          ${this.clientId === genClientId() &&
-          !["select_mfa_module", "mfa"].includes(step.step_id)
-            ? html`
-                <div class="space-between">
-                  <ha-formfield
-                    class="store-token"
-                    .label=${this.localize(
-                      "ui.panel.page-authorize.store_token"
-                    )}
+
+          <div class="space-between">
+            ${this.clientId === genClientId() &&
+            !["select_mfa_module", "mfa"].includes(step.step_id)
+              ? html`
+                  <ha-checkbox
+                    .checked=${this._storeToken}
+                    @change=${this._storeTokenChanged}
                   >
-                    <ha-checkbox
-                      .checked=${this._storeToken}
-                      @change=${this._storeTokenChanged}
-                    ></ha-checkbox>
-                  </ha-formfield>
-                  <a
-                    class="forgot-password"
-                    href="https://www.home-assistant.io/docs/locked_out/#forgot-password"
-                    target="_blank"
-                    rel="noreferrer noopener"
-                    >${this.localize(
-                      "ui.panel.page-authorize.forgot_password"
-                    )}</a
-                  >
-                </div>
-              `
-            : ""}
+                    ${this.localize("ui.panel.page-authorize.store_token")}
+                  </ha-checkbox>
+                `
+              : ""}
+            <a
+              class="forgot-password"
+              href="https://www.home-assistant.io/docs/locked_out/#forgot-password"
+              target="_blank"
+              rel="noreferrer noopener"
+              >${this.localize("ui.panel.page-authorize.forgot_password")}</a
+            >
+          </div>
         `;
       default:
         return nothing;
@@ -368,6 +366,11 @@ export class HaAuthFlow extends LitElement {
       this._providerChanged(this.authProvider);
       return;
     }
+
+    if (!this._form?.reportValidity()) {
+      return;
+    }
+
     this._submitting = true;
 
     const postData = { ...this._stepData, client_id: this.clientId };

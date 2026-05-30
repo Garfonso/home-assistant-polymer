@@ -1,5 +1,3 @@
-import "@material/mwc-drawer";
-import "@material/mwc-top-app-bar-fixed";
 import { html, css, LitElement } from "lit";
 import { customElement } from "lit/decorators";
 import "../../src/components/ha-icon-button";
@@ -34,7 +32,7 @@ class HaDemoOptions extends LitElement {
         height: 64px;
         padding: 0 16px;
         pointer-events: none;
-        font-size: 20px;
+        font-size: var(--ha-font-size-xl);
       }
     `,
   ];

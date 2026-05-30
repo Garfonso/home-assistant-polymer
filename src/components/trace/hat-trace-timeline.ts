@@ -1,4 +1,4 @@
-import { consume } from "@lit-labs/context";
+import { consume } from "@lit/context";
 import {
   mdiAlertCircle,
   mdiCircle,
@@ -15,19 +15,14 @@ import { formatDateTimeWithSeconds } from "../../common/datetime/format_date_tim
 import { relativeTime } from "../../common/datetime/relative_time";
 import { fireEvent } from "../../common/dom/fire_event";
 import { toggleAttribute } from "../../common/dom/toggle_attribute";
-import {
-  floorsContext,
-  fullEntitiesContext,
-  labelsContext,
-} from "../../data/context";
-import type { EntityRegistryEntry } from "../../data/entity_registry";
-import type { FloorRegistryEntry } from "../../data/floor_registry";
-import type { LabelRegistryEntry } from "../../data/label_registry";
+import { fullEntitiesContext } from "../../data/context";
+import type { EntityRegistryEntry } from "../../data/entity/entity_registry";
 import type { LogbookEntry } from "../../data/logbook";
+import { localizeTriggerDescription } from "../../data/logbook";
 import type {
   ChooseAction,
-  Option,
   IfAction,
+  Option,
   ParallelAction,
   RepeatAction,
   SequenceAction,
@@ -197,8 +192,6 @@ class ActionRenderer {
   constructor(
     private hass: HomeAssistant,
     private entityReg: EntityRegistryEntry[],
-    private labelReg: LabelRegistryEntry[],
-    private floorReg: Record<string, FloorRegistryEntry>,
     private entries: TemplateResult[],
     private trace: AutomationTraceExtended,
     private logbookRenderer: LogbookRenderer,
@@ -313,14 +306,7 @@ class ActionRenderer {
 
     this._renderEntry(
       path,
-      describeAction(
-        this.hass,
-        this.entityReg,
-        this.labelReg,
-        this.floorReg,
-        data,
-        actionType
-      ),
+      describeAction(this.hass, this.entityReg, data, actionType),
       undefined,
       data.enabled === false
     );
@@ -347,7 +333,10 @@ class ActionRenderer {
             : "other",
           alias: triggerStep.changed_variables.trigger?.alias,
           triggeredPath: triggerStep.path === "trigger" ? "manual" : "trigger",
-          trigger: this.trace.trigger,
+          trigger: localizeTriggerDescription(
+            this.hass.localize,
+            this.trace.trigger
+          ),
           time: formatDateTimeWithSeconds(
             new Date(triggerStep.timestamp),
             this.hass.locale,
@@ -485,13 +474,7 @@ class ActionRenderer {
 
     const name =
       repeatConfig.alias ||
-      describeAction(
-        this.hass,
-        this.entityReg,
-        this.labelReg,
-        this.floorReg,
-        repeatConfig
-      );
+      describeAction(this.hass, this.entityReg, repeatConfig);
 
     this._renderEntry(repeatPath, name, undefined, disabled);
 
@@ -585,14 +568,7 @@ class ActionRenderer {
     this._renderEntry(
       sequencePath,
       sequenceConfig.alias ||
-        describeAction(
-          this.hass,
-          this.entityReg,
-          this.labelReg,
-          this.floorReg,
-          sequenceConfig,
-          "sequence"
-        ),
+        describeAction(this.hass, this.entityReg, sequenceConfig, "sequence"),
       undefined,
       sequenceConfig.enabled === false
     );
@@ -681,15 +657,7 @@ export class HaAutomationTracer extends LitElement {
 
   @state()
   @consume({ context: fullEntitiesContext, subscribe: true })
-  _entityReg!: EntityRegistryEntry[];
-
-  @state()
-  @consume({ context: labelsContext, subscribe: true })
-  _labelReg!: LabelRegistryEntry[];
-
-  @state()
-  @consume({ context: floorsContext, subscribe: true })
-  _floorReg!: Record<string, FloorRegistryEntry>;
+  _entityReg: EntityRegistryEntry[] = [];
 
   protected render() {
     if (!this.trace) {
@@ -707,8 +675,6 @@ export class HaAutomationTracer extends LitElement {
     const actionRenderer = new ActionRenderer(
       this.hass,
       this._entityReg,
-      this._labelReg,
-      this._floorReg,
       entries,
       this.trace,
       logbookRenderer,
@@ -850,7 +816,7 @@ export class HaAutomationTracer extends LitElement {
     return html`${entries}`;
   }
 
-  protected updated(props: PropertyValues) {
+  protected updated(props: PropertyValues<this>) {
     super.updated(props);
 
     // Pick first path when we load a new trace.

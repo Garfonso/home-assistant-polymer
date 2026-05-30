@@ -29,10 +29,15 @@ export interface LovelaceDashboardMutableParams {
   title: string;
 }
 
-export interface LovelaceDashboardCreateParams
-  extends LovelaceDashboardMutableParams {
+export interface LovelaceDashboardCreateParams extends LovelaceDashboardMutableParams {
   url_path: string;
   mode: "storage";
+}
+
+/** Optional suggested values for dashboard creation (for example from a strategy). */
+export interface LovelaceDashboardSuggestions {
+  title?: string;
+  icon?: string;
 }
 
 export const fetchDashboards = (

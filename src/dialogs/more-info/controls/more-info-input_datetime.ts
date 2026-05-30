@@ -3,12 +3,12 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
 import "../../../components/ha-date-input";
 import "../../../components/ha-time-input";
-import { isUnavailableState, UNKNOWN } from "../../../data/entity";
+import { UNAVAILABLE, UNKNOWN } from "../../../data/entity/entity";
 import {
   setInputDateTimeValue,
   stateToIsoDateString,
 } from "../../../data/input_datetime";
-import type { HomeAssistant } from "../../../types";
+import type { HomeAssistant, ValueChangedEvent } from "../../../types";
 
 @customElement("more-info-input_datetime")
 class MoreInfoInputDatetime extends LitElement {
@@ -27,7 +27,7 @@ class MoreInfoInputDatetime extends LitElement {
             <ha-date-input
               .locale=${this.hass.locale}
               .value=${stateToIsoDateString(this.stateObj)}
-              .disabled=${isUnavailableState(this.stateObj.state)}
+              .disabled=${this.stateObj.state === UNAVAILABLE}
               @value-changed=${this._dateChanged}
             >
             </ha-date-input>
@@ -42,7 +42,7 @@ class MoreInfoInputDatetime extends LitElement {
                   ? this.stateObj.state.split(" ")[1]
                   : this.stateObj.state}
               .locale=${this.hass.locale}
-              .disabled=${isUnavailableState(this.stateObj.state)}
+              .disabled=${this.stateObj.state === UNAVAILABLE}
               @value-changed=${this._timeChanged}
               @click=${this._stopEventPropagation}
             ></ha-time-input>
@@ -55,7 +55,7 @@ class MoreInfoInputDatetime extends LitElement {
     ev.stopPropagation();
   }
 
-  private _timeChanged(ev: CustomEvent<{ value: string }>): void {
+  private _timeChanged(ev: ValueChangedEvent<string>): void {
     setInputDateTimeValue(
       this.hass!,
       this.stateObj!.entity_id,
@@ -66,7 +66,7 @@ class MoreInfoInputDatetime extends LitElement {
     );
   }
 
-  private _dateChanged(ev: CustomEvent<{ value: string }>): void {
+  private _dateChanged(ev: ValueChangedEvent<string>): void {
     setInputDateTimeValue(
       this.hass!,
       this.stateObj!.entity_id,
@@ -82,10 +82,15 @@ class MoreInfoInputDatetime extends LitElement {
       display: flex;
       align-items: center;
       justify-content: flex-end;
+      --ha-input-padding-bottom: 0;
+      flex-wrap: wrap;
+    }
+    ha-date-input {
+      flex: 1 1 160px;
     }
     ha-date-input + ha-time-input {
-      margin-left: 4px;
-      margin-inline-start: 4px;
+      margin-left: var(--ha-space-1);
+      margin-inline-start: var(--ha-space-1);
       margin-inline-end: initial;
     }
   `;

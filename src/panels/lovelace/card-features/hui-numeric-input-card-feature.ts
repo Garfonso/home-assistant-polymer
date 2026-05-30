@@ -8,13 +8,23 @@ import "../../../components/ha-control-button-group";
 import "../../../components/ha-control-number-buttons";
 import "../../../components/ha-control-slider";
 import "../../../components/ha-icon";
-import { isUnavailableState } from "../../../data/entity";
+import { UNAVAILABLE } from "../../../data/entity/entity";
 import type { HomeAssistant } from "../../../types";
 import type { LovelaceCardFeature, LovelaceCardFeatureEditor } from "../types";
 import { cardFeatureStyles } from "./common/card-feature-styles";
-import type { NumericInputCardFeatureConfig } from "./types";
+import type {
+  LovelaceCardFeatureContext,
+  NumericInputCardFeatureConfig,
+} from "./types";
 
-export const supportsNumericInputCardFeature = (stateObj: HassEntity) => {
+export const supportsNumericInputCardFeature = (
+  hass: HomeAssistant,
+  context: LovelaceCardFeatureContext
+) => {
+  const stateObj = context.entity_id
+    ? hass.states[context.entity_id]
+    : undefined;
+  if (!stateObj) return false;
   const domain = computeDomain(stateObj.entity_id);
   return domain === "input_number" || domain === "number";
 };
@@ -26,7 +36,7 @@ class HuiNumericInputCardFeature
 {
   @property({ attribute: false }) public hass?: HomeAssistant;
 
-  @property({ attribute: false }) public stateObj?: HassEntity;
+  @property({ attribute: false }) public context?: LovelaceCardFeatureContext;
 
   @state() private _config?: NumericInputCardFeatureConfig;
 
@@ -39,10 +49,15 @@ class HuiNumericInputCardFeature
     };
   }
 
+  private get _stateObj() {
+    if (!this.hass || !this.context || !this.context.entity_id) {
+      return undefined;
+    }
+    return this.hass.states[this.context.entity_id!] as HassEntity | undefined;
+  }
+
   public static async getConfigElement(): Promise<LovelaceCardFeatureEditor> {
-    await import(
-      "../editor/config-elements/hui-numeric-input-card-feature-editor"
-    );
+    await import("../editor/config-elements/hui-numeric-input-card-feature-editor");
     return document.createElement("hui-numeric-input-card-feature-editor");
   }
 
@@ -53,15 +68,22 @@ class HuiNumericInputCardFeature
     this._config = config;
   }
 
-  protected willUpdate(changedProp: PropertyValues): void {
+  protected willUpdate(changedProp: PropertyValues<this>): void {
     super.willUpdate(changedProp);
-    if (changedProp.has("stateObj") && this.stateObj) {
-      this._currentState = this.stateObj.state;
+    if (
+      (changedProp.has("hass") || changedProp.has("context")) &&
+      this._stateObj
+    ) {
+      const oldHass = changedProp.get("hass") as HomeAssistant | undefined;
+      const oldStateObj = oldHass?.states[this.context!.entity_id!];
+      if (oldStateObj !== this._stateObj) {
+        this._currentState = this._stateObj.state;
+      }
     }
   }
 
   private async _setValue(ev: CustomEvent) {
-    const stateObj = this.stateObj!;
+    const stateObj = this._stateObj!;
 
     const domain = computeDomain(stateObj.entity_id);
 
@@ -75,13 +97,14 @@ class HuiNumericInputCardFeature
     if (
       !this._config ||
       !this.hass ||
-      !this.stateObj ||
-      !supportsNumericInputCardFeature(this.stateObj)
+      !this.context ||
+      !this._stateObj ||
+      !supportsNumericInputCardFeature(this.hass, this.context)
     ) {
       return nothing;
     }
 
-    const stateObj = this.stateObj;
+    const stateObj = this._stateObj;
 
     const parsedState = Number(stateObj.state);
     const value = !isNaN(parsedState) ? parsedState : undefined;
@@ -94,7 +117,7 @@ class HuiNumericInputCardFeature
           .max=${stateObj.attributes.max}
           .step=${stateObj.attributes.step}
           @value-changed=${this._setValue}
-          .disabled=${isUnavailableState(stateObj.state)}
+          .disabled=${stateObj.state === UNAVAILABLE}
           .unit=${stateObj.attributes.unit_of_measurement}
           .locale=${this.hass.locale}
         ></ha-control-number-buttons>
@@ -107,7 +130,7 @@ class HuiNumericInputCardFeature
         .max=${stateObj.attributes.max}
         .step=${stateObj.attributes.step}
         @value-changed=${this._setValue}
-        .disabled=${isUnavailableState(stateObj.state)}
+        .disabled=${stateObj.state === UNAVAILABLE}
         .unit=${stateObj.attributes.unit_of_measurement}
         .locale=${this.hass.locale}
       ></ha-control-slider>

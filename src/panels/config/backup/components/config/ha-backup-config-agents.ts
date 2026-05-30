@@ -1,15 +1,16 @@
 import { mdiCog, mdiDelete, mdiHarddisk, mdiNas } from "@mdi/js";
-import { css, html, LitElement, nothing } from "lit";
+import { css, html, LitElement, nothing, type TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators";
+import { join } from "lit/directives/join";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../../../../../common/dom/fire_event";
 import { computeDomain } from "../../../../../common/entity/compute_domain";
 import { navigate } from "../../../../../common/navigate";
 import "../../../../../components/ha-icon-button";
-import "../../../../../components/ha-md-list";
-import "../../../../../components/ha-md-list-item";
 import "../../../../../components/ha-svg-icon";
 import "../../../../../components/ha-switch";
+import "../../../../../components/item/ha-list-item-base";
+import "../../../../../components/list/ha-list-base";
 import type {
   BackupAgent,
   BackupAgentsConfig,
@@ -30,7 +31,7 @@ const DEFAULT_AGENTS = [];
 class HaBackupConfigAgents extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @property({ attribute: false }) public cloudStatus!: CloudStatus;
+  @property({ attribute: false }) public cloudStatus?: CloudStatus;
 
   @property({ attribute: false }) public agents: BackupAgent[] = [];
 
@@ -47,7 +48,10 @@ class HaBackupConfigAgents extends LitElement {
 
   private _description(agentId: string) {
     if (agentId === CLOUD_AGENT) {
-      if (this.cloudStatus.logged_in && !this.cloudStatus.active_subscription) {
+      if (
+        this.cloudStatus?.logged_in &&
+        !this.cloudStatus.active_subscription
+      ) {
         return this.hass.localize(
           "ui.panel.config.backup.agents.cloud_agent_no_subcription"
         );
@@ -57,40 +61,65 @@ class HaBackupConfigAgents extends LitElement {
       );
     }
 
+    const texts: (TemplateResult | string)[] = [];
+
+    if (isNetworkMountAgent(agentId)) {
+      texts.push(
+        this.hass.localize(
+          "ui.panel.config.backup.agents.network_mount_agent_description"
+        )
+      );
+    }
+
     const encryptionTurnedOff =
       this.agentsConfig?.[agentId]?.protected === false;
 
     if (encryptionTurnedOff) {
-      return html`
-        <span class="dot warning"></span>
-        <span>
-          ${this.hass.localize(
-            "ui.panel.config.backup.agents.encryption_turned_off"
-          )}
-        </span>
-      `;
-    }
-
-    if (isNetworkMountAgent(agentId)) {
-      return this.hass.localize(
-        "ui.panel.config.backup.agents.network_mount_agent_description"
+      texts.push(
+        html`<div class="unencrypted-warning">
+          <span class="dot warning"></span>
+          <span>
+            ${this.hass.localize(
+              "ui.panel.config.backup.agents.encryption_turned_off"
+            )}
+          </span>
+        </div>`
       );
     }
-    return "";
+
+    const retention = this.agentsConfig?.[agentId]?.retention;
+
+    if (retention) {
+      if (retention.copies === null && retention.days === null) {
+        texts.push(
+          this.hass.localize("ui.panel.config.backup.agents.retention_all")
+        );
+      } else {
+        texts.push(
+          this.hass.localize(
+            `ui.panel.config.backup.agents.retention_${retention.copies ? "backups" : "days"}`,
+            {
+              count: retention.copies || retention.days,
+            }
+          )
+        );
+      }
+    }
+    return join(texts, html`<span class="separator"> · </span>`);
   }
 
   private _availableAgents = memoizeOne(
-    (agents: BackupAgent[], cloudStatus: CloudStatus) =>
+    (agents: BackupAgent[], cloudStatus?: CloudStatus) =>
       agents.filter(
-        (agent) => agent.agent_id !== CLOUD_AGENT || cloudStatus.logged_in
+        (agent) => agent.agent_id !== CLOUD_AGENT || cloudStatus?.logged_in
       )
   );
 
   private _unavailableAgents = memoizeOne(
     (
       agents: BackupAgent[],
-      cloudStatus: CloudStatus,
-      selectedAgentIds: string[]
+      selectedAgentIds: string[],
+      cloudStatus?: CloudStatus
     ) => {
       const availableAgentIds = this._availableAgents(agents, cloudStatus).map(
         (agent) => agent.agent_id
@@ -120,12 +149,14 @@ class HaBackupConfigAgents extends LitElement {
 
     return html`
       <img
-        .src=${brandsUrl({
-          domain,
-          type: "icon",
-          useFallback: true,
-          darkOptimized: this.hass.themes?.darkMode,
-        })}
+        .src=${brandsUrl(
+          {
+            domain,
+            type: "icon",
+            darkOptimized: this.hass.themes?.darkMode,
+          },
+          this.hass.auth.data.hassUrl
+        )}
         crossorigin="anonymous"
         referrerpolicy="no-referrer"
         alt=""
@@ -141,8 +172,8 @@ class HaBackupConfigAgents extends LitElement {
     );
     const unavailableAgents = this._unavailableAgents(
       this.agents,
-      this.cloudStatus,
-      this._value
+      this._value,
+      this.cloudStatus
     );
 
     const allAgents = [...availableAgents, ...unavailableAgents];
@@ -150,7 +181,7 @@ class HaBackupConfigAgents extends LitElement {
     return html`
       ${allAgents.length > 0
         ? html`
-            <ha-md-list>
+            <ha-list-base>
               ${availableAgents.map((agent) => {
                 const agentId = agent.agent_id;
                 const name = computeBackupAgentName(
@@ -161,11 +192,11 @@ class HaBackupConfigAgents extends LitElement {
                 const description = this._description(agentId);
                 const noCloudSubscription =
                   agentId === CLOUD_AGENT &&
-                  this.cloudStatus.logged_in &&
+                  this.cloudStatus?.logged_in &&
                   !this.cloudStatus.active_subscription;
 
                 return html`
-                  <ha-md-list-item>
+                  <ha-list-item-base>
                     ${this._renderAgentIcon(agentId)}
                     <div slot="headline" class="name">${name}</div>
                     ${description
@@ -189,7 +220,7 @@ class HaBackupConfigAgents extends LitElement {
                       !this._value.includes(agentId)}
                       @change=${this._agentToggled}
                     ></ha-switch>
-                  </ha-md-list-item>
+                  </ha-list-item-base>
                 `;
               })}
               ${unavailableAgents.length > 0 && this.showSettings
@@ -208,7 +239,7 @@ class HaBackupConfigAgents extends LitElement {
                       );
 
                       return html`
-                        <ha-md-list-item>
+                        <ha-list-item-base>
                           ${this._renderAgentIcon(agentId)}
                           <div slot="headline" class="name">${name}</div>
                           <ha-icon-button
@@ -217,12 +248,12 @@ class HaBackupConfigAgents extends LitElement {
                             path=${mdiDelete}
                             @click=${this._deleteAgent}
                           ></ha-icon-button>
-                        </ha-md-list-item>
+                        </ha-list-item-base>
                       `;
                     })}
                   `
                 : nothing}
-            </ha-md-list>
+            </ha-list-base>
           `
         : html`
             <p>
@@ -262,30 +293,30 @@ class HaBackupConfigAgents extends LitElement {
   }
 
   static styles = css`
-    ha-md-list {
-      background: none;
-      --md-list-item-leading-space: 0;
-      --md-list-item-trailing-space: 0;
+    ha-list-base {
+      --ha-row-item-padding-inline: 0;
     }
-    ha-md-list-item {
-      --md-item-overflow: visible;
-    }
-    ha-md-list-item .name {
+    ha-list-item-base .name {
       word-break: break-word;
     }
-    ha-md-list-item img {
+    ha-list-item-base img {
       width: 48px;
     }
-    ha-md-list-item ha-svg-icon[slot="start"] {
+    ha-list-item-base ha-svg-icon[slot="start"] {
       --mdc-icon-size: 48px;
       color: var(--primary-text-color);
     }
-    ha-md-list-item [slot="supporting-text"] {
+    ha-list-item-base::part(headline),
+    ha-list-item-base::part(supporting-text) {
+      white-space: wrap;
+    }
+    ha-list-item-base::part(end) {
+      gap: var(--ha-space-2);
+    }
+    .unencrypted-warning {
       display: flex;
       align-items: center;
-      flex-direction: row;
-      gap: 8px;
-      line-height: normal;
+      gap: var(--ha-space-1);
     }
     .dot {
       display: block;
@@ -293,11 +324,22 @@ class HaBackupConfigAgents extends LitElement {
       width: 8px;
       height: 8px;
       background-color: var(--disabled-color);
-      border-radius: 50%;
-      flex: none;
+      border-radius: var(--ha-border-radius-circle);
     }
     .dot.warning {
       background-color: var(--warning-color);
+    }
+    @media all and (max-width: 500px) {
+      .separator {
+        display: none;
+      }
+      ha-list-item-base [slot="supporting-text"] {
+        display: flex;
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: flex-start;
+        gap: var(--ha-space-1);
+      }
     }
   `;
 }

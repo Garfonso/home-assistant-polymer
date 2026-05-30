@@ -3,6 +3,7 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
 import memoizeOne from "memoize-one";
+import type { HASSDomEvent } from "../../common/dom/fire_event";
 import { stateColorCss } from "../../common/entity/state_color";
 import { supportsFeature } from "../../common/entity/supports-feature";
 import "../../components/ha-control-select";
@@ -16,7 +17,7 @@ import {
   ALARM_MODES,
   setProtectedAlarmControlPanelMode,
 } from "../../data/alarm_control_panel";
-import { UNAVAILABLE } from "../../data/entity";
+import { UNAVAILABLE } from "../../data/entity/entity";
 import type { HomeAssistant } from "../../types";
 
 @customElement("ha-state-control-alarm_control_panel-modes")
@@ -35,7 +36,7 @@ export class HaStateControlAlarmControlPanelModes extends LitElement {
     });
   });
 
-  protected willUpdate(changedProp: PropertyValues): void {
+  protected willUpdate(changedProp: PropertyValues<this>): void {
     super.willUpdate(changedProp);
     if (changedProp.has("stateObj")) {
       this._currentMode = this._getCurrentMode(this.stateObj);
@@ -55,8 +56,10 @@ export class HaStateControlAlarmControlPanelModes extends LitElement {
     );
   }
 
-  private async _valueChanged(ev: CustomEvent) {
-    const mode = (ev.detail as any).value as AlarmMode;
+  private async _valueChanged(
+    ev: HASSDomEvent<HASSDomEvents["value-changed"]>
+  ) {
+    const mode = ev.detail.value as AlarmMode;
 
     if (mode === this.stateObj!.state) return;
 
@@ -87,9 +90,7 @@ export class HaStateControlAlarmControlPanelModes extends LitElement {
         .options=${options}
         .value=${this._currentMode}
         @value-changed=${this._valueChanged}
-        .ariaLabel=${this.hass.localize(
-          "ui.card.alarm_control_panel.modes_label"
-        )}
+        .label=${this.hass.localize("ui.card.alarm_control_panel.modes_label")}
         style=${styleMap({
           "--control-select-color": color,
           "--modes-count": modes.length.toString(),
@@ -106,7 +107,7 @@ export class HaStateControlAlarmControlPanelModes extends LitElement {
       max-height: max(320px, var(--modes-count, 1) * 80px);
       min-height: max(200px, var(--modes-count, 1) * 80px);
       --control-select-thickness: 130px;
-      --control-select-border-radius: 36px;
+      --control-select-border-radius: var(--ha-border-radius-6xl);
       --control-select-color: var(--primary-color);
       --control-select-background: var(--disabled-color);
       --control-select-background-opacity: 0.2;

@@ -1,17 +1,17 @@
-import "@material/mwc-linear-progress/mwc-linear-progress";
 import { mdiDelete, mdiFileUpload } from "@mdi/js";
 import type { PropertyValues, TemplateResult } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
+import { ensureArray } from "../common/array/ensure-array";
 import { fireEvent } from "../common/dom/fire_event";
+import { blankBeforePercent } from "../common/translations/blank_before_percent";
+import type { LocalizeFunc } from "../common/translations/localize";
 import type { HomeAssistant } from "../types";
+import { bytesToString } from "../util/bytes-to-string";
 import "./ha-button";
 import "./ha-icon-button";
-import { blankBeforePercent } from "../common/translations/blank_before_percent";
-import { ensureArray } from "../common/array/ensure-array";
-import { bytesToString } from "../util/bytes-to-string";
-import type { LocalizeFunc } from "../common/translations/localize";
+import "./progress/ha-progress-bar";
 
 declare global {
   interface HASSDomEvents {
@@ -57,7 +57,7 @@ export class HaFileUpload extends LitElement {
 
   @query("#input") private _input?: HTMLInputElement;
 
-  protected firstUpdated(changedProperties: PropertyValues) {
+  protected firstUpdated(changedProperties: PropertyValues<this>) {
     super.firstUpdated(changedProperties);
     if (this.autoOpenFileDialog) {
       this._openFilePicker();
@@ -86,11 +86,12 @@ export class HaFileUpload extends LitElement {
         ? html`<div class="container">
             <div class="uploading">
               <span class="header"
-                >${this.uploadingLabel || this.value
+                >${this.uploadingLabel ||
+                (this.value
                   ? localize("ui.components.file-upload.uploading_name", {
                       name: this._name,
                     })
-                  : localize("ui.components.file-upload.uploading")}</span
+                  : localize("ui.components.file-upload.uploading"))}</span
               >
               ${this.progress
                 ? html`<div class="progress">
@@ -99,10 +100,11 @@ export class HaFileUpload extends LitElement {
                   </div>`
                 : nothing}
             </div>
-            <mwc-linear-progress
+            <ha-progress-bar
               .indeterminate=${!this.progress}
-              .progress=${this.progress ? this.progress / 100 : undefined}
-            ></mwc-linear-progress>
+              .value=${this.progress}
+              loading
+            ></ha-progress-bar>
           </div>`
         : html`<label
             for=${this.value ? "" : "input"}
@@ -117,11 +119,15 @@ export class HaFileUpload extends LitElement {
             @dragleave=${this._handleDragEnd}
             @dragend=${this._handleDragEnd}
             >${!this.value
-              ? html`<ha-svg-icon
-                    class="big-icon"
-                    .path=${this.icon || mdiFileUpload}
-                  ></ha-svg-icon>
-                  <ha-button unelevated @click=${this._openFilePicker}>
+              ? html`<ha-button
+                    size="small"
+                    appearance="filled"
+                    @click=${this._openFilePicker}
+                  >
+                    <ha-svg-icon
+                      slot="start"
+                      .path=${this.icon || mdiFileUpload}
+                    ></ha-svg-icon>
                     ${this.label || localize("ui.components.file-upload.label")}
                   </ha-button>
                   <span class="secondary"
@@ -237,7 +243,7 @@ export class HaFileUpload extends LitElement {
       align-items: center;
       border: solid 1px
         var(--mdc-text-field-idle-line-color, rgba(0, 0, 0, 0.42));
-      border-radius: var(--mdc-shape-small, 4px);
+      border-radius: var(--mdc-shape-small, var(--ha-border-radius-sm));
       height: 100%;
     }
     .row {
@@ -290,11 +296,11 @@ export class HaFileUpload extends LitElement {
       color: var(--primary-color);
     }
     ha-button {
-      margin-bottom: 4px;
+      margin-bottom: 8px;
     }
     .supports {
       color: var(--secondary-text-color);
-      font-size: 12px;
+      font-size: var(--ha-font-size-s);
     }
     :host([disabled]) .secondary {
       color: var(--disabled-text-color);
@@ -310,21 +316,17 @@ export class HaFileUpload extends LitElement {
       margin-inline-end: 8px;
       margin-inline-start: initial;
     }
-    .big-icon {
-      --mdc-icon-size: 48px;
-      margin-bottom: 8px;
-    }
     ha-button {
       --mdc-button-outline-color: var(--primary-color);
-      --mdc-icon-button-size: 24px;
+      --ha-icon-button-size: 24px;
     }
-    mwc-linear-progress {
+    ha-progress-bar {
       width: 100%;
       padding: 8px 32px;
       box-sizing: border-box;
     }
     .header {
-      font-weight: 500;
+      font-weight: var(--ha-font-weight-medium);
     }
     .progress {
       color: var(--secondary-text-color);
@@ -333,7 +335,7 @@ export class HaFileUpload extends LitElement {
       background: none;
       border: none;
       padding: 0;
-      font-size: 14px;
+      font-size: var(--ha-font-size-m);
       color: var(--primary-color);
       text-decoration: underline;
       cursor: pointer;

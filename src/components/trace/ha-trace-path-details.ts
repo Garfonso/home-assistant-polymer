@@ -1,14 +1,17 @@
+import { consume } from "@lit/context";
 import { dump } from "js-yaml";
-import { consume } from "@lit-labs/context";
 import type { CSSResultGroup, TemplateResult } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
-import { classMap } from "lit/directives/class-map";
 import { formatDateTimeWithSeconds } from "../../common/datetime/format_date_time";
-import "../ha-code-editor";
-import "../ha-icon-button";
-import "./hat-logbook-note";
+import type { Trigger } from "../../data/automation";
+import { migrateAutomationTrigger } from "../../data/automation";
+import { describeCondition, describeTrigger } from "../../data/automation_i18n";
+import { fullEntitiesContext, labelsContext } from "../../data/context";
+import type { EntityRegistryEntry } from "../../data/entity/entity_registry";
+import type { LabelRegistryEntry } from "../../data/label/label_registry";
 import type { LogbookEntry } from "../../data/logbook";
+import { describeAction } from "../../data/script_i18n";
 import type {
   ActionTraceStep,
   ChooseActionTraceStep,
@@ -16,12 +19,13 @@ import type {
 } from "../../data/trace";
 import { getDataFromPath } from "../../data/trace";
 import "../../panels/logbook/ha-logbook-renderer";
-import { traceTabStyles } from "./trace-tab-styles";
 import type { HomeAssistant } from "../../types";
+import "../ha-code-editor";
+import "../ha-icon-button";
+import "../ha-tab-group";
+import "../ha-tab-group-tab";
+import "./hat-logbook-note";
 import type { NodeInfo } from "./hat-script-graph";
-import { describeCondition } from "../../data/automation_i18n";
-import type { EntityRegistryEntry } from "../../data/entity_registry";
-import { fullEntitiesContext } from "../../data/context";
 
 const TRACE_PATH_TABS = [
   "step_config",
@@ -50,7 +54,11 @@ export class HaTracePathDetails extends LitElement {
 
   @state()
   @consume({ context: fullEntitiesContext, subscribe: true })
-  _entityReg!: EntityRegistryEntry[];
+  _entityReg: EntityRegistryEntry[] = [];
+
+  @state()
+  @consume({ context: labelsContext, subscribe: true })
+  _labelReg!: LabelRegistryEntry[];
 
   protected render(): TemplateResult {
     return html`
@@ -58,21 +66,21 @@ export class HaTracePathDetails extends LitElement {
         ${this._renderSelectedTraceInfo()}
       </div>
 
-      <div class="tabs top">
+      <ha-tab-group @wa-tab-show=${this._handleTabChanged}>
         ${TRACE_PATH_TABS.map(
           (view) => html`
-            <button
-              .view=${view}
-              class=${classMap({ active: this._view === view })}
-              @click=${this._showTab}
+            <ha-tab-group-tab
+              slot="nav"
+              .active=${this._view === view}
+              .panel=${view}
             >
               ${this.hass!.localize(
                 `ui.panel.config.automation.trace.tabs.${view}`
               )}
-            </button>
+            </ha-tab-group-tab>
           `
         )}
-      </div>
+      </ha-tab-group>
       ${this._view === "step_config"
         ? this._renderSelectedConfig()
         : this._view === "changed_variables"
@@ -151,11 +159,46 @@ export class HaTracePathDetails extends LitElement {
             )}`;
           }
 
+          const selectedType = this.selected.type;
+
           return html`
             ${curPath === this.selected.path
               ? currentDetail.alias
                 ? html`<h2>${currentDetail.alias}</h2>`
-                : nothing
+                : selectedType === "trigger"
+                  ? html`<h2>
+                      ${describeTrigger(
+                        migrateAutomationTrigger({
+                          ...currentDetail,
+                        }) as Trigger,
+                        this.hass,
+                        this._entityReg
+                      )}
+                    </h2>`
+                  : selectedType === "condition"
+                    ? html`<h2>
+                        ${describeCondition(
+                          currentDetail,
+                          this.hass,
+                          this._entityReg
+                        )}
+                      </h2>`
+                    : selectedType === "action"
+                      ? html`<h2>
+                          ${describeAction(
+                            this.hass,
+                            this._entityReg,
+                            currentDetail
+                          )}
+                        </h2>`
+                      : selectedType === "chooseOption"
+                        ? html`<h2>
+                            ${this.hass.localize(
+                              "ui.panel.config.automation.editor.actions.type.choose.option",
+                              { number: pathParts[pathParts.length - 1] }
+                            )}
+                          </h2>`
+                        : nothing
               : html`<h2>
                   ${curPath.substring(this.selected.path.length + 1)}
                 </h2>`}
@@ -264,7 +307,11 @@ export class HaTracePathDetails extends LitElement {
               ? this.hass!.localize(
                   "ui.panel.config.automation.trace.path.no_variables_changed"
                 )
-              : html`<pre>${dump(trace.changed_variables).trimEnd()}</pre>`}
+              : html`<ha-code-editor
+                  read-only
+                  dir="ltr"
+                  .value=${dump(trace.changed_variables).trimEnd()}
+                ></ha-code-editor>`}
           `
         )}
       </div>
@@ -339,13 +386,12 @@ export class HaTracePathDetails extends LitElement {
         </div>`;
   }
 
-  private _showTab(ev) {
-    this._view = ev.target.view;
+  private _handleTabChanged(ev: CustomEvent) {
+    this._view = ev.detail.name as typeof this._view;
   }
 
   static get styles(): CSSResultGroup {
     return [
-      traceTabStyles,
       css`
         .padded-box {
           margin: 16px;
@@ -361,6 +407,16 @@ export class HaTracePathDetails extends LitElement {
 
         .error {
           color: var(--error-color);
+        }
+
+        ha-tab-group {
+          background-color: var(--primary-background-color);
+          border-top: 1px solid var(--divider-color);
+          border-bottom: 1px solid var(--divider-color);
+        }
+
+        ha-tab-group-tab::part(base) {
+          padding: 2px 16px;
         }
       `,
     ];

@@ -1,113 +1,143 @@
 import "@lit-labs/virtualizer";
-import "@material/mwc-button";
-import "@material/mwc-list";
-import { mdiClose } from "@mdi/js";
+import { consume, type ContextType } from "@lit/context";
 import type { HassEntity } from "home-assistant-js-websocket";
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, state } from "lit/decorators";
 import { ifDefined } from "lit/directives/if-defined";
 import memoizeOne from "memoize-one";
-import { fireEvent } from "../../../common/dom/fire_event";
+import { computeEntityNameList } from "../../../common/entity/compute_entity_name_display";
 import { computeStateName } from "../../../common/entity/compute_state_name";
+import { computeRTL } from "../../../common/util/compute_rtl";
+import "../../../components/ha-button";
 import "../../../components/ha-check-list-item";
-import "../../../components/search-input";
 import "../../../components/ha-dialog";
-import "../../../components/ha-dialog-header";
+import "../../../components/ha-dialog-footer";
+import "../../../components/ha-list";
 import "../../../components/ha-state-icon";
+import "../../../components/input/ha-input-search";
+import type { HaInputSearch } from "../../../components/input/ha-input-search";
+import {
+  configContext,
+  internationalizationContext,
+  registriesContext,
+  statesContext,
+} from "../../../data/context";
 import type { ExposeEntitySettings } from "../../../data/expose";
 import { voiceAssistants } from "../../../data/expose";
-import { haStyle } from "../../../resources/styles";
-import type { HomeAssistant } from "../../../types";
+import { DialogMixin } from "../../../dialogs/dialog-mixin";
+import { haStyle, haStyleScrollbar } from "../../../resources/styles";
+import { loadVirtualizer } from "../../../resources/virtualizer";
 import "./entity-voice-settings";
 import type { ExposeEntityDialogParams } from "./show-dialog-expose-entity";
 
+interface FilteredEntity {
+  entity: HassEntity;
+  nameList: (string | undefined)[];
+}
+
 @customElement("dialog-expose-entity")
-class DialogExposeEntity extends LitElement {
-  @property({ attribute: false }) public hass!: HomeAssistant;
-
-  @state() private _params?: ExposeEntityDialogParams;
-
+class DialogExposeEntity extends DialogMixin<ExposeEntityDialogParams>(
+  LitElement
+) {
   @state() private _filter?: string;
 
   @state() private _selected: string[] = [];
 
-  public async showDialog(params: ExposeEntityDialogParams): Promise<void> {
-    this._params = params;
-  }
+  @state() private _dialogReady = false;
 
-  public closeDialog(): void {
-    this._params = undefined;
-    this._selected = [];
-    this._filter = undefined;
-    fireEvent(this, "dialog-closed", { dialog: this.localName });
-  }
+  @state()
+  @consume({ context: internationalizationContext, subscribe: true })
+  protected _i18n!: ContextType<typeof internationalizationContext>;
+
+  @state()
+  @consume({ context: configContext, subscribe: true })
+  protected _config!: ContextType<typeof configContext>;
+
+  @consume({ context: statesContext, subscribe: true })
+  protected _states!: ContextType<typeof statesContext>;
+
+  @consume({ context: registriesContext, subscribe: true })
+  protected _registries!: ContextType<typeof registriesContext>;
 
   protected render() {
-    if (!this._params) {
+    if (!this.params) {
       return nothing;
     }
 
-    const header = this.hass.localize(
+    const header = this._i18n.localize(
       "ui.panel.config.voice_assistants.expose.expose_dialog.header"
+    );
+    const subtitle = this._i18n.localize(
+      "ui.panel.config.voice_assistants.expose.expose_dialog.expose_to",
+      {
+        assistants: this.params.filterAssistants
+          .map((ass) => voiceAssistants[ass].name)
+          .join(", "),
+      }
     );
 
     const entities = this._filterEntities(
-      this._params.exposedEntities,
+      this.params.exposedEntities,
       this._filter
     );
 
     return html`
-      <ha-dialog open @closed=${this.closeDialog} .heading=${header}>
-        <ha-dialog-header slot="heading" show-border>
-          <h2 class="header" slot="title">
-            ${header}
-            <span class="subtitle">
-              ${this.hass.localize(
-                "ui.panel.config.voice_assistants.expose.expose_dialog.expose_to",
-                {
-                  assistants: this._params.filterAssistants
-                    .map((ass) => voiceAssistants[ass].name)
-                    .join(", "),
-                }
-              )}
-            </span>
-          </h2>
-          <ha-icon-button
-            .label=${this.hass.localize("ui.common.close")}
-            .path=${mdiClose}
-            dialogAction="close"
-            slot="navigationIcon"
-          ></ha-icon-button>
-          <search-input
-            .hass=${this.hass}
-            .filter=${this._filter}
-            @value-changed=${this._filterChanged}
-          ></search-input>
-        </ha-dialog-header>
-        <mwc-list multi>
-          <lit-virtualizer
-            scroller
-            class="ha-scrollbar"
-            @click=${this._itemClicked}
-            .items=${entities}
-            .renderItem=${this._renderItem}
+      <ha-dialog
+        open
+        header-title=${header}
+        header-subtitle=${subtitle}
+        prevent-scrim-close
+        @after-show=${this._loadVirtualizer}
+      >
+        <ha-input-search
+          appearance="outlined"
+          .value=${this._filter}
+          @input=${this._filterChanged}
+        ></ha-input-search>
+        <ha-list multi>
+          ${this._dialogReady
+            ? html` <lit-virtualizer
+                scroller
+                class="ha-scrollbar"
+                @click=${this._itemClicked}
+                @keydown=${this._handleItemKeydown}
+                .items=${entities}
+                .renderItem=${this._renderItem}
+                .keyFunction=${this._keyFunction}
+              >
+              </lit-virtualizer>`
+            : nothing}
+        </ha-list>
+        <ha-dialog-footer slot="footer">
+          <ha-button
+            slot="secondaryAction"
+            appearance="plain"
+            @click=${this.closeDialog}
           >
-          </lit-virtualizer>
-        </mwc-list>
-        <mwc-button
-          slot="primaryAction"
-          @click=${this._expose}
-          .disabled=${this._selected.length === 0}
-        >
-          ${this.hass.localize(
-            "ui.panel.config.voice_assistants.expose.expose_dialog.expose_entities",
-            { count: this._selected.length }
-          )}
-        </mwc-button>
+            ${this._i18n.localize("ui.common.cancel")}
+          </ha-button>
+          <ha-button
+            slot="primaryAction"
+            @click=${this._expose}
+            .disabled=${this._selected.length === 0}
+          >
+            ${this._i18n.localize(
+              "ui.panel.config.voice_assistants.expose.expose_dialog.expose_entities",
+              { count: this._selected.length }
+            )}
+          </ha-button>
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }
+
+  private async _loadVirtualizer() {
+    await loadVirtualizer();
+    this._dialogReady = true;
+  }
+
+  private _keyFunction = (item: FilteredEntity) => item.entity.entity_id;
 
   private _handleSelected = (ev) => {
     const entityId = ev.target.value;
@@ -121,93 +151,146 @@ class DialogExposeEntity extends LitElement {
     }
   };
 
+  private _handleItemKeydown(ev: KeyboardEvent) {
+    if (ev.key === "Enter" || ev.key === " ") {
+      ev.preventDefault();
+      this._itemClicked(ev);
+    }
+  }
+
   private _itemClicked(ev) {
     const listItem = ev.target.closest("ha-check-list-item");
     listItem.selected = !listItem.selected;
   }
 
-  private _filterChanged(e) {
-    this._filter = e.detail.value;
+  private _filterChanged(e: InputEvent) {
+    this._filter = (e.target as HaInputSearch).value;
   }
 
   private _filterEntities = memoizeOne(
     (
       exposedEntities: Record<string, ExposeEntitySettings>,
       filter?: string
-    ) => {
+    ): FilteredEntity[] => {
       const lowerFilter = filter?.toLowerCase();
-      return Object.values(this.hass.states).filter(
-        (entity) =>
-          this._params!.filterAssistants.some(
-            (ass) => !exposedEntities[entity.entity_id]?.[ass]
-          ) &&
-          (!lowerFilter ||
-            entity.entity_id.toLowerCase().includes(lowerFilter) ||
-            computeStateName(entity)?.toLowerCase().includes(lowerFilter))
-      );
+      const result: FilteredEntity[] = [];
+
+      for (const entity of Object.values(this._states)) {
+        if (
+          this.params!.filterAssistants.every(
+            (ass) => exposedEntities[entity.entity_id]?.[ass]
+          )
+        ) {
+          continue;
+        }
+
+        const nameList = computeEntityNameList(
+          entity,
+          [{ type: "entity" }, { type: "device" }, { type: "area" }],
+          this._registries.entities,
+          this._registries.devices,
+          this._registries.areas,
+          this._registries.floors
+        );
+
+        if (!lowerFilter) {
+          result.push({ entity, nameList });
+          continue;
+        }
+
+        if (entity.entity_id.toLowerCase().includes(lowerFilter)) {
+          result.push({ entity, nameList });
+          continue;
+        }
+
+        const entityName = computeStateName(entity);
+        if (entityName?.toLowerCase().includes(lowerFilter)) {
+          result.push({ entity, nameList });
+          continue;
+        }
+
+        const [, deviceName, areaName] = nameList;
+
+        if (deviceName?.toLowerCase().includes(lowerFilter)) {
+          result.push({ entity, nameList });
+          continue;
+        }
+
+        if (areaName?.toLowerCase().includes(lowerFilter)) {
+          result.push({ entity, nameList });
+          continue;
+        }
+      }
+
+      return result;
     }
   );
 
-  private _renderItem = (entityState: HassEntity) => html`
-    <ha-check-list-item
-      graphic="icon"
-      twoLine
-      .value=${entityState.entity_id}
-      .selected=${this._selected.includes(entityState.entity_id)}
-      @request-selected=${this._handleSelected}
-    >
-      <ha-state-icon
-        title=${ifDefined(entityState?.state)}
-        slot="graphic"
-        .hass=${this.hass}
-        .stateObj=${entityState}
-      ></ha-state-icon>
-      ${computeStateName(entityState)}
-      <span slot="secondary">${entityState.entity_id}</span>
-    </ha-check-list-item>
-  `;
+  private _renderItem = (item: FilteredEntity) => {
+    const { entity: entityState, nameList } = item;
+    const [entityName, deviceName, areaName] = nameList;
+
+    const isRTL = computeRTL(
+      this._i18n.language,
+      this._i18n.translationMetadata.translations
+    );
+    const primary = entityName || deviceName || entityState.entity_id;
+    const context = [areaName, entityName ? deviceName : undefined]
+      .filter(Boolean)
+      .join(isRTL ? " ◂ " : " ▸ ");
+    const showEntityId = this._config?.userData?.showEntityIdPicker;
+
+    return html`
+      <ha-check-list-item
+        tabindex="0"
+        graphic="icon"
+        ?twoLine=${context}
+        ?threeLine=${showEntityId}
+        .value=${entityState.entity_id}
+        .selected=${this._selected.includes(entityState.entity_id)}
+        @request-selected=${this._handleSelected}
+      >
+        <ha-state-icon
+          title=${ifDefined(entityState?.state)}
+          slot="graphic"
+          .stateObj=${entityState}
+        ></ha-state-icon>
+        ${primary}
+        ${context || showEntityId
+          ? html`<span slot="secondary">
+              ${context}
+              ${showEntityId
+                ? html`<br /><span class="entity-id"
+                      >${entityState.entity_id}</span
+                    >`
+                : nothing}
+            </span>`
+          : nothing}
+      </ha-check-list-item>
+    `;
+  };
 
   private _expose() {
-    this._params!.exposeEntities(this._selected);
+    this.params!.exposeEntities(this._selected);
     this.closeDialog();
   }
 
   static get styles(): CSSResultGroup {
     return [
       haStyle,
+      haStyleScrollbar,
       css`
         ha-dialog {
           --dialog-content-padding: 0;
-          --mdc-dialog-min-width: 500px;
-          --mdc-dialog-max-width: 600px;
         }
-        mwc-list {
+        ha-list {
           position: relative;
         }
         lit-virtualizer {
           height: 500px;
         }
-        search-input {
-          width: 100%;
-          display: block;
-          box-sizing: border-box;
-          --text-field-suffix-padding-left: 8px;
-        }
-        .header {
-          margin: 0;
-          pointer-events: auto;
-          -webkit-font-smoothing: antialiased;
-          font-weight: inherit;
-          font-size: inherit;
-          box-sizing: border-box;
-          display: flex;
-          flex-direction: column;
-          margin: -4px 0;
-        }
-        .subtitle {
-          color: var(--secondary-text-color);
-          font-size: 1rem;
-          line-height: normal;
+        ha-input-search {
+          padding: 0 var(--ha-space-3);
         }
         lit-virtualizer {
           width: 100%;
@@ -217,9 +300,17 @@ class DialogExposeEntity extends LitElement {
           width: 100%;
           height: 72px;
         }
+        ha-check-list-item[threeLine] {
+          height: 88px;
+        }
+        ha-check-list-item .entity-id {
+          line-height: var(--ha-line-height-normal);
+          padding-left: var(--ha-space-1);
+          font-size: var(--ha-font-size-xs);
+        }
         ha-check-list-item ha-state-icon {
-          margin-left: 24px;
-          margin-inline-start: 24px;
+          margin-left: var(--ha-space-6);
+          margin-inline-start: var(--ha-space-6);
           margin-inline-end: initial;
         }
         @media all and (max-height: 800px) {
@@ -233,27 +324,18 @@ class DialogExposeEntity extends LitElement {
           }
         }
         @media all and (max-width: 500px), all and (max-height: 500px) {
-          ha-dialog {
-            --mdc-dialog-min-width: calc(
-              100vw - env(safe-area-inset-right) - env(safe-area-inset-left)
-            );
-            --mdc-dialog-max-width: calc(
-              100vw - env(safe-area-inset-right) - env(safe-area-inset-left)
-            );
-            --mdc-dialog-min-height: 100%;
-            --mdc-dialog-max-height: 100%;
-            --vertical-align-dialog: flex-end;
-            --ha-dialog-border-radius: 0px;
-          }
           lit-virtualizer {
-            height: calc(100vh - 198px);
-          }
-          search-input {
-            --text-field-suffix-padding-left: unset;
+            height: calc(
+              100vh -
+                210px - var(--safe-area-inset-top, 0px) - var(
+                  --safe-area-inset-bottom,
+                  0px
+                )
+            );
           }
           ha-check-list-item ha-state-icon {
-            margin-left: 8px;
-            margin-inline-start: 8px;
+            margin-left: var(--ha-space-2);
+            margin-inline-start: var(--ha-space-2);
             margin-inline-end: initial;
           }
         }

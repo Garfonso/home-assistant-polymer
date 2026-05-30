@@ -8,12 +8,12 @@ import { computeDomain } from "../common/entity/compute_domain";
 import { computeStateDomain } from "../common/entity/compute_state_domain";
 import { autoCaseNoun } from "../common/translations/auto_case_noun";
 import type { LocalizeFunc } from "../common/translations/localize";
-import type { HaEntityPickerEntityFilterFunc } from "../components/entity/ha-entity-picker";
 import type { HomeAssistant } from "../types";
-import { UNAVAILABLE, UNKNOWN } from "./entity";
+import { UNAVAILABLE, UNKNOWN } from "./entity/entity";
+import { isNumericEntity } from "./history";
 
 const LOGBOOK_LOCALIZE_PATH = "ui.components.logbook.messages";
-export const CONTINUOUS_DOMAINS = ["counter", "proximity", "sensor", "zone"];
+export const CONTINUOUS_DOMAINS = ["counter", "proximity"];
 
 export interface LogbookStreamMessage {
   events: LogbookEntry[];
@@ -114,9 +114,13 @@ const getLogbookDataFromServer = (
 
 export const subscribeLogbook = (
   hass: HomeAssistant,
-  callbackFunction: (message: LogbookStreamMessage) => void,
+  callbackFunction: (
+    message: LogbookStreamMessage,
+    subscriptionId: number
+  ) => void,
   startDate: string,
   endDate: string,
+  subscriptionId: number,
   entityIds?: string[],
   deviceIds?: string[]
 ): Promise<UnsubscribeFunc> => {
@@ -140,7 +144,7 @@ export const subscribeLogbook = (
     params.device_ids = deviceIds;
   }
   return hass.connection.subscribeMessage<LogbookStreamMessage>(
-    (message) => callbackFunction(message),
+    (message) => callbackFunction(message, subscriptionId),
     params
   );
 };
@@ -185,6 +189,49 @@ export const localizeTriggerSource = (
       return source.replace(
         phrase,
         `${localize(`ui.components.logbook.${triggerPhraseKey}`)}`
+      );
+    }
+  }
+  return source;
+};
+
+// Mapping from a phrase key to the bare-phrase translation key (without the
+// "triggered by" prefix), used by localizeTriggerDescription below.
+const triggerDescriptionKeys: Record<
+  TriggerPhraseKeys,
+  | "numeric_state_of"
+  | "state_of"
+  | "event"
+  | "time"
+  | "time_pattern"
+  | "homeassistant_stopping"
+  | "homeassistant_starting"
+> = {
+  triggered_by_numeric_state_of: "numeric_state_of",
+  triggered_by_state_of: "state_of",
+  triggered_by_event: "event",
+  triggered_by_time_pattern: "time_pattern",
+  triggered_by_time: "time",
+  triggered_by_homeassistant_stopping: "homeassistant_stopping",
+  triggered_by_homeassistant_starting: "homeassistant_starting",
+};
+
+// Like localizeTriggerSource, but returns just the bare localized trigger
+// description (without the "triggered by" prefix). Used where the surrounding
+// template already supplies its own "triggered by" wording.
+export const localizeTriggerDescription = (
+  localize: LocalizeFunc,
+  source: string
+) => {
+  for (const triggerPhraseKey of Object.keys(
+    triggerPhrases
+  ) as TriggerPhraseKeys[]) {
+    const phrase = triggerPhrases[triggerPhraseKey];
+    if (source.startsWith(phrase)) {
+      const bareKey = triggerDescriptionKeys[triggerPhraseKey];
+      return source.replace(
+        phrase,
+        `${localize(`ui.components.logbook.${bareKey}`)}`
       );
     }
   }
@@ -322,9 +369,14 @@ export const localizeStateMessage = (
   });
 };
 
-export const filterLogbookCompatibleEntities: HaEntityPickerEntityFilterFunc = (
-  entity
-) =>
-  computeStateDomain(entity) !== "sensor" ||
-  (entity.attributes.unit_of_measurement === undefined &&
-    entity.attributes.state_class === undefined);
+export const filterLogbookCompatibleEntities = (
+  entity,
+  sensorNumericDeviceClasses: string[] = []
+) => {
+  const domain = computeStateDomain(entity);
+  const continuous =
+    CONTINUOUS_DOMAINS.includes(domain) ||
+    (domain === "sensor" &&
+      isNumericEntity(domain, entity, undefined, sensorNumericDeviceClasses));
+  return !continuous;
+};

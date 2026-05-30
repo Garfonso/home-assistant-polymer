@@ -1,4 +1,3 @@
-import "@material/mwc-button";
 import { mdiCastConnected, mdiCast } from "@mdi/js";
 import type {
   Auth,
@@ -13,7 +12,7 @@ import {
   ERR_INVALID_HTTPS_TO_HTTP,
   getAuth,
 } from "home-assistant-js-websocket";
-import type { TemplateResult } from "lit";
+import type { TemplateResult, PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators";
 import type { CastManager } from "../../../../src/cast/cast_manager";
@@ -27,7 +26,8 @@ import "../../../../src/components/ha-svg-icon";
 import "../../../../src/layouts/hass-loading-screen";
 import { registerServiceWorker } from "../../../../src/util/register-service-worker";
 import "./hc-layout";
-import "../../../../src/components/ha-textfield";
+import "../../../../src/components/input/ha-input";
+import "../../../../src/components/ha-button";
 
 const seeFAQ = (qid) => html`
   See <a href="./faq.html${qid ? `#${qid}` : ""}">the FAQ</a> for more
@@ -83,11 +83,14 @@ export class HcConnect extends LitElement {
             Unable to connect to ${tokens!.hassUrl}.
           </div>
           <div class="card-actions">
-            <a href="/">
-              <mwc-button> Retry </mwc-button>
-            </a>
+            <ha-button appearance="plain" href="/">Retry</ha-button>
             <div class="spacer"></div>
-            <mwc-button @click=${this._handleLogout}>Log out</mwc-button>
+            <ha-button
+              appearance="plain"
+              variant="danger"
+              @click=${this._handleLogout}
+              >Log out</ha-button
+            >
           </div>
         </hc-layout>
       `;
@@ -120,24 +123,27 @@ export class HcConnect extends LitElement {
               To get started, enter your Home Assistant URL and click authorize.
               If you want a preview instead, click the show demo button.
             </p>
-            <ha-textfield
+            <ha-input
               label="Home Assistant URL"
               placeholder="https://abcdefghijklmnop.ui.nabu.casa"
               @keydown=${this._handleInputKeyDown}
-            ></ha-textfield>
+            ></ha-input>
             ${this.error ? html` <p class="error">${this.error}</p> ` : ""}
           </div>
           <div class="card-actions">
-            <mwc-button @click=${this._handleDemo}>
+            <ha-button appearance="plain" @click=${this._handleDemo}>
               Show Demo
               <ha-svg-icon
+                slot="end"
                 .path=${this.castManager.castState === "CONNECTED"
                   ? mdiCastConnected
                   : mdiCast}
               ></ha-svg-icon>
-            </mwc-button>
+            </ha-button>
             <div class="spacer"></div>
-            <mwc-button @click=${this._handleConnect}>Authorize</mwc-button>
+            <ha-button appearance="plain" @click=${this._handleConnect}
+              >Authorize</ha-button
+            >
           </div>
         </hc-layout>
       `;
@@ -152,7 +158,7 @@ export class HcConnect extends LitElement {
     `;
   }
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
     import("./hc-cast");
 
@@ -198,7 +204,7 @@ export class HcConnect extends LitElement {
   }
 
   private async _handleConnect() {
-    const inputEl = this.shadowRoot!.querySelector("ha-textfield")!;
+    const inputEl = this.shadowRoot!.querySelector("ha-input")!;
     const value = inputEl.value || "";
     this.error = undefined;
 
@@ -302,22 +308,18 @@ export class HcConnect extends LitElement {
     }
     .error {
       color: red;
-      font-weight: bold;
+      font-weight: var(--ha-font-weight-bold);
     }
 
     .error a {
       color: darkred;
     }
 
-    mwc-button ha-svg-icon {
-      margin-left: 8px;
-    }
-
     .spacer {
       flex: 1;
     }
 
-    ha-textfield {
+    ha-input {
       width: 100%;
     }
   `;

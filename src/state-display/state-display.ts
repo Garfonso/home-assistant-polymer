@@ -5,16 +5,25 @@ import { customElement, property } from "lit/decorators";
 import { join } from "lit/directives/join";
 import { ensureArray } from "../common/array/ensure-array";
 import { computeStateDomain } from "../common/entity/compute_state_domain";
-import { computeStateName } from "../common/entity/compute_state_name";
+import { STRINGS_SEPARATOR_DOT } from "../common/const";
 import "../components/ha-relative-time";
-import { isUnavailableState } from "../data/entity";
-import { SENSOR_DEVICE_CLASS_TIMESTAMP } from "../data/sensor";
+import { UNAVAILABLE, UNKNOWN } from "../data/entity/entity";
+import {
+  SENSOR_TIMESTAMP_DEVICE_CLASSES,
+  SENSOR_DEVICE_CLASS_UPTIME,
+} from "../data/sensor";
 import type { UpdateEntity } from "../data/update";
 import { computeUpdateStateDisplay } from "../data/update";
 import "../panels/lovelace/components/hui-timestamp-display";
 import type { HomeAssistant } from "../types";
 
-const TIMESTAMP_STATE_DOMAINS = ["button", "input_button", "scene"];
+const TIMESTAMP_STATE_DOMAINS = [
+  "button",
+  "infrared",
+  "input_button",
+  "radio_frequency",
+  "scene",
+];
 
 export const STATE_DISPLAY_SPECIAL_CONTENT = [
   "remaining_time",
@@ -80,19 +89,26 @@ class StateDisplay extends LitElement {
     const domain = computeStateDomain(stateObj);
 
     if (content === "state") {
-      if (this.dashUnavailable && isUnavailableState(stateObj.state)) {
+      const noValue =
+        stateObj.state === UNAVAILABLE || stateObj.state === UNKNOWN;
+      if (this.dashUnavailable && noValue) {
         return "—";
       }
       if (
-        (stateObj.attributes.device_class === SENSOR_DEVICE_CLASS_TIMESTAMP ||
+        (SENSOR_TIMESTAMP_DEVICE_CLASSES.includes(
+          this.stateObj.attributes.device_class
+        ) ||
           TIMESTAMP_STATE_DOMAINS.includes(domain)) &&
-        !isUnavailableState(stateObj.state)
+        !noValue
       ) {
         return html`
           <hui-timestamp-display
             .hass=${this.hass}
             .ts=${new Date(stateObj.state)}
-            format="relative"
+            .format=${this.stateObj.attributes.device_class ===
+            SENSOR_DEVICE_CLASS_UPTIME
+              ? "total"
+              : "relative"}
             capitalize
           ></hui-timestamp-display>
         `;
@@ -100,11 +116,20 @@ class StateDisplay extends LitElement {
 
       return this.hass!.formatEntityState(stateObj);
     }
-    if (content === "name") {
-      return html`${this.name || computeStateName(stateObj)}`;
+    if (content === "name" && this.name) {
+      return html`${this.name}`;
     }
 
-    let relativeDateTime: string | undefined;
+    if (
+      content === "device_name" ||
+      content === "area_name" ||
+      content === "floor_name"
+    ) {
+      const type = content.replace("_name", "") as "device" | "area" | "floor";
+      return this.hass.formatEntityName(stateObj, { type }) || undefined;
+    }
+
+    let relativeDateTime: string | Date | undefined;
 
     // Check last-changed for backwards compatibility
     if (content === "last_changed" || content === "last-changed") {
@@ -113,6 +138,9 @@ class StateDisplay extends LitElement {
     // Check last_updated for backwards compatibility
     if (content === "last_updated" || content === "last-updated") {
       relativeDateTime = stateObj.last_updated;
+    }
+    if (domain === "input_datetime" && content === "timestamp") {
+      relativeDateTime = new Date(stateObj.attributes.timestamp * 1000);
     }
 
     if (
@@ -183,7 +211,7 @@ class StateDisplay extends LitElement {
       return html`${this.hass!.formatEntityState(stateObj)}`;
     }
 
-    return join(values, " ⸱ ");
+    return join(values, STRINGS_SEPARATOR_DOT);
   }
 }
 

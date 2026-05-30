@@ -1,11 +1,12 @@
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
 import { fireEvent } from "../../../../common/dom/fire_event";
+import "../../../../components/ha-expansion-panel";
 import "../../../../components/ha-icon-picker";
 import "../../../../components/ha-switch";
 import type { HaSwitch } from "../../../../components/ha-switch";
-import "../../../../components/ha-textfield";
+import "../../../../components/input/ha-input";
 import type { Counter } from "../../../../data/counter";
 import { haStyle } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
@@ -15,6 +16,8 @@ class HaCounterForm extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ type: Boolean }) public new = false;
+
+  @property({ type: Boolean }) public disabled = false;
 
   private _item?: Partial<Counter>;
 
@@ -31,6 +34,8 @@ class HaCounterForm extends LitElement {
   @state() private _initial?: number;
 
   @state() private _step?: number;
+
+  @query("[dialogInitialFocus]") private _focusElement?: HTMLElement;
 
   set item(item: Counter) {
     this._item = item;
@@ -54,11 +59,7 @@ class HaCounterForm extends LitElement {
   }
 
   public focus() {
-    this.updateComplete.then(() =>
-      (
-        this.shadowRoot?.querySelector("[dialogInitialFocus]") as HTMLElement
-      )?.focus()
-    );
+    this.updateComplete.then(() => this._focusElement?.focus());
   }
 
   protected render() {
@@ -68,82 +69,91 @@ class HaCounterForm extends LitElement {
 
     return html`
       <div class="form">
-        <ha-textfield
+        <ha-input
           .value=${this._name}
           .configValue=${"name"}
           @input=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.name"
           )}
-          autoValidate
+          auto-validate
           required
           .validationMessage=${this.hass!.localize(
             "ui.dialogs.helper_settings.required_error_msg"
           )}
           dialogInitialFocus
-        ></ha-textfield>
+          .disabled=${this.disabled}
+        ></ha-input>
         <ha-icon-picker
-          .hass=${this.hass}
           .value=${this._icon}
           .configValue=${"icon"}
           @value-changed=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.generic.icon"
           )}
+          .disabled=${this.disabled}
         ></ha-icon-picker>
-        <ha-textfield
-          .value=${this._minimum}
+        <ha-input
+          .value=${this._minimum !== undefined ? String(this._minimum) : ""}
           .configValue=${"minimum"}
           type="number"
           @input=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.counter.minimum"
           )}
-        ></ha-textfield>
-        <ha-textfield
-          .value=${this._maximum}
+          .disabled=${this.disabled}
+        ></ha-input>
+        <ha-input
+          .value=${this._maximum !== undefined ? String(this._maximum) : ""}
           .configValue=${"maximum"}
           type="number"
           @input=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.counter.maximum"
           )}
-        ></ha-textfield>
-        <ha-textfield
-          .value=${this._initial}
+          .disabled=${this.disabled}
+        ></ha-input>
+        <ha-input
+          .value=${this._initial !== undefined ? String(this._initial) : ""}
           .configValue=${"initial"}
           type="number"
           @input=${this._valueChanged}
           .label=${this.hass!.localize(
             "ui.dialogs.helper_settings.counter.initial"
           )}
-        ></ha-textfield>
-        ${this.hass.userData?.showAdvanced
-          ? html`
-              <ha-textfield
-                .value=${this._step}
-                .configValue=${"step"}
-                type="number"
-                @input=${this._valueChanged}
-                .label=${this.hass!.localize(
-                  "ui.dialogs.helper_settings.counter.step"
-                )}
-              ></ha-textfield>
-              <div class="row">
-                <ha-switch
-                  .checked=${this._restore}
-                  .configValue=${"restore"}
-                  @change=${this._valueChanged}
-                >
-                </ha-switch>
-                <div>
-                  ${this.hass.localize(
-                    "ui.dialogs.helper_settings.counter.restore"
-                  )}
-                </div>
-              </div>
-            `
-          : ""}
+          .disabled=${this.disabled}
+        ></ha-input>
+        <ha-expansion-panel
+          header=${this.hass.localize(
+            "ui.dialogs.helper_settings.generic.advanced_settings"
+          )}
+          outlined
+        >
+          <ha-input
+            .value=${this._step !== undefined ? String(this._step) : ""}
+            .configValue=${"step"}
+            type="number"
+            @input=${this._valueChanged}
+            .label=${this.hass!.localize(
+              "ui.dialogs.helper_settings.counter.step"
+            )}
+            .disabled=${this.disabled}
+          ></ha-input>
+          <div class="row">
+            <ha-switch
+              .checked=${this._restore}
+              .configValue=${"restore"}
+              @change=${this._valueChanged}
+              .disabled=${this.disabled}
+            >
+            </ha-switch>
+            <div>
+              ${this.hass.localize(
+                "ui.dialogs.helper_settings.counter.restore"
+              )}
+            </div>
+          </div>
+        </ha-expansion-panel>
       </div>
     `;
   }
@@ -196,9 +206,8 @@ class HaCounterForm extends LitElement {
           margin-inline-start: 16px;
           margin-inline-end: initial;
         }
-        ha-textfield {
-          display: block;
-          margin: 8px 0;
+        ha-input {
+          margin: var(--ha-space-2) 0;
         }
       `,
     ];

@@ -1,9 +1,10 @@
-import "@material/mwc-tab-bar/mwc-tab-bar";
-import "@material/mwc-tab/mwc-tab";
 import type { CSSResultGroup, TemplateResult } from "lit";
 import { css, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators";
+import "../../../../components/ha-tab-group";
+import "../../../../components/ha-tab-group-tab";
 import type { LovelaceBadgeConfig } from "../../../../data/lovelace/config/badge";
+import { getConfigEntityId } from "../../common/get-config-entity-id";
 import { getBadgeElementClass } from "../../create-element/create-badge-element";
 import type { LovelaceCardEditor, LovelaceConfigForm } from "../../types";
 import { HuiTypedElementEditor } from "../hui-typed-element-editor";
@@ -38,7 +39,7 @@ export class HuiBadgeElementEditor extends HuiTypedElementEditor<LovelaceBadgeCo
   }
 
   private _handleTabChanged(ev: CustomEvent): void {
-    const newTab = tabs[ev.detail.index];
+    const newTab = ev.detail.name;
     if (newTab === this._currTab) {
       return;
     }
@@ -62,27 +63,28 @@ export class HuiBadgeElementEditor extends HuiTypedElementEditor<LovelaceBadgeCo
           <hui-badge-visibility-editor
             .hass=${this.hass}
             .config=${this.value}
+            .entityId=${this.value ? getConfigEntityId(this.value) : undefined}
             @value-changed=${this._configChanged}
           ></hui-badge-visibility-editor>
         `;
         break;
     }
     return html`
-      <mwc-tab-bar
-        .activeIndex=${tabs.indexOf(this._currTab)}
-        @MDCTabBar:activated=${this._handleTabChanged}
-      >
+      <ha-tab-group @wa-tab-show=${this._handleTabChanged}>
         ${tabs.map(
           (tab) => html`
-            <mwc-tab
-              .label=${this.hass.localize(
+            <ha-tab-group-tab
+              slot="nav"
+              .panel=${tab}
+              .active=${this._currTab === tab}
+            >
+              ${this.hass!.localize(
                 `ui.panel.lovelace.editor.edit_badge.tab_${tab}`
               )}
-            >
-            </mwc-tab>
+            </ha-tab-group-tab>
           `
         )}
-      </mwc-tab-bar>
+      </ha-tab-group>
       ${content}
     `;
   }
@@ -91,10 +93,15 @@ export class HuiBadgeElementEditor extends HuiTypedElementEditor<LovelaceBadgeCo
     return [
       HuiTypedElementEditor.styles,
       css`
-        mwc-tab-bar {
-          text-transform: uppercase;
+        ha-tab-group {
           margin-bottom: 16px;
-          border-bottom: 1px solid var(--divider-color);
+        }
+        ha-tab-group-tab {
+          flex: 1;
+        }
+        ha-tab-group-tab::part(base) {
+          width: 100%;
+          justify-content: center;
         }
       `,
     ];

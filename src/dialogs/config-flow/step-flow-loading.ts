@@ -1,5 +1,5 @@
 import type { TemplateResult } from "lit";
-import { css, html, LitElement } from "lit";
+import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
 import "../../components/ha-spinner";
 import type { DataEntryFlowStep } from "../../data/data_entry_flow";
@@ -26,20 +26,21 @@ class StepFlowLoading extends LitElement {
       this.step
     );
     return html`
-      <div class="init-spinner">
-        ${description ? html`<div>${description}</div>` : ""}
-        <ha-spinner></ha-spinner>
+      <div class="content">
+        <ha-spinner size="large"></ha-spinner>
+        ${description ? html`<div>${description}</div>` : nothing}
       </div>
     `;
   }
 
   static styles = css`
-    .init-spinner {
+    .content {
+      margin-top: 0;
       padding: 50px 100px;
       text-align: center;
     }
     ha-spinner {
-      margin-top: 16px;
+      margin-bottom: var(--ha-space-4);
     }
   `;
 }

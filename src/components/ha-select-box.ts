@@ -1,13 +1,15 @@
-import { customElement, property } from "lit/decorators";
+import { consume, type ContextType } from "@lit/context";
 import { css, html, LitElement, nothing } from "lit";
-import "./ha-radio";
+import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
+import { ifDefined } from "lit/directives/if-defined";
 import { styleMap } from "lit/directives/style-map";
-import type { HaRadio } from "./ha-radio";
 import { fireEvent } from "../common/dom/fire_event";
-import type { HomeAssistant } from "../types";
 import { computeRTL } from "../common/util/compute_rtl";
-import { stopPropagation } from "../common/dom/stop_propagation";
+import { internationalizationContext, uiContext } from "../data/context";
+import "./radio/ha-radio-group";
+import type { HaRadioGroup } from "./radio/ha-radio-group";
+import "./radio/ha-radio-option";
 
 interface SelectBoxOptionImage {
   src: string;
@@ -25,8 +27,6 @@ export interface SelectBoxOption {
 
 @customElement("ha-select-box")
 export class HaSelectBox extends LitElement {
-  @property({ attribute: false }) public hass?: HomeAssistant;
-
   @property({ attribute: false }) public options: SelectBoxOption[] = [];
 
   @property({ attribute: false }) public value?: string;
@@ -36,24 +36,46 @@ export class HaSelectBox extends LitElement {
   @property({ type: Number, attribute: "max_columns" })
   public maxColumns?: number;
 
+  @property({ type: Boolean, attribute: "stacked_image" })
+  public stackedImage = false;
+
+  @state()
+  @consume({ context: internationalizationContext, subscribe: true })
+  protected _i18n?: ContextType<typeof internationalizationContext>;
+
+  @state()
+  @consume({ context: uiContext, subscribe: true })
+  protected _ui?: ContextType<typeof uiContext>;
+
   render() {
     const maxColumns = this.maxColumns ?? 3;
     const columns = Math.min(maxColumns, this.options.length);
 
     return html`
-      <div class="list" style=${styleMap({ "--columns": columns })}>
+      <ha-radio-group
+        class="list"
+        style=${styleMap({ "--columns": columns })}
+        .value=${this.value}
+        @change=${this._radioChanged}
+      >
         ${this.options.map((option) => this._renderOption(option))}
-      </div>
+      </ha-radio-group>
     `;
   }
 
   private _renderOption(option: SelectBoxOption) {
-    const horizontal = this.maxColumns === 1;
+    const horizontal = this.maxColumns === 1 && !this.stackedImage;
+    const stacked = this.maxColumns === 1 && this.stackedImage;
     const disabled = option.disabled || this.disabled || false;
     const selected = option.value === this.value;
 
-    const isDark = this.hass?.themes.darkMode || false;
-    const isRTL = this.hass ? computeRTL(this.hass) : false;
+    const isDark = this._ui?.themes.darkMode || false;
+    const isRTL = this._i18n
+      ? computeRTL(
+          this._i18n.language,
+          this._i18n.translationMetadata.translations
+        )
+      : false;
 
     const imageSrc =
       typeof option.image === "object"
@@ -66,23 +88,28 @@ export class HaSelectBox extends LitElement {
       <label
         class="option ${classMap({
           horizontal: horizontal,
+          stacked: stacked,
           selected: selected,
         })}"
         ?disabled=${disabled}
-        @click=${this._labelClick}
       >
         <div class="content">
-          <ha-radio
-            .checked=${option.value === this.value}
+          <ha-radio-option
+            aria-describedby=${ifDefined(
+              option.description ? `desc-${option.value}` : undefined
+            )}
+            aria-labelledby=${`label-${option.value}`}
             .value=${option.value}
             .disabled=${disabled}
-            @change=${this._radioChanged}
-            @click=${stopPropagation}
-          ></ha-radio>
+          ></ha-radio-option>
           <div class="text">
-            <span class="label">${option.label}</span>
+            <span id=${`label-${option.value}`} class="label"
+              >${option.label}</span
+            >
             ${option.description
-              ? html`<span class="description">${option.description}</span>`
+              ? html`<span class="description" id="desc-${option.value}"
+                  >${option.description}</span
+                >`
               : nothing}
           </div>
         </div>
@@ -95,14 +122,9 @@ export class HaSelectBox extends LitElement {
     `;
   }
 
-  private _labelClick(ev) {
-    ev.stopPropagation();
-    ev.currentTarget.querySelector("ha-radio")?.click();
-  }
-
   private _radioChanged(ev: CustomEvent) {
     ev.stopPropagation();
-    const radio = ev.currentTarget as HaRadio;
+    const radio = ev.currentTarget as HaRadioGroup;
     const value = radio.value;
     if (this.disabled || value === undefined || value === (this.value ?? "")) {
       return;
@@ -113,22 +135,22 @@ export class HaSelectBox extends LitElement {
   }
 
   static styles = css`
-    .list {
+    .list::part(form-control-input) {
       display: grid;
       grid-template-columns: repeat(var(--columns, 1), minmax(0, 1fr));
-      gap: 12px;
+      gap: var(--ha-space-3);
     }
     .option {
       position: relative;
       display: block;
       border: 1px solid var(--divider-color);
-      border-radius: var(--ha-card-border-radius, 12px);
+      border-radius: var(--ha-card-border-radius, var(--ha-border-radius-lg));
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: space-between;
       padding: 12px;
-      gap: 8px;
+      gap: var(--ha-space-2);
       overflow: hidden;
       cursor: pointer;
     }
@@ -137,35 +159,37 @@ export class HaSelectBox extends LitElement {
       position: relative;
       display: flex;
       flex-direction: row;
-      gap: 8px;
+      gap: var(--ha-space-2);
       min-width: 0;
       width: 100%;
     }
-    .option .content ha-radio {
-      margin: -12px;
+    .option .content ha-radio-option {
+      --ha-radio-option-control-margin: 0;
+      margin: 0;
       flex: none;
     }
     .option .content .text {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: var(--ha-space-1);
       min-width: 0;
       flex: 1;
+      justify-content: center;
     }
     .option .content .text .label {
       color: var(--primary-text-color);
-      font-size: 14px;
-      font-weight: 400;
-      line-height: 20px;
+      font-size: var(--ha-font-size-m);
+      font-weight: var(--ha-font-weight-normal);
+      line-height: var(--ha-line-height-condensed);
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
     }
     .option .content .text .description {
       color: var(--secondary-text-color);
-      font-size: 13px;
-      font-weight: 400;
-      line-height: 16px;
+      font-size: var(--ha-font-size-s);
+      font-weight: var(--ha-font-weight-normal);
+      line-height: var(--ha-line-height-condensed);
     }
     img {
       position: relative;
@@ -184,6 +208,16 @@ export class HaSelectBox extends LitElement {
     }
 
     .option.horizontal img {
+      margin: 0;
+    }
+
+    .option.stacked {
+      align-items: stretch;
+    }
+
+    .option.stacked img {
+      max-width: 100%;
+      max-height: var(--ha-select-box-image-size, 96px);
       margin: 0;
     }
 

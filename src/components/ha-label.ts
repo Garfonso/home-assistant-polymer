@@ -1,17 +1,58 @@
-import type { CSSResultGroup, TemplateResult } from "lit";
+import type { CSSResultGroup, PropertyValues, TemplateResult } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators";
+import { computeCssColor } from "../common/color/compute-color";
+import { getContrastedColorHex } from "../common/color/rgb";
+import { uid } from "../common/util/uid";
+import "./ha-tooltip";
+
+/**
+ * Returns CSS styles for a label's background & icon/text
+ * @param color Label color defined in HEX format
+ * @returns CSS styles
+ */
+export const getLabelColorStyle = (labelColor: string | undefined | null) => {
+  const color = labelColor ? computeCssColor(labelColor) : undefined;
+  return color
+    ? `--ha-label-background-color: ${color};
+       --primary-text-color: ${getContrastedColorHex(labelColor!)};`
+    : `--ha-label-background-color: rgba(var(--rgb-primary-text-color), 0.15);`;
+};
 
 @customElement("ha-label")
 class HaLabel extends LitElement {
   @property({ type: Boolean, reflect: true }) dense = false;
 
+  @property()
+  public color?: string;
+
+  @property({ attribute: "description" })
+  public description?: string;
+
+  private _elementId = "label-" + uid();
+
+  public willUpdate(changedProps: PropertyValues<this>) {
+    super.willUpdate(changedProps);
+    if (!changedProps.has("color")) {
+      return;
+    }
+    this.style.cssText = getLabelColorStyle(this.color);
+  }
+
   protected render(): TemplateResult {
     return html`
-      <span class="content">
-        <slot name="icon"></slot>
-        <slot></slot>
-      </span>
+      <ha-tooltip
+        .for=${this._elementId}
+        .disabled=${!this.description?.trim()}
+      >
+        ${this.description}
+      </ha-tooltip>
+      <div class="container" .id=${this._elementId}>
+        <span class="content">
+          <slot name="icon"></slot>
+          <slot></slot>
+        </span>
+      </div>
     `;
   }
 
@@ -21,10 +62,6 @@ class HaLabel extends LitElement {
         :host {
           --ha-label-text-color: var(--primary-text-color);
           --ha-label-icon-color: var(--primary-text-color);
-          --ha-label-background-color: rgba(
-            var(--rgb-primary-text-color),
-            0.15
-          );
           --ha-label-background-opacity: 1;
           border: 1px solid var(--outline-color);
           position: relative;
@@ -32,14 +69,12 @@ class HaLabel extends LitElement {
           display: inline-flex;
           flex-direction: row;
           align-items: center;
-          font-size: 12px;
-          font-weight: 500;
-          line-height: 16px;
+          font-size: var(--ha-font-size-s);
+          font-weight: var(--ha-font-weight-medium);
+          line-height: var(--ha-line-height-condensed);
           letter-spacing: 0.1px;
-          vertical-align: middle;
           height: 32px;
-          padding: 0 16px;
-          border-radius: 18px;
+          border-radius: var(--ha-border-radius-xl);
           color: var(--ha-label-text-color);
           --mdc-icon-size: 12px;
           text-wrap: nowrap;
@@ -66,14 +101,24 @@ class HaLabel extends LitElement {
           display: flex;
         }
 
+        .container {
+          display: flex;
+          align-items: center;
+          position: relative;
+          height: 100%;
+          padding: 0 16px;
+        }
+
         span {
           display: inline-flex;
         }
 
         :host([dense]) {
           height: 20px;
+          border-radius: var(--ha-border-radius-md);
+        }
+        :host([dense]) .container {
           padding: 0 12px;
-          border-radius: 10px;
         }
         :host([dense]) ::slotted([slot="icon"]) {
           margin-right: 4px;

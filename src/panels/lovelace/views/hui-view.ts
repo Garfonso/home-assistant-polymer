@@ -4,6 +4,8 @@ import { ReactiveElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { storage } from "../../../common/decorators/storage";
 import type { HASSDomEvent } from "../../../common/dom/fire_event";
+import { debounce } from "../../../common/util/debounce";
+import { deepEqual } from "../../../common/util/deep-equal";
 import "../../../components/entity/ha-state-label-badge";
 import "../../../components/ha-svg-icon";
 import type { LovelaceViewElement } from "../../../data/lovelace";
@@ -11,7 +13,10 @@ import type { LovelaceBadgeConfig } from "../../../data/lovelace/config/badge";
 import { ensureBadgeConfig } from "../../../data/lovelace/config/badge";
 import type { LovelaceCardConfig } from "../../../data/lovelace/config/card";
 import type { LovelaceSectionConfig } from "../../../data/lovelace/config/section";
-import type { LovelaceViewConfig } from "../../../data/lovelace/config/view";
+import type {
+  LovelaceViewConfig,
+  LovelaceViewRawConfig,
+} from "../../../data/lovelace/config/view";
 import { isStrategyView } from "../../../data/lovelace/config/view";
 import type { HomeAssistant } from "../../../types";
 import "../badges/hui-badge";
@@ -85,6 +90,8 @@ export class HUIView extends ReactiveElement {
 
   private _layoutElement?: LovelaceViewElement;
 
+  private _config?: LovelaceViewConfig;
+
   @storage({
     key: "dashboardCardClipboard",
     state: false,
@@ -130,11 +137,8 @@ export class HUIView extends ReactiveElement {
     element.addEventListener(
       "ll-rebuild",
       (ev: Event) => {
-        // In edit mode let it go to hui-root and rebuild whole view.
-        if (!this.lovelace!.editMode) {
-          ev.stopPropagation();
-          this._rebuildSection(element, sectionConfig);
-        }
+        ev.stopPropagation();
+        this._rebuildSection(element, sectionConfig);
       },
       { once: true }
     );
@@ -145,7 +149,7 @@ export class HUIView extends ReactiveElement {
     return this;
   }
 
-  public willUpdate(changedProperties: PropertyValues<typeof this>): void {
+  public willUpdate(changedProperties: PropertyValues<this>): void {
     super.willUpdate(changedProperties);
 
     /*
@@ -169,8 +173,32 @@ export class HUIView extends ReactiveElement {
             oldLovelace.config.views[this.index]))
     ) {
       this._initializeConfig();
+      return;
+    }
+
+    if (!changedProperties.has("hass")) {
+      return;
+    }
+
+    const oldHass = changedProperties.get("hass") as HomeAssistant | undefined;
+    const viewConfig = this.lovelace.config.views[this.index];
+    if (oldHass && this.hass && this.lovelace && isStrategyView(viewConfig)) {
+      if (
+        this.hass.config.state === "RUNNING" &&
+        (oldHass.entities !== this.hass.entities ||
+          oldHass.devices !== this.hass.devices ||
+          oldHass.areas !== this.hass.areas ||
+          oldHass.floors !== this.hass.floors)
+      ) {
+        this._debounceRefreshConfig();
+      }
     }
   }
+
+  private _debounceRefreshConfig = debounce(
+    () => this._initializeConfig(),
+    200
+  );
 
   protected update(changedProperties: PropertyValues) {
     super.update(changedProperties);
@@ -227,19 +255,32 @@ export class HUIView extends ReactiveElement {
     }
   }
 
-  private async _initializeConfig() {
-    let viewConfig = this.lovelace.config.views[this.index];
-    let isStrategy = false;
-
-    if (isStrategyView(viewConfig)) {
-      isStrategy = true;
-      viewConfig = await generateLovelaceViewStrategy(viewConfig, this.hass!);
+  private async _generateConfig(
+    config: LovelaceViewRawConfig
+  ): Promise<LovelaceViewConfig> {
+    if (isStrategyView(config)) {
+      const generatedConfig = await generateLovelaceViewStrategy(
+        config,
+        this.hass!
+      );
+      return {
+        ...generatedConfig,
+        type: getViewType(generatedConfig),
+      };
     }
 
-    viewConfig = {
-      ...viewConfig,
-      type: getViewType(viewConfig),
+    return {
+      ...config,
+      type: getViewType(config),
     };
+  }
+
+  private _setConfig(viewConfig: LovelaceViewConfig, isStrategy: boolean) {
+    if (isStrategy && deepEqual(viewConfig, this._config)) {
+      return;
+    }
+
+    this._config = viewConfig;
 
     // Create a new layout element if necessary.
     let addLayoutElement = false;
@@ -247,8 +288,9 @@ export class HUIView extends ReactiveElement {
     if (!this._layoutElement || this._layoutElementType !== viewConfig.type) {
       addLayoutElement = true;
       this._createLayoutElement(viewConfig);
+    } else {
+      this._layoutElement.setConfig(viewConfig);
     }
-
     this._createBadges(viewConfig);
     this._createCards(viewConfig);
     this._createSections(viewConfig);
@@ -269,9 +311,28 @@ export class HUIView extends ReactiveElement {
     }
   }
 
+  private async _initializeConfig() {
+    const rawConfig = this.lovelace.config.views[this.index];
+    const isStrategy = isStrategyView(rawConfig);
+
+    const viewConfig = await this._generateConfig(rawConfig);
+
+    this._setConfig(viewConfig, isStrategy);
+  }
+
   private _createLayoutElement(config: LovelaceViewConfig): void {
     this._layoutElement = createViewElement(config) as LovelaceViewElement;
     this._layoutElementType = config.type;
+    this._layoutElement.addEventListener(
+      "ll-rebuild",
+      (ev: Event) => {
+        ev.stopPropagation();
+        // Force recreation of the layout element
+        this._layoutElementType = undefined;
+        this._initializeConfig();
+      },
+      { once: true }
+    );
     this._layoutElement.addEventListener("ll-create-card", (ev) => {
       showCreateCardDialog(this, {
         lovelaceConfig: this.lovelace.config,

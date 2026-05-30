@@ -1,16 +1,22 @@
-import "@material/mwc-drawer";
-import "@material/mwc-top-app-bar-fixed";
-import { mdiMenu } from "@mdi/js";
+import { mdiMenu, mdiSwapHorizontal } from "@mdi/js";
 import type { PropertyValues } from "lit";
 import { LitElement, css, html } from "lit";
 import { customElement, query, state } from "lit/decorators";
 import { dynamicElement } from "../../src/common/dom/dynamic-element-directive";
+import { setDirectionStyles } from "../../src/common/util/compute_rtl";
+import "../../src/components/ha-button";
+import "../../src/components/ha-drawer";
+import type { HaDrawer } from "../../src/components/ha-drawer";
 import { HaExpansionPanel } from "../../src/components/ha-expansion-panel";
 import "../../src/components/ha-icon-button";
+import "../../src/components/ha-svg-icon";
+import "../../src/components/ha-top-app-bar-fixed";
 import "../../src/managers/notification-manager";
 import { haStyle } from "../../src/resources/styles";
 import { PAGES, SIDEBAR } from "../build/import-pages";
 import "./components/page-description";
+
+const RTL_STORAGE_KEY = "gallery-rtl";
 
 const GITHUB_DEMO_URL =
   "https://github.com/home-assistant/frontend/blob/dev/gallery/src/pages/";
@@ -29,11 +35,13 @@ class HaGallery extends LitElement {
     document.location.hash.substring(1) ||
     `${SIDEBAR[0].category}/${SIDEBAR[0].pages![0]}`;
 
+  @state() private _rtl = localStorage.getItem(RTL_STORAGE_KEY) === "true";
+
   @query("notification-manager")
   private _notifications!: HTMLElementTagNameMap["notification-manager"];
 
-  @query("mwc-drawer")
-  private _drawer!: HTMLElementTagNameMap["mwc-drawer"];
+  @query("ha-drawer")
+  private _drawer!: HaDrawer;
 
   private _narrow = window.matchMedia("(max-width: 600px)").matches;
 
@@ -68,16 +76,15 @@ class HaGallery extends LitElement {
     }
 
     return html`
-      <mwc-drawer
-        hasHeader
+      <ha-drawer
+        .direction=${this._rtl ? "rtl" : "ltr"}
         .open=${!this._narrow}
         .type=${this._narrow ? "modal" : "dismissible"}
       >
-        <span slot="title">Home Assistant Design</span>
-        <!-- <span slot="subtitle">subtitle</span> -->
+        <div class="drawer-title">Home Assistant Design</div>
         <div class="sidebar">${sidebar}</div>
-        <div slot="appContent">
-          <mwc-top-app-bar-fixed>
+        <div slot="appContent" class="app-content">
+          <ha-top-app-bar-fixed>
             <ha-icon-button
               slot="navigationIcon"
               @click=${this._menuTapped}
@@ -87,7 +94,7 @@ class HaGallery extends LitElement {
             <div slot="title">
               ${PAGES[this._page].metadata.title || this._page.split("/")[1]}
             </div>
-          </mwc-top-app-bar-fixed>
+          </ha-top-app-bar-fixed>
           <div class="content">
             ${PAGES[this._page].description
               ? html`
@@ -97,37 +104,47 @@ class HaGallery extends LitElement {
             ${dynamicElement(`demo-${this._page.replace("/", "-")}`)}
           </div>
           <div class="page-footer">
-            <div class="header">Help us to improve our documentation</div>
-            <div class="secondary">
-              Suggest an edit to this page, or provide/view feedback for this
-              page.
+            <div class="edit-docs">
+              <div class="header">Help us to improve our documentation</div>
+              <div class="secondary">
+                Suggest an edit to this page, or provide/view feedback for this
+                page.
+              </div>
+              <div>
+                ${PAGES[this._page].description ||
+                Object.keys(PAGES[this._page].metadata).length > 0
+                  ? html`
+                      <a
+                        href=${`${GITHUB_DEMO_URL}${this._page}.markdown`}
+                        target="_blank"
+                      >
+                        Edit text
+                      </a>
+                    `
+                  : ""}
+                ${PAGES[this._page].demo
+                  ? html`
+                      <a
+                        href=${`${GITHUB_DEMO_URL}${this._page}.ts`}
+                        target="_blank"
+                      >
+                        Edit demo
+                      </a>
+                    `
+                  : ""}
+              </div>
             </div>
-            <div>
-              ${PAGES[this._page].description ||
-              Object.keys(PAGES[this._page].metadata).length > 0
-                ? html`
-                    <a
-                      href=${`${GITHUB_DEMO_URL}${this._page}.markdown`}
-                      target="_blank"
-                    >
-                      Edit text
-                    </a>
-                  `
-                : ""}
-              ${PAGES[this._page].demo
-                ? html`
-                    <a
-                      href=${`${GITHUB_DEMO_URL}${this._page}.ts`}
-                      target="_blank"
-                    >
-                      Edit demo
-                    </a>
-                  `
-                : ""}
+            <div class="rtl-toggle">
+              <ha-icon-button
+                @click=${this._toggleRtl}
+                .label=${this._rtl ? "Switch to LTR" : "Switch to RTL"}
+              >
+                <ha-svg-icon .path=${mdiSwapHorizontal}></ha-svg-icon>
+              </ha-icon-button>
             </div>
           </div>
         </div>
-      </mwc-drawer>
+      </ha-drawer>
       <notification-manager
         .hass=${FAKE_HASS}
         id="notifications"
@@ -135,8 +152,10 @@ class HaGallery extends LitElement {
     `;
   }
 
-  firstUpdated(changedProps: PropertyValues) {
+  firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
+
+    this._applyDirection();
 
     this.addEventListener("show-notification", (ev) =>
       this._notifications.showDialog({ message: ev.detail.message })
@@ -164,6 +183,11 @@ class HaGallery extends LitElement {
 
   updated(changedProps: PropertyValues) {
     super.updated(changedProps);
+
+    if (changedProps.has("_rtl")) {
+      this._applyDirection();
+    }
+
     if (!changedProps.has("_page")) {
       return;
     }
@@ -186,6 +210,15 @@ class HaGallery extends LitElement {
     this._drawer.open = !this._drawer.open;
   }
 
+  private _toggleRtl() {
+    this._rtl = !this._rtl;
+    localStorage.setItem(RTL_STORAGE_KEY, String(this._rtl));
+  }
+
+  private _applyDirection() {
+    setDirectionStyles(this._rtl ? "rtl" : "ltr", this);
+  }
+
   static styles = [
     haStyle,
     css`
@@ -193,10 +226,26 @@ class HaGallery extends LitElement {
         -ms-user-select: initial;
         -webkit-user-select: initial;
         -moz-user-select: initial;
+        --ha-sidebar-width: 256px;
+        --header-height: 64px;
       }
 
       .sidebar {
+        box-sizing: border-box;
+        max-height: calc(100vh - var(--header-height));
+        overflow-y: auto;
         padding: 4px;
+      }
+
+      .drawer-title {
+        align-items: center;
+        box-sizing: border-box;
+        color: var(--primary-text-color);
+        display: flex;
+        font-size: var(--ha-font-size-l);
+        font-weight: var(--ha-font-weight-medium);
+        min-height: var(--header-height);
+        padding: 0 16px;
       }
 
       .sidebar a {
@@ -208,7 +257,7 @@ class HaGallery extends LitElement {
       }
 
       .sidebar a[active]::before {
-        border-radius: 12px;
+        border-radius: var(--ha-border-radius-lg);
         position: absolute;
         top: 0;
         right: 2px;
@@ -222,11 +271,15 @@ class HaGallery extends LitElement {
         opacity: 0.12;
       }
 
-      div[slot="appContent"] {
+      .app-content {
         display: flex;
         flex-direction: column;
         min-height: 100vh;
         background: var(--primary-background-color);
+      }
+
+      ha-drawer[type="dismissible"][open] ha-top-app-bar-fixed {
+        --ha-top-app-bar-width: calc(100% - var(--ha-sidebar-width));
       }
 
       .content {
@@ -238,11 +291,16 @@ class HaGallery extends LitElement {
       }
 
       .page-footer {
+        display: flex;
+        border-radius: var(--ha-border-radius-lg);
+        background-color: var(--primary-background-color);
+      }
+
+      .edit-docs {
+        flex: 1;
         text-align: center;
         margin: 16px;
         padding: 16px;
-        border-radius: 12px;
-        background-color: var(--primary-background-color);
       }
 
       .page-footer div {
@@ -250,14 +308,14 @@ class HaGallery extends LitElement {
       }
 
       .page-footer .header {
-        font-size: 16px;
-        font-weight: 500;
-        line-height: 28px;
+        font-size: var(--ha-font-size-l);
+        font-weight: var(--ha-font-weight-medium);
+        line-height: var(--ha-line-height-normal);
         text-align: center;
       }
 
       .page-footer .secondary {
-        line-height: 23px;
+        line-height: var(--ha-line-height-normal);
         text-align: center;
       }
 
@@ -265,6 +323,18 @@ class HaGallery extends LitElement {
         display: inline-block;
         margin: 0 8px;
         text-decoration: none;
+      }
+
+      .rtl-toggle {
+        padding: var(--ha-space-4);
+        display: inline-flex;
+        align-items: flex-end;
+        margin-top: 12px !important;
+      }
+
+      .rtl-toggle ha-icon-button {
+        border: 1px solid var(--divider-color);
+        border-radius: var(--ha-border-radius-pill);
       }
     `,
   ];

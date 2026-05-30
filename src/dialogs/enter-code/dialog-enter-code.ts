@@ -5,9 +5,10 @@ import { ifDefined } from "lit/directives/if-defined";
 import { fireEvent } from "../../common/dom/fire_event";
 import "../../components/ha-button";
 import "../../components/ha-control-button";
-import { createCloseHeading } from "../../components/ha-dialog";
-import "../../components/ha-textfield";
-import type { HaTextField } from "../../components/ha-textfield";
+import "../../components/ha-dialog";
+import "../../components/ha-dialog-footer";
+import "../../components/input/ha-input";
+import type { HaInput } from "../../components/input/ha-input";
 import type { HomeAssistant } from "../../types";
 import type { HassDialog } from "../make-dialog-manager";
 import type { EnterCodeDialogParams } from "./show-enter-code-dialog";
@@ -36,40 +37,57 @@ export class DialogEnterCode
 
   @state() private _dialogParams?: EnterCodeDialogParams;
 
-  @query("#code") private _input?: HaTextField;
+  @state() private _open = false;
+
+  @query("#code") private _input?: HaInput;
 
   @state() private _showClearButton = false;
 
   @state() private _narrow = false;
 
+  private _closeAction?: "submit" | "cancel";
+
   public async showDialog(dialogParams: EnterCodeDialogParams): Promise<void> {
     this._dialogParams = dialogParams;
+    this._open = true;
+    this._showClearButton = false;
+    this._closeAction = undefined;
     this._narrow = matchMedia(
       "all and (max-width: 450px), all and (max-height: 500px)"
     ).matches;
     await this.updateComplete;
   }
 
-  public closeDialog() {
+  public closeDialog(): boolean {
+    this._open = false;
+    return true;
+  }
+
+  private _dialogClosed(): void {
+    if (!this._closeAction) {
+      this._dialogParams?.cancel?.();
+    }
     this._dialogParams = undefined;
     this._showClearButton = false;
+    this._closeAction = undefined;
     fireEvent(this, "dialog-closed", { dialog: this.localName });
-    return true;
   }
 
   private _submit(): void {
     this._dialogParams?.submit?.(this._input?.value ?? "");
+    this._closeAction = "submit";
     this.closeDialog();
   }
 
   private _cancel(): void {
     this._dialogParams?.cancel?.();
+    this._closeAction = "cancel";
     this.closeDialog();
   }
 
   private _numberClick(e: MouseEvent): void {
     const val = (e.currentTarget! as any).value;
-    this._input!.value = this._input!.value + val;
+    this._input!.value = (this._input!.value ?? "") + val;
     this._showClearButton = true;
   }
 
@@ -79,7 +97,7 @@ export class DialogEnterCode
   }
 
   private _inputValueChange(e) {
-    const field = e.currentTarget as HaTextField;
+    const field = e.currentTarget as HaInput;
     const val = field.value;
     this._showClearButton = !!val;
   }
@@ -94,14 +112,15 @@ export class DialogEnterCode
     if (isText) {
       return html`
         <ha-dialog
-          open
-          @closed=${this._cancel}
-          .heading=${this._dialogParams.title ??
+          .open=${this._open}
+          header-title=${this._dialogParams.title ??
           this.hass.localize("ui.dialogs.enter_code.title")}
+          width="small"
+          @closed=${this._dialogClosed}
         >
-          <ha-textfield
+          <ha-input
             class="input"
-            ?dialogInitialFocus=${!this._narrow}
+            ?autofocus=${!this._narrow}
             id="code"
             .label=${this.hass.localize("ui.dialogs.enter_code.input_label")}
             type="password"
@@ -109,38 +128,42 @@ export class DialogEnterCode
             validateOnInitialRender
             pattern=${ifDefined(this._dialogParams.codePattern)}
             inputmode="text"
-          ></ha-textfield>
-          <ha-button slot="secondaryAction" dialogAction="cancel">
-            ${this._dialogParams.cancelText ??
-            this.hass.localize("ui.common.cancel")}
-          </ha-button>
-          <ha-button @click=${this._submit} slot="primaryAction">
-            ${this._dialogParams.submitText ??
-            this.hass.localize("ui.common.submit")}
-          </ha-button>
+          ></ha-input>
+          <ha-dialog-footer slot="footer">
+            <ha-button
+              slot="secondaryAction"
+              appearance="plain"
+              @click=${this._cancel}
+            >
+              ${this._dialogParams.cancelText ??
+              this.hass.localize("ui.common.cancel")}
+            </ha-button>
+            <ha-button slot="primaryAction" @click=${this._submit}>
+              ${this._dialogParams.submitText ??
+              this.hass.localize("ui.common.submit")}
+            </ha-button>
+          </ha-dialog-footer>
         </ha-dialog>
       `;
     }
 
     return html`
       <ha-dialog
-        open
-        .heading=${createCloseHeading(
-          this.hass,
-          this._dialogParams.title ?? "Enter code"
-        )}
-        @closed=${this._cancel}
-        hideActions
+        .open=${this._open}
+        header-title=${this._dialogParams.title ?? "Enter code"}
+        width="small"
+        @closed=${this._dialogClosed}
       >
         <div class="container">
-          <ha-textfield
+          <ha-input
             @input=${this._inputValueChange}
             id="code"
             .label=${this.hass.localize("ui.dialogs.enter_code.input_label")}
             type="password"
             inputmode="numeric"
-            ?dialogInitialFocus=${!this._narrow}
-          ></ha-textfield>
+            ?autofocus=${!this._narrow}
+            password-toggle
+          ></ha-input>
           <div class="keypad">
             ${BUTTONS.map((value) =>
               value === ""
@@ -188,9 +211,8 @@ export class DialogEnterCode
       /* Place above other dialogs */
       --dialog-z-index: 104;
     }
-    ha-textfield {
+    ha-input {
       width: 100%;
-      max-width: 300px;
       margin: auto;
     }
     .container {
@@ -205,9 +227,10 @@ export class DialogEnterCode
       display: grid;
       grid-template-columns: repeat(var(--keypad-columns), auto);
       grid-auto-rows: auto;
-      grid-gap: 24px;
+      grid-gap: var(--ha-space-6);
       justify-items: center;
       align-items: center;
+      direction: ltr;
     }
     .clear {
       grid-row-start: 4;
@@ -222,13 +245,12 @@ export class DialogEnterCode
         grid-column-start: 6;
       }
     }
-
     ha-control-button {
       width: 56px;
       height: 56px;
-      --control-button-border-radius: 28px;
+      --control-button-border-radius: var(--ha-border-radius-4xl);
       --mdc-icon-size: 24px;
-      font-size: 24px;
+      font-size: var(--ha-font-size-2xl);
     }
     .submit {
       --control-button-background-color: var(--green-color);
@@ -237,12 +259,6 @@ export class DialogEnterCode
     .clear {
       --control-button-background-color: var(--red-color);
       --control-button-icon-color: var(--red-color);
-    }
-    .hidden {
-      display: none;
-    }
-    .buttons {
-      margin-top: 12px;
     }
   `;
 }

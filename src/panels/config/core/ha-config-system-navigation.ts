@@ -1,5 +1,5 @@
 import { mdiPower } from "@mdi/js";
-import type { CSSResultGroup, TemplateResult } from "lit";
+import type { CSSResultGroup, PropertyValues, TemplateResult } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { canShowPage } from "../../../common/config/can_show_page";
@@ -8,15 +8,12 @@ import { relativeTime } from "../../../common/datetime/relative_time";
 import { blankBeforePercent } from "../../../common/translations/blank_before_percent";
 import "../../../components/ha-card";
 import "../../../components/ha-icon-button";
-import "../../../components/ha-navigation-list";
 import type { BackupContent } from "../../../data/backup";
 import { fetchBackupInfo } from "../../../data/backup";
 import type { CloudStatus } from "../../../data/cloud";
 import { fetchCloudStatus } from "../../../data/cloud";
 import type { HardwareInfo } from "../../../data/hardware";
 import { BOARD_NAMES } from "../../../data/hardware";
-import type { HassioBackup } from "../../../data/hassio/backup";
-import { fetchHassioBackups } from "../../../data/hassio/backup";
 import type {
   HassioHassOSInfo,
   HassioHostInfo,
@@ -25,10 +22,13 @@ import {
   fetchHassioHassOsInfo,
   fetchHassioHostInfo,
 } from "../../../data/hassio/host";
+import type { LabPreviewFeature } from "../../../data/labs";
+import { fetchLabFeatures } from "../../../data/labs";
 import { showRestartDialog } from "../../../dialogs/restart/show-dialog-restart";
 import "../../../layouts/hass-subpage";
 import { haStyle } from "../../../resources/styles";
 import type { HomeAssistant } from "../../../types";
+import "../components/ha-config-navigation-list";
 import "../ha-config-section";
 import { configSections } from "../ha-panel-config";
 
@@ -42,9 +42,7 @@ class HaConfigSystemNavigation extends LitElement {
 
   @property({ attribute: false }) public cloudStatus?: CloudStatus;
 
-  @property({ attribute: false }) public showAdvanced = false;
-
-  @state() private _latestBackupDate?: string;
+  @state() private _latestBackupDate?: Date;
 
   @state() private _boardName?: string;
 
@@ -52,18 +50,20 @@ class HaConfigSystemNavigation extends LitElement {
 
   @state() private _externalAccess = false;
 
+  @state() private _labFeatures?: LabPreviewFeature[];
+
   protected render(): TemplateResult {
     const pages = configSections.general
       .filter((page) => canShowPage(this.hass, page))
       .map((page) => {
-        let description = "";
+        let description: string;
 
         switch (page.translationKey) {
           case "backup":
             description = this._latestBackupDate
               ? this.hass.localize("ui.panel.config.backup.description", {
                   relative_time: relativeTime(
-                    new Date(this._latestBackupDate),
+                    this._latestBackupDate,
                     this.hass.locale
                   ),
                 })
@@ -85,7 +85,9 @@ class HaConfigSystemNavigation extends LitElement {
             description = this._storageInfo
               ? this.hass.localize("ui.panel.config.storage.description", {
                   percent_used: `${Math.round(
-                    (this._storageInfo.used / this._storageInfo.total) * 100
+                    ((this._storageInfo.total - this._storageInfo.free) /
+                      this._storageInfo.total) *
+                      100
                   )}${blankBeforePercent(this.hass.locale)}%`,
                   free_space: `${this._storageInfo.free} GB`,
                 })
@@ -95,6 +97,12 @@ class HaConfigSystemNavigation extends LitElement {
             description =
               this._boardName ||
               this.hass.localize("ui.panel.config.hardware.description");
+            break;
+          case "labs":
+            description =
+              this._labFeatures && this._labFeatures.some((f) => f.enabled)
+                ? this.hass.localize("ui.panel.config.labs.description_enabled")
+                : this.hass.localize("ui.panel.config.labs.description");
             break;
 
           default:
@@ -120,6 +128,7 @@ class HaConfigSystemNavigation extends LitElement {
         .hass=${this.hass}
         back-path="/config"
         .header=${this.hass.localize("ui.panel.config.dashboard.system.main")}
+        .narrow=${this.narrow}
       >
         <ha-icon-button
           slot="toolbar-icon"
@@ -135,7 +144,7 @@ class HaConfigSystemNavigation extends LitElement {
           full-width
         >
           <ha-card outlined>
-            <ha-navigation-list
+            <ha-config-navigation-list
               .hass=${this.hass}
               .narrow=${this.narrow}
               .pages=${pages}
@@ -143,43 +152,45 @@ class HaConfigSystemNavigation extends LitElement {
               .label=${this.hass.localize(
                 "ui.panel.config.dashboard.system.main"
               )}
-            ></ha-navigation-list>
+            ></ha-config-navigation-list>
           </ha-card>
         </ha-config-section>
       </hass-subpage>
     `;
   }
 
-  protected firstUpdated(_changedProperties): void {
+  protected firstUpdated(_changedProperties: PropertyValues<this>): void {
     super.firstUpdated(_changedProperties);
 
     this._fetchNetworkStatus();
-    const isHassioLoaded = isComponentLoaded(this.hass, "hassio");
-    this._fetchBackupInfo(isHassioLoaded);
+    const isHassioLoaded = isComponentLoaded(this.hass.config, "hassio");
+    this._fetchBackupInfo();
     this._fetchHardwareInfo(isHassioLoaded);
+    this._fetchLabFeatures();
     if (isHassioLoaded) {
       this._fetchStorageInfo();
     }
   }
 
-  private async _fetchBackupInfo(isHassioLoaded: boolean) {
-    const backups: BackupContent[] | HassioBackup[] = isHassioLoaded
-      ? await fetchHassioBackups(this.hass)
-      : isComponentLoaded(this.hass, "backup")
-        ? await fetchBackupInfo(this.hass).then(
-            (backupData) => backupData.backups
-          )
-        : [];
+  private async _fetchBackupInfo() {
+    const backups: BackupContent[] = isComponentLoaded(
+      this.hass.config,
+      "backup"
+    )
+      ? await fetchBackupInfo(this.hass).then(
+          (backupData) => backupData.backups
+        )
+      : [];
 
     if (backups.length > 0) {
-      this._latestBackupDate = (backups as any[]).reduce((a, b) =>
-        a.date > b.date ? a : b
-      ).date;
+      this._latestBackupDate = backups
+        .map((backup) => new Date(backup.date))
+        .reduce((a, b) => (a > b ? a : b));
     }
   }
 
   private async _fetchHardwareInfo(isHassioLoaded: boolean) {
-    if (isComponentLoaded(this.hass, "hardware")) {
+    if (isComponentLoaded(this.hass.config, "hardware")) {
       const hardwareInfo: HardwareInfo = await this.hass.callWS({
         type: "hardware/info",
       });
@@ -204,14 +215,20 @@ class HaConfigSystemNavigation extends LitElement {
   }
 
   private async _fetchNetworkStatus() {
-    if (isComponentLoaded(this.hass, "cloud")) {
+    if (isComponentLoaded(this.hass.config, "cloud")) {
       const cloudStatus = await fetchCloudStatus(this.hass);
       if (cloudStatus.logged_in) {
         this._externalAccess = true;
         return;
       }
     }
-    this._externalAccess = this.hass.config.external_url !== null;
+    this._externalAccess = this.hass.config.external_url != null;
+  }
+
+  private async _fetchLabFeatures() {
+    if (isComponentLoaded(this.hass.config, "labs")) {
+      this._labFeatures = await fetchLabFeatures(this.hass);
+    }
   }
 
   private async _showRestartDialog() {
@@ -223,7 +240,7 @@ class HaConfigSystemNavigation extends LitElement {
       haStyle,
       css`
         :host(:not([narrow])) ha-card {
-          margin-bottom: max(24px, env(safe-area-inset-bottom));
+          margin-bottom: max(24px, var(--safe-area-inset-bottom));
         }
 
         ha-config-section {
@@ -235,7 +252,7 @@ class HaConfigSystemNavigation extends LitElement {
         ha-card {
           overflow: hidden;
           margin-bottom: 24px;
-          margin-bottom: max(24px, env(safe-area-inset-bottom));
+          margin-bottom: max(24px, var(--safe-area-inset-bottom));
         }
 
         ha-card a {
@@ -244,7 +261,7 @@ class HaConfigSystemNavigation extends LitElement {
         }
 
         .title {
-          font-size: 16px;
+          font-size: var(--ha-font-size-l);
           padding: 16px;
           padding-bottom: 0;
         }
@@ -260,16 +277,12 @@ class HaConfigSystemNavigation extends LitElement {
         @media all and (max-width: 600px) {
           ha-card {
             border-width: 1px 0;
-            border-radius: 0;
+            border-radius: var(--ha-border-radius-square);
             box-shadow: unset;
           }
           ha-config-section {
             margin-top: -42px;
           }
-        }
-
-        ha-navigation-list {
-          --navigation-list-item-title-font-size: 16px;
         }
       `,
     ];

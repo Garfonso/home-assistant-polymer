@@ -1,4 +1,3 @@
-import "@material/mwc-linear-progress/mwc-linear-progress";
 import type { Auth } from "home-assistant-js-websocket";
 import {
   createConnection,
@@ -16,6 +15,8 @@ import {
 } from "../common/auth/token_storage";
 import { applyThemesOnElement } from "../common/dom/apply_themes_on_element";
 import type { HASSDomEvent } from "../common/dom/fire_event";
+import { mainWindow } from "../common/dom/get_main_window";
+import { navigate } from "../common/navigate";
 import {
   addSearchParam,
   extractSearchParam,
@@ -25,6 +26,7 @@ import { subscribeOne } from "../common/util/subscribe-one";
 import "../components/ha-card";
 import type { AuthUrlSearchParams } from "../data/auth";
 import { hassUrl } from "../data/auth";
+import { saveFrontendSystemData } from "../data/frontend";
 import type { OnboardingResponses, OnboardingStep } from "../data/onboarding";
 import {
   fetchInstallationType,
@@ -32,19 +34,18 @@ import {
   onboardIntegrationStep,
 } from "../data/onboarding";
 import { subscribeUser } from "../data/ws-user";
+import { makeDialogManager } from "../dialogs/make-dialog-manager";
 import { litLocalizeLiteMixin } from "../mixins/lit-localize-lite-mixin";
 import { HassElement } from "../state/hass-element";
 import type { HomeAssistant } from "../types";
 import { storeState } from "../util/ha-pref-storage";
 import { registerServiceWorker } from "../util/register-service-worker";
+import "../components/progress/ha-progress-bar";
 import "./onboarding-analytics";
 import "./onboarding-create-user";
 import "./onboarding-loading";
 import "./onboarding-welcome";
 import "./onboarding-welcome-links";
-import { makeDialogManager } from "../dialogs/make-dialog-manager";
-import { navigate } from "../common/navigate";
-import { mainWindow } from "../common/dom/get_main_window";
 
 type OnboardingEvent =
   | {
@@ -125,9 +126,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
   };
 
   protected render() {
-    return html`<mwc-linear-progress
-        .progress=${this._progress}
-      ></mwc-linear-progress>
+    return html`<ha-progress-bar .value=${this._progress}></ha-progress-bar>
       <ha-card>
         <div class="card-content">${this._renderStep()}</div>
       </ha-card>
@@ -143,7 +142,6 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
           .label=${""}
           native-name
           @value-changed=${this._languageChanged}
-          inline-arrow
         ></ha-language-picker>
         <a
           href="https://www.home-assistant.io/getting-started/onboarding/"
@@ -209,7 +207,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
     return nothing;
   }
 
-  protected firstUpdated(changedProps: PropertyValues) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
     this._fetchOnboardingSteps();
     import("./onboarding-integrations");
@@ -220,10 +218,13 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
     this.addEventListener("onboarding-progress", (ev) =>
       this._handleProgress(ev)
     );
-    if (window.innerWidth > 450) {
+    if (
+      window.innerWidth > 450 &&
+      !matchMedia("(prefers-reduced-motion)").matches
+    ) {
       import("../resources/particles");
     }
-    makeDialogManager(this, this.shadowRoot!);
+    makeDialogManager(this);
     import("../components/ha-language-picker");
   }
 
@@ -315,7 +316,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
         history.replaceState(null, "", location.pathname);
         await this._connectHass(auth);
         const currentStep = steps.findIndex((stp) => !stp.done);
-        const singelStepProgress = 1 / steps.length;
+        const singelStepProgress = 100 / steps.length;
         this._progress = currentStep * singelStepProgress + singelStepProgress;
       } else {
         this._init = true;
@@ -330,7 +331,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
   }
 
   private _handleProgress(ev: HASSDomEvent<OnboardingProgressEvent>) {
-    const stepSize = 1 / this._steps!.length;
+    const stepSize = 100 / this._steps!.length;
     if (ev.detail.increase) {
       this._progress += ev.detail.increase * stepSize;
     }
@@ -352,7 +353,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
       this._init = false;
       this._restoring = stepResult.result?.restore;
       if (!this._restoring) {
-        this._progress = 0.25;
+        this._progress = 25;
       } else {
         navigate(
           `${location.pathname}?${addSearchParam({ page: `restore_backup${this._restoring === "cloud" ? "_cloud" : ""}` })}`
@@ -361,7 +362,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
     } else if (stepResult.type === "user") {
       const result = stepResult.result as OnboardingResponses["user"];
       this._loading = true;
-      this._progress = 0.5;
+      this._progress = 50;
       enableWrite();
       try {
         const auth = await getAuth({
@@ -378,10 +379,10 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
         this._loading = false;
       }
     } else if (stepResult.type === "core_config") {
-      this._progress = 0.75;
+      this._progress = 75;
       // We do nothing
     } else if (stepResult.type === "analytics") {
-      this._progress = 1;
+      this._progress = 100;
       // We do nothing
     } else if (stepResult.type === "integration") {
       this._loading = true;
@@ -402,6 +403,11 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
                 })
               ),
             };
+
+      await saveFrontendSystemData(this.hass!.connection, "core", {
+        onboarded_version: this.hass!.config.version,
+        onboarded_date: new Date().toISOString(),
+      });
 
       let result: OnboardingResponses["integration"];
 
@@ -497,7 +503,9 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
     .card-content {
       padding: 32px;
     }
-    mwc-linear-progress {
+    ha-progress-bar {
+      --ha-progress-bar-border-radius: 0;
+      --ha-progress-bar-track-height: 4px;
       position: fixed;
       top: 0;
       left: 0;
@@ -513,7 +521,7 @@ class HaOnboarding extends litLocalizeLiteMixin(HassElement) {
     ha-language-picker {
       display: block;
       width: 200px;
-      border-radius: 4px;
+      border-radius: var(--ha-border-radius-sm);
       overflow: hidden;
       --ha-select-height: 40px;
       --mdc-select-fill-color: none;

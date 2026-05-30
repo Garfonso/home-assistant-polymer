@@ -4,7 +4,6 @@ import { property, query, state } from "lit/decorators";
 import { cache } from "lit/directives/cache";
 import type { HASSDomEvent } from "../../../common/dom/fire_event";
 import { fireEvent } from "../../../common/dom/fire_event";
-import { debounce } from "../../../common/util/debounce";
 import { handleStructError } from "../../../common/structs/handle-errors";
 import { deepEqual } from "../../../common/util/deep-equal";
 import "../../../components/ha-alert";
@@ -57,9 +56,12 @@ export abstract class HuiElementEditor<
 
   @property({ attribute: false }) public context?: C;
 
+  @property({ type: Boolean, attribute: "in-dialog" })
+  public inDialog = false;
+
   @state() private _config?: T;
 
-  @state() private _configElement?: LovelaceGenericElementEditor;
+  @state() protected _configElement?: LovelaceGenericElementEditor;
 
   @state() private _subElementEditorConfig?: SubElementEditorConfig;
 
@@ -68,11 +70,6 @@ export abstract class HuiElementEditor<
   // Error: Configuration broken - do not save
   @state() private _errors?: string[];
 
-  // Error from unparseable YAML, but don't show it immediately to prevent showing immediately on every keystroke
-  @state() private _pendingYamlError?: string;
-
-  @state() private _yamlError = false;
-
   // Warning: GUI editor can't handle configuration - ok to save
   @state() private _warnings?: string[];
 
@@ -80,14 +77,22 @@ export abstract class HuiElementEditor<
 
   @state() private _loading = false;
 
+  @state() private _yamlError = false;
+
   @query("ha-yaml-editor") _yamlEditor?: HaYamlEditor;
+
+  private _loadCount = 0;
 
   public get value(): T | undefined {
     return this._config;
   }
 
   public set value(config: T | undefined) {
-    if (this._config && deepEqual(config, this._config)) {
+    // Compare symbols to detect callback changes (e.g., preview click handlers)
+    if (
+      this._config &&
+      deepEqual(config, this._config, { compareSymbols: true })
+    ) {
       return;
     }
     this._config = config;
@@ -96,7 +101,7 @@ export abstract class HuiElementEditor<
   }
 
   private _setConfig(): void {
-    if (!this._errors) {
+    if (!this._errors && !this._yamlError) {
       try {
         this._updateConfigElement();
       } catch (err: any) {
@@ -106,7 +111,7 @@ export abstract class HuiElementEditor<
 
     this.updateComplete.then(() => {
       fireEvent(this, "config-changed", {
-        config: this.value! as any,
+        config: this.value!,
         error: this._errors?.join(", "),
         guiModeAvailable: !(
           this.hasWarning ||
@@ -122,7 +127,9 @@ export abstract class HuiElementEditor<
   }
 
   public get hasError(): boolean {
-    return this._errors !== undefined && this._errors.length > 0;
+    return (
+      this._yamlError || (this._errors !== undefined && this._errors.length > 0)
+    );
   }
 
   public get GUImode(): boolean {
@@ -144,6 +151,9 @@ export abstract class HuiElementEditor<
   }
 
   public toggleMode() {
+    if (!this.GUImode) {
+      this._yamlEditor?.disableCodeEditorFullscreen();
+    }
     this.GUImode = !this.GUImode;
   }
 
@@ -236,9 +246,8 @@ export abstract class HuiElementEditor<
                 <ha-yaml-editor
                   .defaultValue=${this._config}
                   autofocus
-                  .hass=${this.hass}
+                  .inDialog=${this.inDialog}
                   @value-changed=${this._handleYAMLChanged}
-                  @blur=${this._onBlurYaml}
                   @keydown=${this._ignoreKeydown}
                   dir="ltr"
                 ></ha-yaml-editor>
@@ -260,7 +269,7 @@ export abstract class HuiElementEditor<
               </ha-alert>
             `
           : nothing}
-        ${this.hasError
+        ${this._errors?.length
           ? html`
               <ha-alert
                 alert-type="error"
@@ -269,7 +278,7 @@ export abstract class HuiElementEditor<
                 )}
               >
                 <ul>
-                  ${this._errors!.map((error) => html`<li>${error}</li>`)}
+                  ${this._errors.map((error) => html`<li>${error}</li>`)}
                 </ul>
               </ha-alert>
             `
@@ -293,7 +302,7 @@ export abstract class HuiElementEditor<
     `;
   }
 
-  protected updated(changedProperties: PropertyValues) {
+  protected updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
 
     if (this._configElement && changedProperties.has("hass")) {
@@ -325,40 +334,14 @@ export abstract class HuiElementEditor<
 
   private _handleYAMLChanged(ev: CustomEvent) {
     ev.stopPropagation();
-    const config = ev.detail.value;
     if (ev.detail.isValid) {
-      this._config = config;
+      this._config = ev.detail.value;
       this._errors = undefined;
-      this._pendingYamlError = undefined;
       this._yamlError = false;
-      this._debounceYamlError.cancel();
-      this._setConfig();
-    } else if (this._yamlError) {
-      // If we're already showing a yaml error, don't bother to debounce, just update immediately.
-      this._errors = [ev.detail.errorMsg];
     } else {
-      this._pendingYamlError = ev.detail.errorMsg;
-      this._debounceYamlError();
-    }
-  }
-
-  private _debounceYamlError = debounce(() => {
-    if (this._pendingYamlError) {
       this._yamlError = true;
-      this._errors = [this._pendingYamlError];
-      this._pendingYamlError = undefined;
-      this._setConfig();
     }
-  }, 2000);
-
-  private _onBlurYaml() {
-    this._debounceYamlError.cancel();
-    if (this._pendingYamlError) {
-      this._yamlError = true;
-      this._errors = [this._pendingYamlError];
-      this._pendingYamlError = undefined;
-      this._setConfig();
-    }
+    this._setConfig();
   }
 
   protected async unloadConfigElement(): Promise<void> {
@@ -411,7 +394,7 @@ export abstract class HuiElementEditor<
     if (!this.value) {
       return;
     }
-
+    const loadNum = ++this._loadCount;
     try {
       this._errors = undefined;
       this._warnings = undefined;
@@ -435,6 +418,9 @@ export abstract class HuiElementEditor<
         this.GUImode = false;
       }
     } catch (err: any) {
+      if (loadNum !== this._loadCount) {
+        return;
+      }
       if (err instanceof GUISupportError) {
         this._warnings = err.warnings ?? [err.message];
         this._errors = err.errors || undefined;

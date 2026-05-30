@@ -1,16 +1,19 @@
 import { LitElement, html, css } from "lit";
-import { property } from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import { styleMap } from "lit/directives/style-map";
 import type { HomeAssistant } from "../../types";
 import { fireEvent } from "../../common/dom/fire_event";
 import "../ha-state-icon";
 
+@customElement("ha-entity-marker")
 class HaEntityMarker extends LitElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ attribute: "entity-id", reflect: true }) public entityId?: string;
 
   @property({ attribute: "entity-name" }) public entityName?: string;
+
+  @property({ attribute: "entity-unit" }) public entityUnit?: string;
 
   @property({ attribute: "entity-picture" }) public entityPicture?: string;
 
@@ -34,10 +37,18 @@ class HaEntityMarker extends LitElement {
             ></div>`
           : this.showIcon && this.entityId
             ? html`<ha-state-icon
-                .hass=${this.hass}
                 .stateObj=${this.hass?.states[this.entityId]}
               ></ha-state-icon>`
-            : this.entityName}
+            : !this.entityUnit
+              ? this.entityName
+              : html`
+                  ${this.entityName}
+                  <span
+                    class="unit"
+                    style="display: ${this.entityUnit ? "initial" : "none"}"
+                    >${this.entityUnit}</span
+                  >
+                `}
       </div>
     `;
   }
@@ -56,9 +67,9 @@ class HaEntityMarker extends LitElement {
       text-align: center;
       align-items: center;
       box-sizing: border-box;
-      width: 48px;
-      height: 48px;
-      font-size: var(--ha-marker-font-size, 1.5em);
+      width: var(--ha-marker-size, 48px);
+      height: var(--ha-marker-size, 48px);
+      font-size: var(--ha-marker-font-size, var(--ha-font-size-xl));
       border-radius: var(--ha-marker-border-radius, 50%);
       border: 1px solid var(--ha-marker-color, var(--primary-color));
       color: var(--primary-text-color);
@@ -72,10 +83,11 @@ class HaEntityMarker extends LitElement {
       height: 100%;
       width: 100%;
     }
+    .unit {
+      margin-left: 2px;
+    }
   `;
 }
-
-customElements.define("ha-entity-marker", HaEntityMarker);
 
 declare global {
   interface HTMLElementTagNameMap {

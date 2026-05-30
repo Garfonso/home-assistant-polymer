@@ -1,49 +1,27 @@
-import "@material/mwc-tab-bar/mwc-tab-bar";
-import "@material/mwc-tab/mwc-tab";
 import { mdiClose } from "@mdi/js";
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { cache } from "lit/directives/cache";
-import { classMap } from "lit/directives/class-map";
-import { ifDefined } from "lit/directives/if-defined";
-import memoize from "memoize-one";
 import { fireEvent } from "../../../../common/dom/fire_event";
-import { computeDomain } from "../../../../common/entity/compute_domain";
-import { computeStateName } from "../../../../common/entity/compute_state_name";
-import type { DataTableRowData } from "../../../../components/data-table/ha-data-table";
+import "../../../../components/ha-button";
 import "../../../../components/ha-dialog";
+import "../../../../components/ha-dialog-footer";
 import "../../../../components/ha-dialog-header";
+import "../../../../components/ha-tab-group";
+import "../../../../components/ha-tab-group-tab";
+import type { LovelaceCardConfig } from "../../../../data/lovelace/config/card";
 import type { LovelaceSectionConfig } from "../../../../data/lovelace/config/section";
-import { isStrategySection } from "../../../../data/lovelace/config/section";
 import type { LovelaceViewConfig } from "../../../../data/lovelace/config/view";
 import type { HassDialog } from "../../../../dialogs/make-dialog-manager";
 import { haStyleDialog } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
-import {
-  computeCards,
-  computeSection,
-} from "../../common/generate-lovelace-config";
 import { addCard } from "../config-util";
-import {
-  findLovelaceContainer,
-  parseLovelaceContainerPath,
-} from "../lovelace-path";
+import { findLovelaceContainer } from "../lovelace-path";
 import "./hui-card-picker";
-import "./hui-entity-picker-table";
+import "./hui-suggestion-picker";
 import type { CreateCardDialogParams } from "./show-create-card-dialog";
 import { showEditCardDialog } from "./show-edit-card-dialog";
-import { showSuggestCardDialog } from "./show-suggest-card-dialog";
-
-declare global {
-  interface HASSDomEvents {
-    "selected-changed": SelectedChangedEvent;
-  }
-}
-
-interface SelectedChangedEvent {
-  selectedEntities: string[];
-}
 
 @customElement("hui-dialog-create-card")
 export class HuiCreateDialogCard
@@ -54,13 +32,13 @@ export class HuiCreateDialogCard
 
   @state() private _params?: CreateCardDialogParams;
 
+  @state() private _open = false;
+
   @state() private _containerConfig!:
     | LovelaceViewConfig
     | LovelaceSectionConfig;
 
-  @state() private _selectedEntities: string[] = [];
-
-  @state() private _currTabIndex = 0;
+  @state() private _currTab: "card" | "entity" = "entity";
 
   @state() private _narrow = false;
 
@@ -81,14 +59,19 @@ export class HuiCreateDialogCard
     }
 
     this._containerConfig = containerConfig;
+    this._open = true;
   }
 
   public closeDialog(): boolean {
-    this._params = undefined;
-    this._currTabIndex = 0;
-    this._selectedEntities = [];
-    fireEvent(this, "dialog-closed", { dialog: this.localName });
+    this._open = false;
     return true;
+  }
+
+  private _dialogClosed(): void {
+    this._open = false;
+    this._params = undefined;
+    this._currTab = "entity";
+    fireEvent(this, "dialog-closed", { dialog: this.localName });
   }
 
   protected render() {
@@ -105,72 +88,78 @@ export class HuiCreateDialogCard
 
     return html`
       <ha-dialog
-        open
-        scrimClickAction
+        .open=${this._open}
+        flexcontent
+        width="large"
         @keydown=${this._ignoreKeydown}
-        @closed=${this._cancel}
-        .heading=${title}
-        class=${classMap({ table: this._currTabIndex === 1 })}
+        @closed=${this._dialogClosed}
       >
-        <ha-dialog-header show-border slot="heading">
+        <ha-dialog-header show-border slot="header">
           <ha-icon-button
             slot="navigationIcon"
-            dialogAction="cancel"
+            @click=${this._cancel}
             .label=${this.hass.localize("ui.common.close")}
             .path=${mdiClose}
           ></ha-icon-button>
-          <span slot="title"> ${title} </span>
-          <mwc-tab-bar
-            .activeIndex=${this._currTabIndex}
-            @MDCTabBar:activated=${this._handleTabChanged}
-          >
-            <mwc-tab
-              .label=${this.hass!.localize(
-                "ui.panel.lovelace.editor.cardpicker.by_card"
-              )}
-              dialogInitialFocus=${ifDefined(this._narrow ? "" : undefined)}
-            ></mwc-tab>
-            <mwc-tab
-              .label=${this.hass!.localize(
-                "ui.panel.lovelace.editor.cardpicker.by_entity"
-              )}
-            ></mwc-tab>
-          </mwc-tab-bar>
-        </ha-dialog-header>
-        ${cache(
-          this._currTabIndex === 0
-            ? html`
-                <hui-card-picker
-                  dialogInitialFocus=${ifDefined(this._narrow ? undefined : "")}
-                  .suggestedCards=${this._params.suggestedCards}
-                  .lovelace=${this._params.lovelaceConfig}
-                  .hass=${this.hass}
-                  @config-changed=${this._handleCardPicked}
-                ></hui-card-picker>
-              `
-            : html`
-                <hui-entity-picker-table
-                  no-label-float
-                  .hass=${this.hass}
-                  narrow
-                  .entities=${this._allEntities(this.hass.states)}
-                  @selected-changed=${this._handleSelectedChanged}
-                ></hui-entity-picker-table>
-              `
-        )}
+          <span slot="title">${title}</span>
 
-        <div slot="primaryAction">
-          <mwc-button @click=${this._cancel}>
-            ${this.hass!.localize("ui.common.cancel")}
-          </mwc-button>
-          ${this._selectedEntities.length
+          ${!this._params.saveCard
             ? html`
-                <mwc-button @click=${this._suggestCards}>
-                  ${this.hass!.localize("ui.common.continue")}
-                </mwc-button>
+                <ha-tab-group @wa-tab-show=${this._handleTabChanged}>
+                  <ha-tab-group-tab
+                    slot="nav"
+                    .active=${this._currTab === "entity"}
+                    panel="entity"
+                    ?autofocus=${this._narrow}
+                    >${this.hass.localize(
+                      "ui.panel.lovelace.editor.cardpicker.by_entity"
+                    )}</ha-tab-group-tab
+                  >
+                  <ha-tab-group-tab
+                    slot="nav"
+                    .active=${this._currTab === "card"}
+                    panel="card"
+                  >
+                    ${this.hass!.localize(
+                      "ui.panel.lovelace.editor.cardpicker.by_card"
+                    )}
+                  </ha-tab-group-tab>
+                </ha-tab-group>
               `
-            : ""}
+            : nothing}
+        </ha-dialog-header>
+        <div class="body">
+          ${cache(
+            this._currTab === "entity"
+              ? html`
+                  <hui-suggestion-picker
+                    .hass=${this.hass}
+                    .prioritizedCardTypes=${this._params.suggestedCards}
+                    @suggestion-picked=${this._handleSuggestionPicked}
+                    @browse-cards=${this._handleBrowseCards}
+                  ></hui-suggestion-picker>
+                `
+              : html`
+                  <hui-card-picker
+                    ?autofocus=${!this._narrow}
+                    .suggestedCards=${this._params.suggestedCards}
+                    .lovelace=${this._params.lovelaceConfig}
+                    .hass=${this.hass}
+                    @config-changed=${this._handleCardPicked}
+                  ></hui-card-picker>
+                `
+          )}
         </div>
+
+        <ha-dialog-footer slot="footer">
+          <ha-button
+            slot="secondaryAction"
+            appearance="plain"
+            @click=${this._cancel}
+          >
+            ${this.hass!.localize("ui.common.cancel")}
+          </ha-button>
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }
@@ -183,63 +172,86 @@ export class HuiCreateDialogCard
     return [
       haStyleDialog,
       css`
-        @media all and (max-width: 450px), all and (max-height: 500px) {
-          /* overrule the ha-style-dialog max-height on small screens */
-          ha-dialog {
-            --mdc-dialog-max-height: 100%;
-            height: 100%;
-          }
-        }
-
-        @media all and (min-width: 850px) {
-          ha-dialog {
-            --mdc-dialog-min-width: 845px;
-          }
-        }
-
         ha-dialog {
-          --mdc-dialog-max-width: 845px;
-          --dialog-content-padding: 0 24px 20px 24px;
+          --dialog-content-padding: 0;
           --dialog-z-index: 6;
         }
 
-        ha-dialog.table {
-          --dialog-content-padding: 0;
-        }
-
-        @media (min-width: 1200px) {
+        @media (min-width: 451px) and (min-height: 501px) {
           ha-dialog {
-            --mdc-dialog-max-width: calc(100vw - 32px);
-            --mdc-dialog-min-width: 1000px;
+            --ha-dialog-min-height: min(900px, 80vh);
+            --ha-dialog-max-height: var(--ha-dialog-min-height);
           }
         }
 
-        hui-card-picker {
-          --card-picker-search-shape: 0;
-          --card-picker-search-margin: -2px -24px 0;
+        ha-dialog::part(body) {
+          overflow: hidden;
         }
-        hui-entity-picker-table {
-          display: block;
-          height: calc(100vh - 198px);
-          --mdc-shape-small: 0;
+        ha-dialog-footer {
+          border-top: 1px solid var(--divider-color);
         }
-        @media all and (max-width: 450px), all and (max-height: 500px) {
-          hui-entity-picker-table {
-            height: calc(100vh - 158px);
-          }
+
+        ha-tab-group-tab {
+          flex: 1;
+        }
+        ha-tab-group-tab::part(base) {
+          width: 100%;
+          justify-content: center;
+        }
+        .body {
+          display: flex;
+          flex-direction: column;
+          flex: 1;
+          min-height: 0;
+        }
+        hui-card-picker,
+        hui-suggestion-picker {
+          flex: 1;
+          min-height: 0;
         }
       `,
     ];
   }
 
+  private _handleBrowseCards(): void {
+    this._currTab = "card";
+  }
+
+  private async _handleSuggestionPicked(
+    ev: CustomEvent<{ config: LovelaceCardConfig }>
+  ): Promise<void> {
+    const config = ev.detail.config;
+    if (this._params!.saveCard) {
+      await this._params!.saveCard(config);
+    } else {
+      const lovelaceConfig = this._params!.lovelaceConfig;
+      const containerPath = this._params!.path;
+      const saveConfig = this._params!.saveConfig;
+      const newConfig = addCard(lovelaceConfig, containerPath, config);
+      await saveConfig(newConfig);
+    }
+    this.closeDialog();
+  }
+
   private _handleCardPicked(ev) {
     const config = ev.detail.config;
     if (this._params!.entities && this._params!.entities.length) {
-      if (Object.keys(config).includes("entities")) {
+      if ("entities" in config) {
         config.entities = this._params!.entities;
-      } else if (Object.keys(config).includes("entity")) {
+      } else if ("entity" in config) {
         config.entity = this._params!.entities[0];
       }
+    }
+
+    if (this._params!.saveCard) {
+      showEditCardDialog(this, {
+        lovelaceConfig: this._params!.lovelaceConfig,
+        saveCardConfig: this._params!.saveCard,
+        cardConfig: config,
+        isNew: true,
+      });
+      this.closeDialog();
+      return;
     }
 
     const lovelaceConfig = this._params!.lovelaceConfig;
@@ -266,17 +278,11 @@ export class HuiCreateDialogCard
   }
 
   private _handleTabChanged(ev: CustomEvent): void {
-    const newTab = ev.detail.index;
-    if (newTab === this._currTabIndex) {
+    const newTab = ev.detail.name;
+    if (newTab === this._currTab) {
       return;
     }
-
-    this._currTabIndex = ev.detail.index;
-    this._selectedEntities = [];
-  }
-
-  private _handleSelectedChanged(ev: CustomEvent): void {
-    this._selectedEntities = ev.detail.selectedEntities;
+    this._currTab = newTab;
   }
 
   private _cancel(ev?: Event) {
@@ -285,63 +291,6 @@ export class HuiCreateDialogCard
     }
     this.closeDialog();
   }
-
-  private _suggestCards(): void {
-    const cardConfig = computeCards(
-      this.hass.states,
-      this._selectedEntities,
-      {}
-    );
-
-    let sectionOptions: Partial<LovelaceSectionConfig> = {};
-
-    const { viewIndex, sectionIndex } = parseLovelaceContainerPath(
-      this._params!.path
-    );
-    const isSection = sectionIndex !== undefined;
-
-    // If we are in a section, we want to keep the section options for the preview
-    if (isSection) {
-      const containerConfig = findLovelaceContainer(
-        this._params!.lovelaceConfig!,
-        [viewIndex, sectionIndex]
-      );
-      if (!isStrategySection(containerConfig)) {
-        const { cards, title, ...rest } = containerConfig;
-        sectionOptions = rest;
-      }
-    }
-
-    const sectionConfig = computeSection(
-      this._selectedEntities,
-      sectionOptions
-    );
-
-    showSuggestCardDialog(this, {
-      lovelaceConfig: this._params!.lovelaceConfig,
-      saveConfig: this._params!.saveConfig,
-      path: this._params!.path as [number],
-      entities: this._selectedEntities,
-      cardConfig,
-      sectionConfig,
-    });
-
-    this.closeDialog();
-  }
-
-  private _allEntities = memoize((entities) =>
-    Object.keys(entities).map((entity) => {
-      const stateObj = this.hass.states[entity];
-      return {
-        icon: "",
-        entity_id: entity,
-        stateObj,
-        name: computeStateName(stateObj),
-        domain: computeDomain(entity),
-        last_changed: stateObj!.last_changed,
-      } as DataTableRowData;
-    })
-  );
 }
 
 declare global {

@@ -1,3 +1,4 @@
+import type { LovelaceDashboardSuggestions } from "../../../data/lovelace/dashboard";
 import type { LovelaceSectionConfig } from "../../../data/lovelace/config/section";
 import type { LovelaceStrategyConfig } from "../../../data/lovelace/config/strategy";
 import type { LovelaceConfig } from "../../../data/lovelace/config/types";
@@ -12,14 +13,19 @@ export interface LovelaceStrategy<T = any> {
   configRequired?: boolean;
 }
 
-export interface LovelaceDashboardStrategy
-  extends LovelaceStrategy<LovelaceConfig> {}
+export interface LovelaceDashboardStrategy extends LovelaceStrategy<LovelaceConfig> {}
 
-export interface LovelaceViewStrategy
-  extends LovelaceStrategy<LovelaceViewConfig> {}
+/**
+ * Optional static `getCreateSuggestions` on dashboard strategy classes.
+ * Used when opening the dashboard create dialog; see `loadDashboardStrategyWithCreateSuggestions`.
+ */
+export type LovelaceDashboardStrategyGetCreateSuggestions = (
+  hass: HomeAssistant
+) => LovelaceDashboardSuggestions | Promise<LovelaceDashboardSuggestions>;
 
-export interface LovelaceSectionStrategy
-  extends LovelaceStrategy<LovelaceSectionConfig> {}
+export interface LovelaceViewStrategy extends LovelaceStrategy<LovelaceViewConfig> {}
+
+export interface LovelaceSectionStrategy extends LovelaceStrategy<LovelaceSectionConfig> {}
 
 export interface LovelaceStrategyEditor extends LovelaceGenericElementEditor {
   setConfig(config: LovelaceStrategyConfig): void;

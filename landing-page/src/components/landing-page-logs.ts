@@ -1,28 +1,26 @@
-import "@material/mwc-linear-progress/mwc-linear-progress";
-import { mdiArrowCollapseDown, mdiDownload } from "@mdi/js";
-// eslint-disable-next-line import/extensions
 import { IntersectionController } from "@lit-labs/observers/intersection-controller.js";
+import { mdiArrowCollapseDown, mdiDownload } from "@mdi/js";
 import { LitElement, type PropertyValues, css, html, nothing } from "lit";
-import { classMap } from "lit/directives/class-map";
 import { customElement, property, query, state } from "lit/decorators";
+import { classMap } from "lit/directives/class-map";
+import { fireEvent } from "../../../src/common/dom/fire_event";
 import type {
   LandingPageKeys,
   LocalizeFunc,
 } from "../../../src/common/translations/localize";
+import { waitForSeconds } from "../../../src/common/util/wait";
+import "../../../src/components/ha-alert";
+import "../../../src/components/ha-ansi-to-html";
+import type { HaAnsiToHtml } from "../../../src/components/ha-ansi-to-html";
 import "../../../src/components/ha-button";
 import "../../../src/components/ha-icon-button";
 import "../../../src/components/ha-svg-icon";
-import "../../../src/components/ha-ansi-to-html";
-import "../../../src/components/ha-alert";
-import type { HaAnsiToHtml } from "../../../src/components/ha-ansi-to-html";
+import { fileDownload } from "../../../src/util/file_download";
 import {
   getObserverLogs,
   downloadUrl as observerLogsDownloadUrl,
 } from "../data/observer";
-import { fireEvent } from "../../../src/common/dom/fire_event";
-import { fileDownload } from "../../../src/util/file_download";
 import { getSupervisorLogs, getSupervisorLogsFollow } from "../data/supervisor";
-import { waitForSeconds } from "../../../src/common/util/wait";
 import { ASSUME_CORE_START_SECONDS } from "../ha-landing-page";
 
 const ERROR_CHECK = /^[\d\s-:]+(ERROR|CRITICAL)(.*)/gm;
@@ -64,7 +62,7 @@ class LandingPageLogs extends LitElement {
   protected render() {
     return html`
       <div class="actions">
-        <ha-button @click=${this._toggleLogDetails}>
+        <ha-button appearance="plain" @click=${this._toggleLogDetails}>
           ${this.localize(this._show ? "hide_details" : "show_details")}
         </ha-button>
         ${this._show
@@ -81,7 +79,11 @@ class LandingPageLogs extends LitElement {
               alert-type="error"
               .title=${this.localize("logs.fetch_error")}
             >
-              <ha-button @click=${this._startLogStream}>
+              <ha-button
+                size="small"
+                variant="danger"
+                @click=${this._startLogStream}
+              >
                 ${this.localize("logs.retry")}
               </ha-button>
             </ha-alert>
@@ -104,19 +106,18 @@ class LandingPageLogs extends LitElement {
               !this._scrolledToBottomController.value) ||
             false,
         })}"
+        size="small"
+        appearance="filled"
         @click=${this._scrollToBottom}
       >
-        <ha-svg-icon .path=${mdiArrowCollapseDown} slot="icon"></ha-svg-icon>
+        <ha-svg-icon .path=${mdiArrowCollapseDown} slot="start"></ha-svg-icon>
         ${this.localize("logs.scroll_down_button")}
-        <ha-svg-icon
-          .path=${mdiArrowCollapseDown}
-          slot="trailingIcon"
-        ></ha-svg-icon>
+        <ha-svg-icon .path=${mdiArrowCollapseDown} slot="end"></ha-svg-icon>
       </ha-button>
     `;
   }
 
-  protected firstUpdated(changedProps: PropertyValues): void {
+  protected firstUpdated(changedProps: PropertyValues<this>): void {
     super.firstUpdated(changedProps);
 
     this._scrolledToBottomController.observe(this._scrollBottomMarkerElement!);
@@ -299,7 +300,7 @@ class LandingPageLogs extends LitElement {
         max-height: 300px;
         overflow: auto;
         border: 1px solid var(--divider-color);
-        border-radius: 4px;
+        border-radius: var(--ha-border-radius-sm);
         padding: 4px;
       }
 
@@ -308,21 +309,14 @@ class LandingPageLogs extends LitElement {
       }
 
       .new-logs-indicator {
-        --mdc-theme-primary: var(--text-primary-color);
-
         overflow: hidden;
         position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
+        bottom: 4px;
+        left: 4px;
         height: 0;
-        background-color: var(--primary-color);
-        border-radius: 8px;
 
         transition: height 0.4s ease-out;
         display: flex;
-        justify-content: space-between;
-        align-items: center;
       }
 
       .new-logs-indicator.visible {

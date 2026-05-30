@@ -1,5 +1,4 @@
-import "@material/mwc-button/mwc-button";
-import type { CSSResultGroup } from "lit";
+import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { fireEvent } from "../../../common/dom/fire_event";
@@ -32,7 +31,7 @@ export abstract class HaBlueprintGenericEditor extends LitElement {
 
   @state() protected _blueprints?: Blueprints;
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
     this._getBlueprints();
   }
@@ -173,6 +172,7 @@ export abstract class HaBlueprintGenericEditor extends LitElement {
         .content=${value?.description}
       ></ha-markdown>
       ${html`<ha-selector
+        narrow
         .hass=${this.hass}
         .selector=${selector}
         .key=${key}
@@ -250,7 +250,6 @@ export abstract class HaBlueprintGenericEditor extends LitElement {
         .blueprint-picker-container {
           padding: 0 16px 16px;
         }
-        ha-textfield,
         ha-blueprint-picker {
           display: block;
         }
@@ -271,7 +270,6 @@ export abstract class HaBlueprintGenericEditor extends LitElement {
           margin-bottom: 16px;
         }
         ha-settings-row {
-          --paper-time-input-justify-content: flex-end;
           --settings-row-content-width: 100%;
           --settings-row-prefix-display: contents;
         }

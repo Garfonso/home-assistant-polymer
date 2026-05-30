@@ -1,19 +1,25 @@
-import "@material/mwc-button";
-import { formatInTimeZone, toDate } from "date-fns-tz";
+import { TZDate } from "@date-fns/tz";
 import type { CSSResultGroup } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import memoizeOne from "memoize-one";
+import { formatShortDateTimeWithConditionalYear } from "../../common/datetime/format_date_time";
 import { resolveTimeZone } from "../../common/datetime/resolve-time-zone";
 import { fireEvent } from "../../common/dom/fire_event";
+import { computeStateName } from "../../common/entity/compute_state_name";
 import { supportsFeature } from "../../common/entity/supports-feature";
+import { supportsMarkdownHelper } from "../../common/translations/markdown_support";
 import "../../components/ha-alert";
+import "../../components/ha-button";
 import "../../components/ha-checkbox";
 import "../../components/ha-date-input";
-import { createCloseHeading } from "../../components/ha-dialog";
+import "../../components/ha-dialog";
+import "../../components/ha-dialog-footer";
 import "../../components/ha-textarea";
-import "../../components/ha-textfield";
 import "../../components/ha-time-input";
+import "../../components/input/ha-input";
+import type { HaInput } from "../../components/input/ha-input";
+import type { TodoItem } from "../../data/todo";
 import {
   TodoItemStatus,
   TodoListEntityFeature,
@@ -40,11 +46,15 @@ class DialogTodoItemEditor extends LitElement {
 
   @state() private _due?: Date;
 
+  @state() private _completedTime?: Date;
+
   @state() private _checked = false;
 
   @state() private _hasTime = false;
 
   @state() private _submitting = false;
+
+  @state() private _open = false;
 
   // Dates are manipulated and displayed in the browser timezone
   // which may be different from the Home Assistant timezone. When
@@ -55,6 +65,7 @@ class DialogTodoItemEditor extends LitElement {
   public showDialog(params: TodoItemEditDialogParams): void {
     this._error = undefined;
     this._params = params;
+    this._open = true;
     this._timeZone = resolveTimeZone(
       this.hass.locale.time_zone,
       this.hass.config.time_zone
@@ -64,6 +75,9 @@ class DialogTodoItemEditor extends LitElement {
       this._checked = entry.status === TodoItemStatus.Completed;
       this._summary = entry.summary;
       this._description = entry.description || "";
+      this._completedTime = entry.completed
+        ? new Date(entry.completed)
+        : undefined;
       this._hasTime = entry.due?.includes("T") || false;
       this._due = entry.due
         ? new Date(this._hasTime ? entry.due : `${entry.due}T00:00:00`)
@@ -79,6 +93,11 @@ class DialogTodoItemEditor extends LitElement {
     if (!this._params) {
       return;
     }
+    this._open = false;
+  }
+
+  private _dialogClosed(): void {
+    this._open = false;
     this._error = undefined;
     this._params = undefined;
     this._due = undefined;
@@ -92,7 +111,12 @@ class DialogTodoItemEditor extends LitElement {
     if (!this._params) {
       return nothing;
     }
-    const isCreate = this._params.item === undefined;
+    const isCreate =
+      this._params.item === undefined || !("uid" in this._params.item);
+    const listName =
+      this._params.entity in this.hass.states
+        ? computeStateName(this.hass.states[this._params.entity])
+        : this._params.entity;
 
     const { dueDate, dueTime } = this._getLocaleStrings(this._due);
 
@@ -102,15 +126,13 @@ class DialogTodoItemEditor extends LitElement {
 
     return html`
       <ha-dialog
-        open
-        @closed=${this.closeDialog}
-        scrimClickAction
-        .heading=${createCloseHeading(
-          this.hass,
-          this.hass.localize(
-            `ui.components.todo.item.${isCreate ? "add" : "edit"}`
-          )
+        .open=${this._open}
+        header-title=${this.hass.localize(
+          `ui.components.todo.item.${isCreate ? "add" : "edit"}`
         )}
+        header-subtitle=${listName}
+        prevent-scrim-close
+        @closed=${this._dialogClosed}
       >
         <div class="content">
           ${this._error
@@ -123,20 +145,31 @@ class DialogTodoItemEditor extends LitElement {
               @change=${this._checkedCanged}
               .disabled=${isCreate || !canUpdate}
             ></ha-checkbox>
-            <ha-textfield
+            <ha-input
               class="summary"
               name="summary"
               .label=${this.hass.localize("ui.components.todo.item.summary")}
               .value=${this._summary}
               required
+              autofocus
               @input=${this._handleSummaryChanged}
               .validationMessage=${this.hass.localize(
                 "ui.common.error_required"
               )}
-              dialogInitialFocus
               .disabled=${!canUpdate}
-            ></ha-textfield>
+            ></ha-input>
           </div>
+          ${this._completedTime
+            ? html`<div class="italic">
+                ${this.hass.localize("ui.components.todo.item.completed_time", {
+                  datetime: formatShortDateTimeWithConditionalYear(
+                    this._completedTime,
+                    this.hass.locale,
+                    this.hass.config
+                  ),
+                })}
+              </div>`
+            : nothing}
           ${this._todoListSupportsFeature(
             TodoListEntityFeature.SET_DESCRIPTION_ON_ITEM
           )
@@ -146,9 +179,10 @@ class DialogTodoItemEditor extends LitElement {
                 .label=${this.hass.localize(
                   "ui.components.todo.item.description"
                 )}
+                .hint=${supportsMarkdownHelper(this.hass.localize)}
                 .value=${this._description}
                 @input=${this._handleDescriptionChanged}
-                autogrow
+                resize="auto"
                 .disabled=${!canUpdate}
               ></ha-textarea>`
             : nothing}
@@ -184,39 +218,42 @@ class DialogTodoItemEditor extends LitElement {
               </div>`
             : nothing}
         </div>
-        ${isCreate
-          ? html`
-              <mwc-button
-                slot="primaryAction"
-                @click=${this._createItem}
-                .disabled=${this._submitting}
-              >
-                ${this.hass.localize("ui.components.todo.item.add")}
-              </mwc-button>
-            `
-          : html`
-              <mwc-button
-                slot="primaryAction"
-                @click=${this._saveItem}
-                .disabled=${!canUpdate || this._submitting}
-              >
-                ${this.hass.localize("ui.components.todo.item.save")}
-              </mwc-button>
-              ${this._todoListSupportsFeature(
-                TodoListEntityFeature.DELETE_TODO_ITEM
-              )
-                ? html`
-                    <mwc-button
-                      slot="secondaryAction"
-                      class="warning"
-                      @click=${this._deleteItem}
-                      .disabled=${this._submitting}
-                    >
-                      ${this.hass.localize("ui.components.todo.item.delete")}
-                    </mwc-button>
-                  `
-                : ""}
-            `}
+        <ha-dialog-footer slot="footer">
+          ${isCreate
+            ? html`
+                <ha-button
+                  slot="primaryAction"
+                  @click=${this._createItem}
+                  .disabled=${this._submitting}
+                >
+                  ${this.hass.localize("ui.components.todo.item.add")}
+                </ha-button>
+              `
+            : html`
+                <ha-button
+                  slot="primaryAction"
+                  @click=${this._saveItem}
+                  .disabled=${!canUpdate || this._submitting}
+                >
+                  ${this.hass.localize("ui.components.todo.item.save")}
+                </ha-button>
+                ${this._todoListSupportsFeature(
+                  TodoListEntityFeature.DELETE_TODO_ITEM
+                )
+                  ? html`
+                      <ha-button
+                        slot="secondaryAction"
+                        variant="danger"
+                        appearance="plain"
+                        @click=${this._deleteItem}
+                        .disabled=${this._submitting}
+                      >
+                        ${this.hass.localize("ui.components.todo.item.delete")}
+                      </ha-button>
+                    `
+                  : ""}
+              `}
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }
@@ -236,7 +273,8 @@ class DialogTodoItemEditor extends LitElement {
 
   // Formats a date in specified timezone, or defaulting to browser display timezone
   private _formatDate(date: Date, timeZone: string = this._timeZone!): string {
-    return formatInTimeZone(date, timeZone, "yyyy-MM-dd");
+    const tzDate = new TZDate(date, timeZone);
+    return tzDate.toISOString().split("T")[0]; // Get YYYY-MM-DD format
   }
 
   // Formats a time in specified timezone, or defaulting to browser display timezone
@@ -244,22 +282,27 @@ class DialogTodoItemEditor extends LitElement {
     date: Date,
     timeZone: string = this._timeZone!
   ): string | undefined {
-    return this._hasTime
-      ? formatInTimeZone(date, timeZone, "HH:mm:ss")
-      : undefined; // 24 hr
+    if (!this._hasTime) return undefined;
+    const tzDate = new TZDate(date, timeZone);
+    return tzDate.toISOString().split("T")[1].split(".")[0]; // Get HH:mm:ss format
   }
 
   // Parse a date in the browser timezone
   private _parseDate(dateStr: string): Date {
-    return toDate(dateStr, { timeZone: this._timeZone! });
+    // If it's a date-only string (no 'T'), parse as midnight in browser time to avoid offset issues
+    if (!dateStr.includes("T")) {
+      return new Date(dateStr + "T00:00:00");
+    }
+    const tzDate = new TZDate(dateStr, this._timeZone!);
+    return new Date(tzDate.getTime());
   }
 
   private _checkedCanged(ev) {
     this._checked = ev.target.checked;
   }
 
-  private _handleSummaryChanged(ev) {
-    this._summary = ev.target.value;
+  private _handleSummaryChanged(ev: InputEvent) {
+    this._summary = (ev.target as HaInput).value ?? "";
   }
 
   private _handleDescriptionChanged(ev) {
@@ -323,7 +366,7 @@ class DialogTodoItemEditor extends LitElement {
 
     try {
       await updateItem(this.hass!, this._params!.entity, {
-        ...entry,
+        ...(entry as TodoItem),
         summary: this._summary,
         description:
           this._description ||
@@ -375,7 +418,9 @@ class DialogTodoItemEditor extends LitElement {
       return;
     }
     try {
-      await deleteItems(this.hass!, this._params!.entity, [entry.uid]);
+      await deleteItems(this.hass!, this._params!.entity, [
+        (entry as TodoItem).uid,
+      ]);
     } catch (err: any) {
       this._error = err ? err.message : "Unknown error";
       return;
@@ -389,23 +434,20 @@ class DialogTodoItemEditor extends LitElement {
     return [
       haStyleDialog,
       css`
-        @media all and (min-width: 450px) and (min-height: 500px) {
-          ha-dialog {
-            --mdc-dialog-min-width: min(600px, 95vw);
-            --mdc-dialog-max-width: min(600px, 95vw);
-          }
-        }
         ha-alert {
           display: block;
           margin-bottom: 16px;
         }
-        ha-textfield,
+        ha-input {
+          width: 100%;
+        }
         ha-textarea {
           display: block;
           width: 100%;
         }
         ha-checkbox {
-          margin-top: 4px;
+          margin-bottom: 28px;
+          justify-content: center;
         }
         ha-textarea {
           margin-bottom: 16px;
@@ -423,8 +465,8 @@ class DialogTodoItemEditor extends LitElement {
           justify-content: space-between;
         }
         .label {
-          font-size: 12px;
-          font-weight: 500;
+          font-size: var(--ha-font-size-s);
+          font-weight: var(--ha-font-weight-medium);
           color: var(--input-label-ink-color);
         }
         .date-range-details-content {
@@ -445,6 +487,9 @@ class DialogTodoItemEditor extends LitElement {
         .value {
           display: inline-block;
           vertical-align: top;
+        }
+        .italic {
+          font-style: italic;
         }
       `,
     ];

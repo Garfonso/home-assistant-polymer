@@ -2,16 +2,17 @@ import type {
   HassEntity,
   HassEntityAttributeBase,
 } from "home-assistant-js-websocket";
+import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
 import memoizeOne from "memoize-one";
+import { mockIcons } from "../../../../demo/src/stubs/icons";
 import { computeDomain } from "../../../../src/common/entity/compute_domain";
 import { computeStateDisplay } from "../../../../src/common/entity/compute_state_display";
 import "../../../../src/components/data-table/ha-data-table";
 import type { DataTableColumnContainer } from "../../../../src/components/data-table/ha-data-table";
 import "../../../../src/components/entity/state-badge";
 import { provideHass } from "../../../../src/fake_data/provide_hass";
-import { mockIcons } from "../../../../demo/src/stubs/icons";
 import type { HomeAssistant } from "../../../../src/types";
 
 const SENSOR_DEVICE_CLASSES = [
@@ -39,6 +40,7 @@ const SENSOR_DEVICE_CLASSES = [
   "pm1",
   "pm10",
   "pm25",
+  "pm4",
   "power_factor",
   "power",
   "precipitation",
@@ -50,6 +52,7 @@ const SENSOR_DEVICE_CLASSES = [
   "sulphur_dioxide",
   "temperature",
   "timestamp",
+  "uptime",
   "volatile_organic_compounds",
   "volatile_organic_compounds_parts",
   "voltage",
@@ -396,7 +399,7 @@ export class DemoEntityState extends LitElement {
     ENTITIES.map(createRowData)
   );
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
     const hass = provideHass(this);
     mockIcons(hass);
@@ -421,7 +424,6 @@ export class DemoEntityState extends LitElement {
 
     return html`
       <ha-data-table
-        .hass=${this.hass}
         .columns=${this._columns(this.hass)}
         .data=${this._rows()}
         auto-height
@@ -434,7 +436,7 @@ export class DemoEntityState extends LitElement {
       display: block;
       height: 20px;
       width: 20px;
-      border-radius: 10px;
+      border-radius: var(--ha-border-radius-md);
       background-color: rgb(--color);
     }
   `;

@@ -1,14 +1,15 @@
+import { mdiRestore } from "@mdi/js";
+import type { PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
-import "../panels/lovelace/editor/card-editor/ha-grid-layout-slider";
-import "./ha-icon-button";
-import { mdiRestore } from "@mdi/js";
 import { styleMap } from "lit/directives/style-map";
 import { fireEvent } from "../common/dom/fire_event";
 import { conditionalClamp } from "../common/number/clamp";
 import type { CardGridSize } from "../panels/lovelace/common/compute-card-grid-size";
 import { DEFAULT_GRID_SIZE } from "../panels/lovelace/common/compute-card-grid-size";
+import "../panels/lovelace/editor/card-editor/ha-grid-layout-slider";
 import type { HomeAssistant } from "../types";
+import "./ha-icon-button";
 
 @customElement("ha-grid-size-picker")
 export class HaGridSizeEditor extends LitElement {
@@ -34,20 +35,21 @@ export class HaGridSizeEditor extends LitElement {
 
   @state() public _localValue?: CardGridSize = { rows: 1, columns: 1 };
 
-  protected willUpdate(changedProperties) {
+  protected willUpdate(changedProperties: PropertyValues<this>) {
     if (changedProperties.has("value")) {
       this._localValue = this.value;
     }
   }
 
   protected render() {
-    const disabledColumns =
-      this.columnMin !== undefined && this.columnMin === this.columnMax;
-    const disabledRows =
-      this.rowMin !== undefined && this.rowMin === this.rowMax;
-
     const autoHeight = this._localValue?.rows === "auto";
     const fullWidth = this._localValue?.columns === "full";
+
+    const disabledColumns =
+      fullWidth ||
+      (this.columnMin !== undefined && this.columnMin === this.columnMax);
+    const disabledRows =
+      autoHeight || (this.rowMin !== undefined && this.rowMin === this.rowMax);
 
     const rowMin = this.rowMin ?? 1;
     const rowMax = this.rowMax ?? this.rows;
@@ -72,7 +74,7 @@ export class HaGridSizeEditor extends LitElement {
           @value-changed=${this._valueChanged}
           @slider-moved=${this._sliderMoved}
           .disabled=${disabledColumns}
-          tooltip-mode="always"
+          tooltip-mode=${disabledColumns ? "never" : "always"}
         ></ha-grid-layout-slider>
 
         <ha-grid-layout-slider
@@ -88,7 +90,7 @@ export class HaGridSizeEditor extends LitElement {
           @value-changed=${this._valueChanged}
           @slider-moved=${this._sliderMoved}
           .disabled=${disabledRows}
-          tooltip-mode="always"
+          tooltip-mode=${disabledRows ? "never" : "always"}
         ></ha-grid-layout-slider>
         ${!this.isDefault
           ? html`
@@ -227,7 +229,7 @@ export class HaGridSizeEditor extends LitElement {
           "row-slider preview";
         grid-template-rows: auto auto;
         grid-template-columns: auto 1fr;
-        gap: 8px;
+        gap: var(--ha-space-2);
       }
       #columns {
         grid-area: column-slider;
@@ -237,7 +239,7 @@ export class HaGridSizeEditor extends LitElement {
       }
       .reset {
         grid-area: reset;
-        --mdc-icon-button-size: 36px;
+        --ha-icon-button-size: 36px;
       }
       .preview {
         position: relative;
@@ -264,7 +266,7 @@ export class HaGridSizeEditor extends LitElement {
         left: 0;
         background-color: var(--primary-color);
         opacity: 0.3;
-        border-radius: 8px;
+        border-radius: var(--ha-border-radius-md);
         height: calc(var(--rows, 1) * 30px);
         width: calc(var(--columns, 1) * 100% / var(--total-columns, 12));
         pointer-events: none;

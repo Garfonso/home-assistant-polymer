@@ -11,8 +11,9 @@ import { storage } from "../../../../common/decorators/storage";
 import { fireEvent } from "../../../../common/dom/fire_event";
 import { stringCompare } from "../../../../common/string/compare";
 import "../../../../components/ha-spinner";
-import "../../../../components/search-input";
-import { isUnavailableState } from "../../../../data/entity";
+import "../../../../components/input/ha-input-search";
+import type { HaInputSearch } from "../../../../components/input/ha-input-search";
+import { UNAVAILABLE, UNKNOWN } from "../../../../data/entity/entity";
 import type { LovelaceBadgeConfig } from "../../../../data/lovelace/config/badge";
 import type { LovelaceConfig } from "../../../../data/lovelace/config/types";
 import type { CustomBadgeEntry } from "../../../../data/lovelace_custom_cards";
@@ -21,6 +22,7 @@ import {
   customBadges,
   getCustomBadgeEntry,
 } from "../../../../data/lovelace_custom_cards";
+import { haStyleScrollbar } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
 import {
   calcUnusedEntities,
@@ -43,6 +45,7 @@ export class HuiBadgePicker extends LitElement {
 
   @property({ attribute: false }) public suggestedBadges?: string[];
 
+  @state()
   @storage({
     key: "dashboardBadgeClipboard",
     state: true,
@@ -128,16 +131,14 @@ export class HuiBadgePicker extends LitElement {
     const customBadgesItems = this._customBadges(this._badges);
 
     return html`
-      <search-input
-        .hass=${this.hass}
-        .filter=${this._filter}
-        @value-changed=${this._handleSearchChange}
-        .label=${this.hass.localize(
-          "ui.panel.lovelace.editor.edit_badge.search_badgess"
-        )}
-      ></search-input>
+      <ha-input-search
+        appearance="outlined"
+        .value=${this._filter}
+        @input=${this._handleSearchChange}
+      ></ha-input-search>
       <div
         id="content"
+        class="ha-scrollbar"
         style=${styleMap({
           width: this._width ? `${this._width}px` : "auto",
           height: this._height ? `${this._height}px` : "auto",
@@ -210,7 +211,7 @@ export class HuiBadgePicker extends LitElement {
     `;
   }
 
-  protected shouldUpdate(changedProps: PropertyValues): boolean {
+  protected shouldUpdate(changedProps: PropertyValues<this>): boolean {
     const oldHass = changedProps.get("hass") as HomeAssistant | undefined;
     if (!oldHass) {
       return true;
@@ -234,12 +235,14 @@ export class HuiBadgePicker extends LitElement {
     this._usedEntities = [...usedEntities].filter(
       (eid) =>
         this.hass!.states[eid] &&
-        !isUnavailableState(this.hass!.states[eid].state)
+        this.hass!.states[eid].state !== UNAVAILABLE &&
+        this.hass!.states[eid].state !== UNKNOWN
     );
     this._unusedEntities = [...unusedEntities].filter(
       (eid) =>
         this.hass!.states[eid] &&
-        !isUnavailableState(this.hass!.states[eid].state)
+        this.hass!.states[eid].state !== UNAVAILABLE &&
+        this.hass!.states[eid].state !== UNKNOWN
     );
 
     this._loadBages();
@@ -334,8 +337,8 @@ export class HuiBadgePicker extends LitElement {
     )}`;
   }
 
-  private _handleSearchChange(ev: CustomEvent) {
-    const value = ev.detail.value;
+  private _handleSearchChange(ev: InputEvent) {
+    const value = (ev.target as HaInputSearch).value;
 
     if (!value) {
       // Reset when we no longer filter
@@ -358,7 +361,7 @@ export class HuiBadgePicker extends LitElement {
       }
     }
 
-    this._filter = value;
+    this._filter = value ?? "";
   }
 
   private _badgePicked(ev: Event): void {
@@ -441,11 +444,7 @@ export class HuiBadgePicker extends LitElement {
           .config=${badgeConfig}
         ></div>
         <div class="badge-header">
-          ${customBadge
-            ? `${this.hass!.localize(
-                "ui.panel.lovelace.editor.badge_picker.custom_badge"
-              )}: ${customBadge.name || customBadge.type}`
-            : name}
+          ${customBadge ? customBadge.name || customBadge.type : name}
         </div>
         <div
           class="preview ${classMap({
@@ -467,26 +466,38 @@ export class HuiBadgePicker extends LitElement {
 
   static get styles(): CSSResultGroup {
     return [
+      haStyleScrollbar,
       css`
-        search-input {
-          display: block;
-          --mdc-shape-small: var(--badge-picker-search-shape);
-          margin: var(--badge-picker-search-margin);
+        :host {
+          display: flex;
+          flex-direction: column;
+          min-height: 0;
+        }
+
+        #content {
+          flex: 1;
+          min-height: 0;
+          overflow: auto;
+        }
+
+        ha-input-search {
+          padding: var(--ha-space-3) var(--ha-space-3) 0;
         }
 
         .badges-container-header {
-          font-size: 16px;
-          font-weight: 500;
-          padding: 12px 8px 4px 8px;
+          font-size: var(--ha-font-size-l);
+          font-weight: var(--ha-font-weight-medium);
+          padding: var(--ha-space-3) var(--ha-space-2) var(--ha-space-1)
+            var(--ha-space-2);
           margin: 0;
           grid-column: 1 / -1;
         }
 
         .badges-container {
           display: grid;
-          grid-gap: 8px 8px;
+          gap: var(--ha-space-2);
           grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-          margin-top: 20px;
+          padding: var(--ha-space-3);
         }
 
         .badge {
@@ -494,7 +505,10 @@ export class HuiBadgePicker extends LitElement {
           max-width: 500px;
           display: flex;
           flex-direction: column;
-          border-radius: var(--ha-card-border-radius, 12px);
+          border-radius: var(
+            --ha-card-border-radius,
+            var(--ha-border-radius-lg)
+          );
           background: var(--primary-background-color, #fafafa);
           cursor: pointer;
           position: relative;
@@ -506,23 +520,24 @@ export class HuiBadgePicker extends LitElement {
         .badge-header {
           color: var(--ha-card-header-color, var(--primary-text-color));
           font-family: var(--ha-card-header-font-family, inherit);
-          font-size: 16px;
-          font-weight: bold;
+          font-size: var(--ha-font-size-l);
+          font-weight: var(--ha-font-weight-bold);
           letter-spacing: -0.012em;
-          line-height: 20px;
-          padding: 12px 16px;
+          line-height: var(--ha-line-height-condensed);
+          padding: var(--ha-space-3) var(--ha-space-4);
           display: block;
           text-align: center;
           background: var(
             --ha-card-background,
             var(--card-background-color, white)
           );
-          border-bottom: 1px solid var(--divider-color);
+          border-bottom: var(--ha-card-border-width, 1px) solid
+            var(--divider-color);
         }
 
         .preview {
           pointer-events: none;
-          margin: 20px;
+          margin: var(--ha-space-5);
           flex-grow: 1;
           display: flex;
           align-items: center;
@@ -544,7 +559,10 @@ export class HuiBadgePicker extends LitElement {
           height: 100%;
           z-index: 1;
           box-sizing: border-box;
-          border-radius: var(--ha-card-border-radius, 12px);
+          border-radius: var(
+            --ha-card-border-radius,
+            var(--ha-border-radius-lg)
+          );
         }
 
         .manual {
@@ -554,16 +572,16 @@ export class HuiBadgePicker extends LitElement {
 
         .icon {
           position: absolute;
-          top: 8px;
-          right: 8px;
-          inset-inline-start: 8px;
-          inset-inline-end: 8px;
-          border-radius: 50%;
-          --mdc-icon-size: 16px;
-          line-height: 16px;
+          top: var(--ha-space-2);
+          right: var(--ha-space-2);
+          inset-inline-start: var(--ha-space-2);
+          inset-inline-end: var(--ha-space-2);
+          border-radius: var(--ha-border-radius-circle);
+          --mdc-icon-size: var(--ha-space-4);
+          line-height: var(--ha-space-4);
           box-sizing: border-box;
           color: var(--text-primary-color);
-          padding: 4px;
+          padding: var(--ha-space-1);
         }
         .icon.custom {
           background: var(--warning-color);

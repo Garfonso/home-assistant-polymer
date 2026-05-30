@@ -1,6 +1,6 @@
 import type { PropertyValues } from "lit";
 import { ReactiveElement } from "lit";
-import { property } from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import type { NavigateOptions } from "../../common/navigate";
 import { navigate } from "../../common/navigate";
 import { deepEqual } from "../../common/util/deep-equal";
@@ -22,6 +22,7 @@ declare global {
   }
 }
 
+@customElement("ha-panel-custom")
 export class HaPanelCustom extends ReactiveElement {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
@@ -32,6 +33,8 @@ export class HaPanelCustom extends ReactiveElement {
   @property({ attribute: false }) public panel!: CustomPanelInfo;
 
   private _setProperties?: (props: Record<string, unknown>) => void;
+
+  private _wasDisconnected = false;
 
   protected createRenderRoot() {
     return this;
@@ -50,14 +53,28 @@ export class HaPanelCustom extends ReactiveElement {
       route: this.route,
     });
     this._setProperties = setProperties;
+    this.querySelector("iframe")?.classList.add("loaded");
+  }
+
+  public connectedCallback() {
+    super.connectedCallback();
+    // Only rebuild when reattached after a real disconnect (the 5-minute
+    // suspendWhenHidden timer in partial-panel-resolver). On first mount,
+    // update() handles creation via the panel-changed branch, so calling
+    // _createPanel here too would start a duplicate loadCustomPanel().
+    if (this._wasDisconnected && this.panel) {
+      this._wasDisconnected = false;
+      this._createPanel(this.panel);
+    }
   }
 
   public disconnectedCallback() {
     super.disconnectedCallback();
+    this._wasDisconnected = true;
     this._cleanupPanel();
   }
 
-  protected update(changedProps: PropertyValues) {
+  protected update(changedProps: PropertyValues<this>) {
     super.update(changedProps);
     if (changedProps.has("panel")) {
       // Clean up old things if we had a panel and the new one is different.
@@ -90,6 +107,8 @@ export class HaPanelCustom extends ReactiveElement {
   }
 
   private _createPanel(panel: CustomPanelInfo) {
+    this.style.backgroundColor = "var(--primary-background-color)";
+
     const config = panel.config!._panel_custom;
     const panelUrl = getUrl(config);
 
@@ -123,6 +142,12 @@ export class HaPanelCustom extends ReactiveElement {
     if (!config.embed_iframe) {
       loadCustomPanel(config).then(
         () => {
+          // loadCustomPanel caches its Promise, so a detach/reattach cycle
+          // during load can fan out multiple .then callbacks onto it. Skip
+          // any that arrive after we've already populated or been removed.
+          if (!this.isConnected || this._setProperties) {
+            return;
+          }
           const element = createCustomPanelElement(config);
           this._setProperties = (props) =>
             setCustomPanelProperties(element, props);
@@ -146,11 +171,17 @@ export class HaPanelCustom extends ReactiveElement {
     this.innerHTML = `
       <style>
         iframe {
-          border: 0;
+          border: none;
           width: 100%;
-          height: 100%;
+          height: 100vh;
+          height: 100dvh;
           display: block;
           background-color: var(--primary-background-color);
+          opacity: 0;
+          transition: opacity var(--ha-animation-duration-normal) ease;
+        }
+        iframe.loaded {
+          opacity: 1;
         }
       </style>
       <iframe ${titleAttr}></iframe>`.trim();
@@ -162,5 +193,3 @@ export class HaPanelCustom extends ReactiveElement {
     iframeDoc.close();
   }
 }
-
-customElements.define("ha-panel-custom", HaPanelCustom);

@@ -1,4 +1,3 @@
-import "@material/mwc-button/mwc-button";
 import type { UnsubscribeFunc } from "home-assistant-js-websocket";
 import type { CSSResultGroup, TemplateResult } from "lit";
 import { css, html, LitElement, nothing } from "lit";
@@ -9,10 +8,11 @@ import { fireEvent } from "../../../common/dom/fire_event";
 import { copyToClipboard } from "../../../common/util/copy-clipboard";
 import { subscribePollingCollection } from "../../../common/util/subscribe-polling";
 import "../../../components/ha-alert";
-import "../../../components/ha-card";
-import "../../../components/ha-spinner";
-import { createCloseHeading } from "../../../components/ha-dialog";
+import "../../../components/ha-button";
+import "../../../components/ha-dialog";
+import "../../../components/ha-dialog-footer";
 import "../../../components/ha-metric";
+import "../../../components/ha-spinner";
 import type { HassioStats } from "../../../data/hassio/common";
 import { fetchHassioStats } from "../../../data/hassio/common";
 import type { HassioResolution } from "../../../data/hassio/resolution";
@@ -62,26 +62,30 @@ class DialogSystemInformation extends LitElement {
 
   @state() private _coreStats?: HassioStats;
 
-  @state() private _opened = false;
+  @state() private _open = false;
 
   private _systemHealthSubscription?: Promise<UnsubscribeFunc>;
 
   private _hassIOSubscription?: UnsubscribeFunc;
 
   public showDialog(): void {
-    this._opened = true;
+    this._open = true;
     this.hass!.loadBackendTranslation("system_health");
     this._subscribe();
   }
 
   public closeDialog() {
-    this._opened = false;
+    this._open = false;
+  }
+
+  private _dialogClosed(): void {
+    this._open = false;
     this._unsubscribe();
     fireEvent(this, "dialog-closed", { dialog: this.localName });
   }
 
   private _subscribe(): void {
-    if (isComponentLoaded(this.hass, "system_health")) {
+    if (isComponentLoaded(this.hass.config, "system_health")) {
       this._systemHealthSubscription = subscribeSystemHealthInfo(
         this.hass,
         (info) => {
@@ -94,15 +98,15 @@ class DialogSystemInformation extends LitElement {
       );
     }
 
-    if (isComponentLoaded(this.hass, "hassio")) {
+    if (isComponentLoaded(this.hass.config, "hassio")) {
       this._hassIOSubscription = subscribePollingCollection(
         this.hass,
         async () => {
           this._supervisorStats = await fetchHassioStats(
-            this.hass,
+            this.hass.callWS,
             "supervisor"
           );
-          this._coreStats = await fetchHassioStats(this.hass, "core");
+          this._coreStats = await fetchHassioStats(this.hass.callWS, "core");
         },
         10000
       );
@@ -126,7 +130,7 @@ class DialogSystemInformation extends LitElement {
   }
 
   protected render() {
-    if (!this._opened) {
+    if (!this._open) {
       return nothing;
     }
 
@@ -134,39 +138,40 @@ class DialogSystemInformation extends LitElement {
 
     return html`
       <ha-dialog
-        open
-        @closed=${this.closeDialog}
-        .heading=${createCloseHeading(
-          this.hass,
-          this.hass.localize("ui.panel.config.repairs.system_information")
+        .open=${this._open}
+        header-title=${this.hass.localize(
+          "ui.panel.config.repairs.system_information"
         )}
+        @closed=${this._dialogClosed}
       >
         <div>
           ${this._resolutionInfo
             ? html`${this._resolutionInfo.unhealthy.length
                 ? html`<ha-alert alert-type="error">
                     ${this.hass.localize("ui.dialogs.unhealthy.title")}
-                    <mwc-button
+                    <ha-button
+                      appearance="plain"
+                      size="small"
+                      variant="danger"
                       slot="action"
-                      .label=${this.hass.localize(
-                        "ui.panel.config.common.learn_more"
-                      )}
                       @click=${this._unhealthyDialog}
                     >
-                    </mwc-button
-                  ></ha-alert>`
+                      ${this.hass.localize("ui.panel.config.common.learn_more")}
+                    </ha-button></ha-alert
+                  >`
                 : ""}
               ${this._resolutionInfo.unsupported.length
                 ? html`<ha-alert alert-type="warning">
                     ${this.hass.localize("ui.dialogs.unsupported.title")}
-                    <mwc-button
+                    <ha-button
+                      appearance="plain"
+                      size="small"
+                      variant="warning"
                       slot="action"
-                      .label=${this.hass.localize(
-                        "ui.panel.config.common.learn_more"
-                      )}
                       @click=${this._unsupportedDialog}
                     >
-                    </mwc-button>
+                      ${this.hass.localize("ui.panel.config.common.learn_more")}
+                    </ha-button>
                   </ha-alert>`
                 : ""} `
             : ""}
@@ -222,11 +227,11 @@ class DialogSystemInformation extends LitElement {
                 </div>
               `}
         </div>
-        <mwc-button
-          slot="primaryAction"
-          .label=${this.hass.localize("ui.panel.config.repairs.copy")}
-          @click=${this._copyInfo}
-        ></mwc-button>
+        <ha-dialog-footer slot="footer">
+          <ha-button slot="primaryAction" @click=${this._copyInfo}>
+            ${this.hass.localize("ui.panel.config.repairs.copy")}
+          </ha-button>
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }
@@ -250,7 +255,7 @@ class DialogSystemInformation extends LitElement {
                   rel="noreferrer"
                 >
                   ${this.hass.localize(
-                    `ui.dialogs.unsupported.reason.${reason}`
+                    `ui.dialogs.unsupported.reasons.${reason}`
                   ) || reason}
                 </a>
               </li>
@@ -279,7 +284,7 @@ class DialogSystemInformation extends LitElement {
                   rel="noreferrer"
                 >
                   ${this.hass.localize(
-                    `ui.dialogs.unhealthy.reason.${reason}`
+                    `ui.dialogs.unhealthy.reasons.${reason}`
                   ) || reason}
                 </a>
               </li>
@@ -301,7 +306,7 @@ class DialogSystemInformation extends LitElement {
     } else {
       const domains = Object.keys(this._systemInfo).sort(sortKeys);
       for (const domain of domains) {
-        const domainInfo = this._systemInfo[domain];
+        const domainInfo = this._systemInfo[domain]!;
         const keys: TemplateResult[] = [];
 
         for (const key of Object.keys(domainInfo.info)) {
@@ -361,13 +366,16 @@ class DialogSystemInformation extends LitElement {
               ${!domainInfo.manage_url
                 ? ""
                 : html`
-                    <a class="manage" href=${domainInfo.manage_url}>
-                      <mwc-button>
-                        ${this.hass.localize(
-                          "ui.panel.config.info.system_health.manage"
-                        )}
-                      </mwc-button>
-                    </a>
+                    <ha-button
+                      appearance="plain"
+                      size="small"
+                      class="manage"
+                      href=${domainInfo.manage_url}
+                    >
+                      ${this.hass.localize(
+                        "ui.panel.config.info.system_health.manage"
+                      )}
+                    </ha-button>
                   `}
             </div>
           `);
@@ -387,7 +395,7 @@ class DialogSystemInformation extends LitElement {
     const domainParts: string[] = [];
 
     for (const domain of Object.keys(this._systemInfo!).sort(sortKeys)) {
-      const domainInfo = this._systemInfo![domain];
+      const domainInfo = this._systemInfo![domain]!;
       let first = true;
       const parts = [
         `${
@@ -480,10 +488,6 @@ class DialogSystemInformation extends LitElement {
 
       .error {
         color: var(--error-color);
-      }
-
-      a.manage {
-        text-decoration: none;
       }
     `,
   ];

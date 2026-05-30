@@ -3,7 +3,7 @@ import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import "../../../components/ha-absolute-time";
 import "../../../components/ha-relative-time";
-import { isUnavailableState } from "../../../data/entity";
+import { UNAVAILABLE, UNKNOWN } from "../../../data/entity/entity";
 import type { LightEntity } from "../../../data/light";
 import { SENSOR_DEVICE_CLASS_TIMESTAMP } from "../../../data/sensor";
 import "../../../panels/lovelace/components/hui-timestamp-display";
@@ -24,7 +24,8 @@ export class HaMoreInfoStateHeader extends LitElement {
   private _localizeState(): TemplateResult | string {
     if (
       this.stateObj.attributes.device_class === SENSOR_DEVICE_CLASS_TIMESTAMP &&
-      !isUnavailableState(this.stateObj.state)
+      this.stateObj.state !== UNAVAILABLE &&
+      this.stateObj.state !== UNKNOWN
     ) {
       return html`
         <hui-timestamp-display
@@ -48,22 +49,27 @@ export class HaMoreInfoStateHeader extends LitElement {
 
     return html`
       <p class="state">${stateDisplay}</p>
-      <p class="last-changed" @click=${this._toggleAbsolute}>
-        ${this._absoluteTime
-          ? html`
-              <ha-absolute-time
-                .hass=${this.hass}
-                .datetime=${this.changedOverride ?? this.stateObj.last_changed}
-              ></ha-absolute-time>
-            `
-          : html`
-              <ha-relative-time
-                .hass=${this.hass}
-                .datetime=${this.changedOverride ?? this.stateObj.last_changed}
-                capitalize
-              ></ha-relative-time>
-            `}
-      </p>
+      <div class="time-row">
+        <p class="last-changed" @click=${this._toggleAbsolute}>
+          ${this._absoluteTime
+            ? html`
+                <ha-absolute-time
+                  .hass=${this.hass}
+                  .datetime=${this.changedOverride ??
+                  this.stateObj.last_changed}
+                ></ha-absolute-time>
+              `
+            : html`
+                <ha-relative-time
+                  .hass=${this.hass}
+                  .datetime=${this.changedOverride ??
+                  this.stateObj.last_changed}
+                  capitalize
+                ></ha-relative-time>
+              `}
+        </p>
+        <slot name="after-time"></slot>
+      </div>
     `;
   }
 
@@ -74,18 +80,30 @@ export class HaMoreInfoStateHeader extends LitElement {
     }
     .state {
       font-style: normal;
-      font-weight: 400;
+      font-weight: var(--ha-font-weight-normal);
       font-size: 36px;
-      line-height: 44px;
+      line-height: var(--ha-line-height-condensed);
+    }
+    .time-row {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: var(--ha-space-5);
+    }
+    ::slotted([slot="after-time"]) {
+      position: absolute;
+      inset-inline-end: 0;
+      top: 50%;
+      transform: translateY(-50%);
     }
     .last-changed {
       font-style: normal;
-      font-weight: 500;
-      font-size: 16px;
-      line-height: 24px;
+      font-size: var(--ha-font-size-l);
+      font-weight: var(--ha-font-weight-medium);
+      line-height: var(--ha-line-height-normal);
       letter-spacing: 0.1px;
-      padding: 4px 0;
-      margin-bottom: 20px;
+      padding: var(--ha-space-1) 0;
       cursor: pointer;
       user-select: none;
       -webkit-user-select: none;

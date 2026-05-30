@@ -2,7 +2,7 @@ import type {
   HassEntityAttributeBase,
   HassEntityBase,
 } from "home-assistant-js-websocket";
-import { UNAVAILABLE } from "./entity";
+import { UNAVAILABLE } from "./entity/entity";
 
 export type LawnMowerEntityState =
   | "paused"
@@ -18,11 +18,14 @@ export const enum LawnMowerEntityFeature {
 }
 
 interface LawnMowerEntityAttributes
-  extends HassEntityAttributeBase,
-    Record<string, any> {}
+  extends HassEntityAttributeBase, Record<string, any> {}
 
 export interface LawnMowerEntity extends HassEntityBase {
   attributes: LawnMowerEntityAttributes;
+}
+
+export function isMowing(stateObj: LawnMowerEntity): boolean {
+  return stateObj.state === "mowing";
 }
 
 export function canStartMowing(stateObj: LawnMowerEntity): boolean {

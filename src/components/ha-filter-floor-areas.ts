@@ -1,26 +1,29 @@
-import "@material/mwc-list/mwc-list";
-import "@material/mwc-menu/mwc-menu-surface";
 import { mdiFilterVariantRemove, mdiTextureBox } from "@mdi/js";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { LitElement, css, html, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property, query, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { repeat } from "lit/directives/repeat";
 import memoizeOne from "memoize-one";
 import { fireEvent } from "../common/dom/fire_event";
 import { computeRTL } from "../common/util/compute_rtl";
+import { deepEqual } from "../common/util/deep-equal";
 import { getFloorAreaLookup } from "../data/floor_registry";
 import type { RelatedResult } from "../data/search";
 import { findRelated } from "../data/search";
 import { haStyleScrollbar } from "../resources/styles";
 import type { HomeAssistant } from "../types";
-import "./ha-check-list-item";
+import "./ha-expansion-panel";
 import "./ha-floor-icon";
 import "./ha-icon";
+import "./ha-icon-button";
 import "./ha-svg-icon";
 import "./ha-tree-indicator";
-import "./ha-icon-button";
-import "./ha-expansion-panel";
+import "./item/ha-list-item-option";
+import type { HaListItemOption } from "./item/ha-list-item-option";
+import "./list/ha-list-selectable";
+import type { HaListSelectable } from "./list/ha-list-selectable";
+import type { HaListSelectedDetail } from "./list/types";
 
 @customElement("ha-filter-floor-areas")
 export class HaFilterFloorAreas extends LitElement {
@@ -39,13 +42,16 @@ export class HaFilterFloorAreas extends LitElement {
 
   @state() private _shouldRender = false;
 
-  public willUpdate(properties: PropertyValues) {
+  @query("ha-list-selectable") private _list?: HTMLElement;
+
+  public willUpdate(properties: PropertyValues<this>) {
     super.willUpdate(properties);
 
-    if (!this.hasUpdated) {
-      if (this.value?.floors?.length || this.value?.areas?.length) {
-        this._findRelated();
-      }
+    if (
+      properties.has("value") &&
+      !deepEqual(this.value, properties.get("value"))
+    ) {
+      this._findRelated();
     }
   }
 
@@ -74,26 +80,33 @@ export class HaFilterFloorAreas extends LitElement {
         </div>
         ${this._shouldRender
           ? html`
-              <mwc-list class="ha-scrollbar">
+              <ha-list-selectable
+                class="ha-scrollbar"
+                multi
+                @ha-list-selected=${this._handleListChanged}
+                aria-label=${this.hass.localize(
+                  "ui.panel.config.areas.caption"
+                )}
+              >
                 ${repeat(
                   areas?.floors || [],
                   (floor) => floor.floor_id,
                   (floor) => html`
-                    <ha-check-list-item
+                    <ha-list-item-option
+                      appearance="checkbox"
+                      selection-position="end"
                       .value=${floor.floor_id}
                       .type=${"floors"}
                       .selected=${this.value?.floors?.includes(
                         floor.floor_id
                       ) || false}
-                      graphic="icon"
-                      @request-selected=${this._handleItemClick}
                     >
                       <ha-floor-icon
-                        slot="graphic"
+                        slot="start"
                         .floor=${floor}
                       ></ha-floor-icon>
-                      ${floor.name}
-                    </ha-check-list-item>
+                      <span slot="headline">${floor.name} </span>
+                    </ha-list-item-option>
                     ${repeat(
                       floor.areas,
                       (area, index) =>
@@ -108,7 +121,7 @@ export class HaFilterFloorAreas extends LitElement {
                   (area) => area.area_id,
                   (area) => this._renderArea(area)
                 )}
-              </mwc-list>
+              </ha-list-selectable>
             `
           : nothing}
       </ha-expansion-panel>
@@ -117,80 +130,88 @@ export class HaFilterFloorAreas extends LitElement {
 
   private _renderArea(area, last = false) {
     const hasFloor = !!area.floor_id;
+
     return html`
-      <ha-check-list-item
+      <ha-list-item-option
+        appearance="checkbox"
+        selection-position="end"
         .value=${area.area_id}
         .selected=${this.value?.areas?.includes(area.area_id) || false}
         .type=${"areas"}
-        graphic="icon"
-        @request-selected=${this._handleItemClick}
         class=${classMap({
-          rtl: computeRTL(this.hass),
+          rtl: computeRTL(
+            this.hass.language,
+            this.hass.translationMetadata.translations
+          ),
           floor: hasFloor,
         })}
       >
         ${hasFloor
-          ? html`
-              <ha-tree-indicator
-                .end=${last}
-                slot="graphic"
-              ></ha-tree-indicator>
-            `
+          ? html`<ha-tree-indicator
+              slot="start"
+              .end=${last}
+            ></ha-tree-indicator>`
           : nothing}
         ${area.icon
-          ? html`<ha-icon slot="graphic" .icon=${area.icon}></ha-icon>`
+          ? html`<ha-icon slot="start" .icon=${area.icon}></ha-icon>`
           : html`<ha-svg-icon
-              slot="graphic"
+              slot="start"
               .path=${mdiTextureBox}
             ></ha-svg-icon>`}
-        ${area.name}
-      </ha-check-list-item>
+        <span slot="headline">${area.name}</span>
+      </ha-list-item-option>
     `;
   }
 
-  private _handleItemClick(ev) {
-    ev.stopPropagation();
-
-    const listItem = ev.currentTarget;
-    const type = listItem?.type;
-    const value = listItem?.value;
-
-    if (ev.detail.selected === listItem.selected || !value) {
+  private _handleListChanged(ev: CustomEvent<HaListSelectedDetail>) {
+    if (!ev.detail.diff?.added.size && !ev.detail.diff?.removed.size) {
       return;
     }
 
-    if (this.value?.[type]?.includes(value)) {
-      this.value = {
-        ...this.value,
-        [type]: this.value[type].filter((val) => val !== value),
-      };
-    } else {
+    if (ev.detail.diff?.added.size) {
+      const addedIndex = ev.detail.diff.added.values().next().value;
+      if (addedIndex === undefined) {
+        return;
+      }
+      const addedItem = (ev.currentTarget as HaListSelectable).items[
+        addedIndex
+      ] as HaListItemOption & { type: string; value: string };
+
       if (!this.value) {
         this.value = {};
       }
       this.value = {
         ...this.value,
-        [type]: [...(this.value[type] || []), value],
+        [addedItem.type]: [
+          ...(this.value[addedItem.type] || []),
+          addedItem.value,
+        ],
+      };
+    } else {
+      const removedIndex = ev.detail.diff?.removed.values().next().value;
+      if (removedIndex === undefined) {
+        return;
+      }
+      const removedItem = (ev.currentTarget as HaListSelectable).items[
+        removedIndex
+      ] as HaListItemOption & { type: string; value: string };
+
+      this.value = {
+        ...this.value,
+        [removedItem.type]: this.value![removedItem.type].filter(
+          (val) => val !== removedItem.value
+        ),
       };
     }
-
-    listItem.selected = this.value[type]?.includes(value);
-
-    this._findRelated();
   }
 
-  protected updated(changed) {
+  protected updated(changed: PropertyValues<this>) {
     if (changed.has("expanded") && this.expanded) {
       setTimeout(() => {
         if (!this.expanded) return;
-        this.renderRoot.querySelector("mwc-list")!.style.height =
-          `${this.clientHeight - 49}px`;
+        this._list!.style.height = `${this.clientHeight - 49}px`;
       }, 300);
     }
-  }
-
-  protected firstUpdated() {
-    this._findRelated();
   }
 
   private _expandedWillChange(ev) {
@@ -227,6 +248,7 @@ export class HaFilterFloorAreas extends LitElement {
       !this.value ||
       (!this.value.areas?.length && !this.value.floors?.length)
     ) {
+      this.value = {};
       fireEvent(this, "data-table-filter-changed", {
         value: {},
         items: undefined,
@@ -285,7 +307,7 @@ export class HaFilterFloorAreas extends LitElement {
           height: 0;
         }
         ha-expansion-panel {
-          --ha-card-border-radius: 0;
+          --ha-card-border-radius: var(--ha-border-radius-square);
           --expansion-panel-content-padding: 0;
         }
         .header {
@@ -303,20 +325,16 @@ export class HaFilterFloorAreas extends LitElement {
           margin-inline-end: 0;
           min-width: 16px;
           box-sizing: border-box;
-          border-radius: 50%;
-          font-weight: 400;
-          font-size: 11px;
+          border-radius: var(--ha-border-radius-circle);
+          font-size: var(--ha-font-size-xs);
+          font-weight: var(--ha-font-weight-normal);
           background-color: var(--primary-color);
-          line-height: 16px;
+          line-height: var(--ha-line-height-normal);
           text-align: center;
           padding: 0px 2px;
           color: var(--text-primary-color);
         }
-        ha-check-list-item {
-          --mdc-list-item-graphic-margin: 16px;
-        }
-        .floor {
-          padding-left: 48px;
+        .floor::part(base) {
           padding-inline-start: 48px;
           padding-inline-end: 16px;
         }
@@ -333,9 +351,8 @@ export class HaFilterFloorAreas extends LitElement {
         }
         .subdir {
           margin-inline-end: 8px;
-          opacity: .6;
+          opacity: 0.6;
         }
-        .
       `,
     ];
   }

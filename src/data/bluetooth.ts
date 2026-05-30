@@ -17,6 +17,7 @@ export interface BluetoothDeviceData extends DataTableRowData {
   source: string;
   time: number;
   tx_power: number;
+  raw: string | null;
 }
 
 export interface BluetoothConnectionData extends DataTableRowData {
@@ -24,11 +25,14 @@ export interface BluetoothConnectionData extends DataTableRowData {
   source: string;
 }
 
+export type HaScannerType = "usb" | "uart" | "remote" | "unknown";
+
 export interface BluetoothScannerDetails {
   source: string;
   connectable: boolean;
   name: string;
   adapter: string;
+  scanner_type?: HaScannerType;
 }
 
 export type BluetoothScannersDetails = Record<string, BluetoothScannerDetails>;
@@ -54,6 +58,21 @@ export interface BluetoothAllocationsData {
   free: number;
   allocated: string[];
 }
+
+export type BluetoothScannerMode = "active" | "passive";
+
+export type BluetoothScannerRequestedMode = BluetoothScannerMode | "auto";
+
+export interface BluetoothScannerState {
+  source: string;
+  adapter: string;
+  current_mode: BluetoothScannerMode | null;
+  requested_mode: BluetoothScannerRequestedMode | null;
+}
+
+export const isScannerStateMismatch = (state: BluetoothScannerState): boolean =>
+  state.requested_mode !== "auto" &&
+  state.current_mode !== state.requested_mode;
 
 export const subscribeBluetoothScannersDetailsUpdates = (
   conn: Connection,
@@ -167,6 +186,23 @@ export const subscribeBluetoothConnectionAllocations = (
   }
   return conn.subscribeMessage<BluetoothAllocationsData[]>(
     (bluetoothAllocationsData) => callbackFunction(bluetoothAllocationsData),
+    params
+  );
+};
+
+export const subscribeBluetoothScannerState = (
+  conn: Connection,
+  callbackFunction: (scannerState: BluetoothScannerState) => void,
+  configEntryId?: string
+): Promise<() => Promise<void>> => {
+  const params: { type: string; config_entry_id?: string } = {
+    type: "bluetooth/subscribe_scanner_state",
+  };
+  if (configEntryId) {
+    params.config_entry_id = configEntryId;
+  }
+  return conn.subscribeMessage<BluetoothScannerState>(
+    (scannerState) => callbackFunction(scannerState),
     params
   );
 };

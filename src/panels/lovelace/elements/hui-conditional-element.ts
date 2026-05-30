@@ -1,3 +1,4 @@
+import { customElement } from "lit/decorators";
 import type { HomeAssistant } from "../../../types";
 import { createStyledHuiElement } from "../cards/picture-elements/create-styled-hui-element";
 import {
@@ -11,11 +12,10 @@ import type {
   LovelaceElementConfig,
 } from "./types";
 
+@customElement("hui-conditional-element")
 class HuiConditionalElement extends HTMLElement implements LovelaceElement {
   public static async getConfigElement(): Promise<LovelacePictureElementEditor> {
-    await import(
-      "../editor/config-elements/elements/hui-conditional-element-editor"
-    );
+    await import("../editor/config-elements/elements/hui-conditional-element-editor");
     return document.createElement("hui-conditional-element-editor");
   }
 
@@ -66,7 +66,7 @@ class HuiConditionalElement extends HTMLElement implements LovelaceElement {
       return;
     }
 
-    const visible = checkConditionsMet(this._config.conditions, this._hass);
+    const visible = checkConditionsMet(this._config.conditions, this._hass, {});
 
     this._elements.forEach((el: LovelaceElement) => {
       if (visible) {
@@ -86,5 +86,3 @@ declare global {
     "hui-conditional-element": HuiConditionalElement;
   }
 }
-
-customElements.define("hui-conditional-element", HuiConditionalElement);

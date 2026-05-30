@@ -1,18 +1,13 @@
-import "@material/mwc-button/mwc-button";
-import "@material/mwc-list/mwc-list";
-import "@material/mwc-list/mwc-list-item";
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import "../../../components/ha-alert";
 import "../../../components/ha-card";
-import "../../../components/ha-spinner";
+import "../../../components/ha-button";
 import "../../../components/ha-expansion-panel";
-import "../../../components/ha-formfield";
 import "../../../components/ha-icon-button";
-import "../../../components/ha-radio";
 import "../../../components/ha-settings-row";
-import "../../../components/ha-textfield";
+import "../../../components/input/ha-input";
 import { extractApiErrorMessage } from "../../../data/hassio/common";
 import {
   changeHostOptions,
@@ -59,27 +54,29 @@ export class HassioHostname extends LitElement {
               "ui.panel.config.network.supervisor.hostname.description"
             )}
           </p>
-          <ha-textfield
+          <ha-input
             .disabled=${this._processing}
             .value=${this._hostname}
             @change=${this._handleChange}
             placeholder="homeassistant"
           >
-          </ha-textfield>
+          </ha-input>
         </div>
         <div class="card-actions">
-          <mwc-button @click=${this._save} .disabled=${this._processing}>
-            ${this._processing
-              ? html`<ha-spinner size="small"></ha-spinner>`
-              : this.hass.localize("ui.common.save")}
-          </mwc-button>
+          <ha-button
+            .loading=${this._processing}
+            @click=${this._save}
+            .disabled=${this._processing}
+          >
+            ${this.hass.localize("ui.common.save")}
+          </ha-button>
         </div>
       </ha-card>
     `;
   }
 
-  private _handleChange(ev) {
-    this._hostname = ev.target.value;
+  private _handleChange(ev: InputEvent) {
+    this._hostname = (ev.target as HTMLInputElement).value;
   }
 
   private async _save() {
@@ -99,7 +96,7 @@ export class HassioHostname extends LitElement {
   }
 
   static styles: CSSResultGroup = css`
-    ha-textfield {
+    ha-input {
       width: 100%;
     }
     .card-actions {

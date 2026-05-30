@@ -1,7 +1,14 @@
-import type { PropertyValues } from "lit";
-import { css, html, LitElement } from "lit";
-import { customElement, eventOptions, property, state } from "lit/decorators";
 import type { RenderItemFunction } from "@lit-labs/virtualizer/virtualize";
+import { mdiRestart } from "@mdi/js";
+import type { PropertyValues } from "lit";
+import { css, html, LitElement, nothing } from "lit";
+import {
+  customElement,
+  eventOptions,
+  property,
+  queryAll,
+  state,
+} from "lit/decorators";
 import { isComponentLoaded } from "../../common/config/is_component_loaded";
 import { restoreScroll } from "../../common/decorators/restore-scroll";
 import type {
@@ -11,8 +18,12 @@ import type {
 } from "../../data/history";
 import { loadVirtualizer } from "../../resources/virtualizer";
 import type { HomeAssistant } from "../../types";
+import "../ha-button";
+import "../ha-svg-icon";
 import "./state-history-chart-line";
+import type { StateHistoryChartLine } from "./state-history-chart-line";
 import "./state-history-chart-timeline";
+import type { StateHistoryChartTimeline } from "./state-history-chart-timeline";
 
 const CANVAS_TIMELINE_ROWS_CHUNK = 10; // Split up the canvases to avoid hitting the render limit
 
@@ -29,6 +40,11 @@ const chunkData = (inputArray: any[], chunks: number) =>
 declare global {
   interface HASSDomEvents {
     "y-width-changed": { value: number; chartIndex: number };
+    "chart-zoom-with-index": {
+      start: number;
+      end: number;
+      chartIndex: number;
+    };
   }
 }
 
@@ -42,6 +58,11 @@ export class StateHistoryCharts extends LitElement {
 
   @property({ attribute: false }) public names?: Record<string, string>;
 
+  @property({ attribute: false }) public colors?: Record<
+    string,
+    string | undefined
+  >;
+
   @property({ type: Boolean, reflect: true }) public virtualize = false;
 
   @property({ attribute: false }) public endTime?: Date;
@@ -50,7 +71,7 @@ export class StateHistoryCharts extends LitElement {
 
   @property({ type: Boolean, attribute: "up-to-now" }) public upToNow = false;
 
-  @property({ attribute: false, type: Number }) public hoursToShow?: number;
+  @property({ attribute: false }) public hoursToShow?: number;
 
   @property({ attribute: "show-names", type: Boolean }) public showNames = true;
 
@@ -63,9 +84,9 @@ export class StateHistoryCharts extends LitElement {
   @property({ attribute: "logarithmic-scale", type: Boolean })
   public logarithmicScale = false;
 
-  @property({ attribute: false, type: Number }) public minYAxis?: number;
+  @property({ attribute: false }) public minYAxis?: number;
 
-  @property({ attribute: false, type: Number }) public maxYAxis?: number;
+  @property({ attribute: false }) public maxYAxis?: number;
 
   @property({ attribute: "fit-y-data", type: Boolean }) public fitYData = false;
 
@@ -73,6 +94,9 @@ export class StateHistoryCharts extends LitElement {
 
   @property({ attribute: "expand-legend", type: Boolean })
   public expandLegend?: boolean;
+
+  @property({ attribute: "sync-charts", type: Boolean })
+  public syncCharts = false;
 
   private _computedStartTime!: Date;
 
@@ -84,11 +108,20 @@ export class StateHistoryCharts extends LitElement {
 
   @state() private _chartCount = 0;
 
+  @state() private _hasZoomedCharts = false;
+
+  @queryAll("state-history-chart-line, state-history-chart-timeline")
+  private _chartComponents!: NodeListOf<
+    StateHistoryChartLine | StateHistoryChartTimeline
+  >;
+
+  private _isSyncing = false;
+
   // @ts-ignore
   @restoreScroll(".container") private _savedScrollPos?: number;
 
   protected render() {
-    if (!isComponentLoaded(this.hass, "history")) {
+    if (!isComponentLoaded(this.hass.config, "history")) {
       return html`<div class="info">
         ${this.hass.localize("ui.components.history_charts.history_disabled")}
       </div>`;
@@ -115,19 +148,34 @@ export class StateHistoryCharts extends LitElement {
     // eslint-disable-next-line lit/no-this-assign-in-render
     this._chartCount = combinedItems.length;
 
-    return this.virtualize
-      ? html`<div class="container ha-scrollbar" @scroll=${this._saveScrollPos}>
-          <lit-virtualizer
-            scroller
-            class="ha-scrollbar"
-            .items=${combinedItems}
-            .renderItem=${this._renderHistoryItem}
+    return html`
+      ${this.virtualize
+        ? html`<div
+            class="container ha-scrollbar"
+            @scroll=${this._saveScrollPos}
           >
-          </lit-virtualizer>
-        </div>`
-      : html`${combinedItems.map((item, index) =>
-          this._renderHistoryItem(item, index)
-        )}`;
+            <lit-virtualizer
+              scroller
+              class="ha-scrollbar"
+              .items=${combinedItems}
+              .renderItem=${this._renderHistoryItem}
+            >
+            </lit-virtualizer>
+          </div>`
+        : html`${combinedItems.map((item, index) =>
+            this._renderHistoryItem(item, index)
+          )}`}
+      ${this.syncCharts && this._hasZoomedCharts
+        ? html`<ha-button
+            size="large"
+            class="reset-button"
+            @click=${this._handleGlobalZoomReset}
+          >
+            <ha-svg-icon slot="start" .path=${mdiRestart}></ha-svg-icon>
+            ${this.hass.localize("ui.components.history_charts.zoom_reset")}
+          </ha-button>`
+        : nothing}
+    `;
   }
 
   private _renderHistoryItem: RenderItemFunction<
@@ -149,6 +197,7 @@ export class StateHistoryCharts extends LitElement {
           .endTime=${this._computedEndTime}
           .paddingYAxis=${this._maxYWidth}
           .names=${this.names}
+          .colors=${this.colors}
           .chartIndex=${index}
           .clickForMoreInfo=${this.clickForMoreInfo}
           .logarithmicScale=${this.logarithmicScale}
@@ -156,8 +205,10 @@ export class StateHistoryCharts extends LitElement {
           .maxYAxis=${this.maxYAxis}
           .fitYData=${this.fitYData}
           @y-width-changed=${this._yWidthChanged}
+          @chart-zoom-with-index=${this._handleTimelineSync}
           .height=${this.virtualize ? undefined : this.height}
           .expandLegend=${this.expandLegend}
+          ?hide-reset-button=${this.syncCharts}
         ></state-history-chart-line>
       </div> `;
     }
@@ -175,6 +226,8 @@ export class StateHistoryCharts extends LitElement {
         .chartIndex=${index}
         .clickForMoreInfo=${this.clickForMoreInfo}
         @y-width-changed=${this._yWidthChanged}
+        @chart-zoom-with-index=${this._handleTimelineSync}
+        ?hide-reset-button=${this.syncCharts}
       ></state-history-chart-timeline>
     </div> `;
   };
@@ -264,6 +317,58 @@ export class StateHistoryCharts extends LitElement {
     this._maxYWidth = Math.max(...Object.values(this._childYWidths), 0);
   }
 
+  private _handleTimelineSync(
+    e: CustomEvent<HASSDomEvents["chart-zoom-with-index"]>
+  ) {
+    if (!this.syncCharts || this._isSyncing) {
+      return;
+    }
+
+    const { start, end, chartIndex } = e.detail;
+
+    this._hasZoomedCharts = start !== 0 || end !== 100;
+    this._syncZoomToAllCharts(start, end, chartIndex);
+  }
+
+  private _syncZoomToAllCharts(
+    start: number,
+    end: number,
+    sourceChartIndex?: number
+  ) {
+    this._isSyncing = true;
+
+    requestAnimationFrame(() => {
+      this._chartComponents.forEach((chartComponent, index) => {
+        if (index === sourceChartIndex) {
+          return;
+        }
+
+        if ("zoom" in chartComponent) {
+          chartComponent.zoom(start, end);
+        }
+      });
+
+      this._isSyncing = false;
+    });
+  }
+
+  private _handleGlobalZoomReset() {
+    this._hasZoomedCharts = false;
+    this._isSyncing = true;
+
+    requestAnimationFrame(() => {
+      this._chartComponents.forEach((chartComponent: any) => {
+        const chartBase =
+          chartComponent.renderRoot?.querySelector("ha-chart-base");
+
+        if (chartBase && chartBase.chart) {
+          chartBase.zoom(0, 100);
+        }
+      });
+      this._isSyncing = false;
+    });
+  }
+
   private _isHistoryEmpty(): boolean {
     const historyDataEmpty =
       !this.historyData ||
@@ -303,12 +408,12 @@ export class StateHistoryCharts extends LitElement {
 
     .entry-container {
       width: 100%;
+      overflow: visible;
     }
 
     .entry-container.line {
       flex: 1;
       padding-top: 8px;
-      overflow: hidden;
     }
 
     .entry-container:hover {
@@ -344,6 +449,13 @@ export class StateHistoryCharts extends LitElement {
     state-history-chart-timeline,
     state-history-chart-line {
       width: 100%;
+    }
+    .reset-button {
+      position: fixed;
+      bottom: calc(24px + var(--safe-area-inset-bottom));
+      right: calc(24px + var(--safe-area-inset-bottom));
+      z-index: 1;
+      --ha-button-box-shadow: var(--ha-box-shadow-l);
     }
   `;
 }

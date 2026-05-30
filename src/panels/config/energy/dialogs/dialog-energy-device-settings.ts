@@ -1,26 +1,34 @@
-import "@material/mwc-button/mwc-button";
-import { mdiDevices } from "@mdi/js";
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { fireEvent } from "../../../../common/dom/fire_event";
-import { stopPropagation } from "../../../../common/dom/stop_propagation";
 import "../../../../components/entity/ha-entity-picker";
 import "../../../../components/entity/ha-statistic-picker";
+import "../../../../components/ha-button";
 import "../../../../components/ha-dialog";
-import "../../../../components/ha-formfield";
-import "../../../../components/ha-radio";
+import "../../../../components/ha-dialog-footer";
 import "../../../../components/ha-select";
+import type {
+  HaSelectOption,
+  HaSelectSelectEvent,
+} from "../../../../components/ha-select";
+import "../../../../components/input/ha-input";
+import type { HaInput } from "../../../../components/input/ha-input";
 import type { DeviceConsumptionEnergyPreference } from "../../../../data/energy";
 import { energyStatisticHelpUrl } from "../../../../data/energy";
-import { getStatisticLabel } from "../../../../data/recorder";
+import {
+  getStatisticLabel,
+  getStatisticMetadata,
+  isExternalStatistic,
+} from "../../../../data/recorder";
 import { getSensorDeviceClassConvertibleUnits } from "../../../../data/sensor";
 import type { HassDialog } from "../../../../dialogs/make-dialog-manager";
 import { haStyleDialog } from "../../../../resources/styles";
-import type { HomeAssistant } from "../../../../types";
+import type { HomeAssistant, ValueChangedEvent } from "../../../../types";
 import type { EnergySettingsDeviceDialogParams } from "./show-dialogs-energy";
 
 const energyUnitClasses = ["energy"];
+const powerUnitClasses = ["power"];
 
 @customElement("dialog-energy-device-settings")
 export class DialogEnergyDeviceSettings
@@ -31,13 +39,19 @@ export class DialogEnergyDeviceSettings
 
   @state() private _params?: EnergySettingsDeviceDialogParams;
 
+  @state() private _open = false;
+
   @state() private _device?: DeviceConsumptionEnergyPreference;
 
   @state() private _energy_units?: string[];
 
+  @state() private _power_units?: string[];
+
   @state() private _error?: string;
 
   private _excludeList?: string[];
+
+  private _excludeListPower?: string[];
 
   private _possibleParents: DeviceConsumptionEnergyPreference[] = [];
 
@@ -50,9 +64,17 @@ export class DialogEnergyDeviceSettings
     this._energy_units = (
       await getSensorDeviceClassConvertibleUnits(this.hass, "energy")
     ).units;
+    this._power_units = (
+      await getSensorDeviceClassConvertibleUnits(this.hass, "power")
+    ).units;
     this._excludeList = this._params.device_consumptions
       .map((entry) => entry.stat_consumption)
       .filter((id) => id !== this._device?.stat_consumption);
+    this._excludeListPower = this._params.device_consumptions
+      .map((entry) => entry.stat_rate)
+      .filter((id) => id && id !== this._device?.stat_rate) as string[];
+
+    this._open = true;
   }
 
   private _computePossibleParents() {
@@ -80,12 +102,16 @@ export class DialogEnergyDeviceSettings
   }
 
   public closeDialog() {
+    this._open = false;
+    return true;
+  }
+
+  private _dialogClosed() {
     this._params = undefined;
     this._device = undefined;
     this._error = undefined;
     this._excludeList = undefined;
     fireEvent(this, "dialog-closed", { dialog: this.localName });
-    return true;
   }
 
   protected render() {
@@ -93,27 +119,38 @@ export class DialogEnergyDeviceSettings
       return nothing;
     }
 
-    const pickableUnit = this._energy_units?.join(", ") || "";
+    const includedInDeviceOptions: HaSelectOption[] = this._possibleParents
+      .length
+      ? this._possibleParents.map((stat) => ({
+          value: stat.stat_consumption,
+          label:
+            stat.name ||
+            getStatisticLabel(
+              this.hass,
+              stat.stat_consumption,
+              this._params?.statsMetadata?.[stat.stat_consumption]
+            ),
+        }))
+      : [
+          {
+            value: "-",
+            disabled: true,
+            label: this.hass.localize(
+              "ui.panel.config.energy.device_consumption.dialog.no_upstream_devices"
+            ),
+          },
+        ];
 
     return html`
       <ha-dialog
-        open
-        .heading=${html`<ha-svg-icon
-            .path=${mdiDevices}
-            style="--mdc-icon-size: 32px;"
-          ></ha-svg-icon>
-          ${this.hass.localize(
-            "ui.panel.config.energy.device_consumption.dialog.header"
-          )}`}
-        @closed=${this.closeDialog}
+        .open=${this._open}
+        header-title=${this.hass.localize(
+          "ui.panel.config.energy.device_consumption.dialog.header"
+        )}
+        prevent-scrim-close
+        @closed=${this._dialogClosed}
       >
         ${this._error ? html`<p class="error">${this._error}</p>` : ""}
-        <div>
-          ${this.hass.localize(
-            "ui.panel.config.energy.device_consumption.dialog.selected_stat_intro",
-            { unit: pickableUnit }
-          )}
-        </div>
 
         <ha-statistic-picker
           .hass=${this.hass}
@@ -125,14 +162,32 @@ export class DialogEnergyDeviceSettings
           )}
           .excludeStatistics=${this._excludeList}
           @value-changed=${this._statisticChanged}
-          dialogInitialFocus
+          .helper=${this.hass.localize(
+            "ui.panel.config.energy.device_consumption.dialog.selected_stat_intro",
+            { unit: this._energy_units?.join(", ") || "" }
+          )}
+          autofocus
         ></ha-statistic-picker>
 
-        <ha-textfield
+        <ha-statistic-picker
+          .hass=${this.hass}
+          .includeUnitClass=${powerUnitClasses}
+          .value=${this._device?.stat_rate}
+          .label=${this.hass.localize(
+            "ui.panel.config.energy.device_consumption.dialog.device_consumption_power"
+          )}
+          .excludeStatistics=${this._excludeListPower}
+          @value-changed=${this._powerStatisticChanged}
+          .helper=${this.hass.localize(
+            "ui.panel.config.energy.device_consumption.dialog.selected_stat_intro",
+            { unit: this._power_units?.join(", ") || "" }
+          )}
+        ></ha-statistic-picker>
+
+        <ha-input
           .label=${this.hass.localize(
             "ui.panel.config.energy.device_consumption.dialog.display_name"
           )}
-          type="text"
           .disabled=${!this._device}
           .value=${this._device?.name || ""}
           .placeholder=${this._device
@@ -144,7 +199,7 @@ export class DialogEnergyDeviceSettings
             : ""}
           @input=${this._nameChanged}
         >
-        </ha-textfield>
+        </ha-input>
 
         <ha-select
           .label=${this.hass.localize(
@@ -156,60 +211,72 @@ export class DialogEnergyDeviceSettings
           )}
           .disabled=${!this._device}
           @selected=${this._parentSelected}
-          @closed=${stopPropagation}
-          fixedMenuPosition
-          naturalMenuWidth
           clearable
+          .options=${includedInDeviceOptions}
         >
-          ${!this._possibleParents.length
-            ? html`
-                <mwc-list-item disabled value="-"
-                  >${this.hass.localize(
-                    "ui.panel.config.energy.device_consumption.dialog.no_upstream_devices"
-                  )}</mwc-list-item
-                >
-              `
-            : this._possibleParents.map(
-                (stat) => html`
-                  <mwc-list-item .value=${stat.stat_consumption}
-                    >${stat.name ||
-                    getStatisticLabel(
-                      this.hass,
-                      stat.stat_consumption,
-                      this._params?.statsMetadata?.[stat.stat_consumption]
-                    )}</mwc-list-item
-                  >
-                `
-              )}
         </ha-select>
 
-        <mwc-button @click=${this.closeDialog} slot="secondaryAction">
-          ${this.hass.localize("ui.common.cancel")}
-        </mwc-button>
-        <mwc-button
-          @click=${this._save}
-          .disabled=${!this._device}
-          slot="primaryAction"
-        >
-          ${this.hass.localize("ui.common.save")}
-        </mwc-button>
+        <ha-dialog-footer slot="footer">
+          <ha-button
+            appearance="plain"
+            @click=${this.closeDialog}
+            slot="secondaryAction"
+          >
+            ${this.hass.localize("ui.common.cancel")}
+          </ha-button>
+          <ha-button
+            @click=${this._save}
+            .disabled=${!this._device}
+            slot="primaryAction"
+          >
+            ${this.hass.localize("ui.common.save")}
+          </ha-button>
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }
 
-  private _statisticChanged(ev: CustomEvent<{ value: string }>) {
+  private async _statisticChanged(ev: ValueChangedEvent<string>) {
     if (!ev.detail.value) {
       this._device = undefined;
       return;
     }
     this._device = { stat_consumption: ev.detail.value };
     this._computePossibleParents();
+
+    if (
+      isExternalStatistic(ev.detail.value) &&
+      this._params?.statsMetadata &&
+      !(ev.detail.value in this._params.statsMetadata)
+    ) {
+      const [metadata] = await getStatisticMetadata(this.hass, [
+        ev.detail.value,
+      ]);
+      if (metadata) {
+        this._params.statsMetadata[ev.detail.value] = metadata;
+        this.requestUpdate("_params");
+      }
+    }
   }
 
-  private _nameChanged(ev) {
+  private _powerStatisticChanged(ev: ValueChangedEvent<string>) {
+    if (!this._device) {
+      return;
+    }
+    const newDevice = {
+      ...this._device,
+      stat_rate: ev.detail.value,
+    } as DeviceConsumptionEnergyPreference;
+    if (!newDevice.stat_rate) {
+      delete newDevice.stat_rate;
+    }
+    this._device = newDevice;
+  }
+
+  private _nameChanged(ev: InputEvent) {
     const newDevice = {
       ...this._device!,
-      name: ev.target!.value,
+      name: (ev.target as HaInput).value,
     } as DeviceConsumptionEnergyPreference;
     if (!newDevice.name) {
       delete newDevice.name;
@@ -217,10 +284,10 @@ export class DialogEnergyDeviceSettings
     this._device = newDevice;
   }
 
-  private _parentSelected(ev) {
+  private _parentSelected(ev: HaSelectSelectEvent<string, true>) {
     const newDevice = {
       ...this._device!,
-      included_in_stat: ev.target!.value,
+      included_in_stat: ev.detail.value,
     } as DeviceConsumptionEnergyPreference;
     if (!newDevice.included_in_stat) {
       delete newDevice.included_in_stat;
@@ -242,14 +309,20 @@ export class DialogEnergyDeviceSettings
       haStyleDialog,
       css`
         ha-statistic-picker {
+          display: block;
+          margin-bottom: var(--ha-space-2);
+        }
+        ha-statistic-picker {
           width: 100%;
         }
         ha-select {
-          margin-top: 16px;
+          display: block;
+          margin-top: var(--ha-space-4);
           width: 100%;
         }
-        ha-textfield {
-          margin-top: 16px;
+        ha-input {
+          margin-top: var(--ha-space-4);
+          --ha-input-padding-bottom: 0;
           width: 100%;
         }
       `,

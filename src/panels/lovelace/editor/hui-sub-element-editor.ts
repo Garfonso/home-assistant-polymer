@@ -12,8 +12,10 @@ import "./feature-editor/hui-card-feature-element-editor";
 import "./header-footer-editor/hui-header-footer-element-editor";
 import "./heading-badge-editor/hui-heading-badge-element-editor";
 import type { HuiElementEditor } from "./hui-element-editor";
+import "./hui-form-element-editor";
 import "./picture-element-editor/hui-picture-element-element-editor";
 import type { GUIModeChangedEvent, SubElementEditorConfig } from "./types";
+import type { LovelaceConfigForm } from "../types";
 
 declare global {
   interface HASSDomEvents {
@@ -26,6 +28,8 @@ export class HuiSubElementEditor extends LitElement {
   public hass!: HomeAssistant;
 
   @property({ attribute: false }) public config!: SubElementEditorConfig;
+
+  @property({ attribute: false }) public form?: LovelaceConfigForm;
 
   @state() private _guiModeAvailable = true;
 
@@ -81,6 +85,18 @@ export class HuiSubElementEditor extends LitElement {
   private _renderEditor() {
     const type = this.config.type;
 
+    if (this.form) {
+      return html`
+        <hui-form-element-editor
+          class="editor"
+          .hass=${this.hass}
+          .value=${this.config.elementConfig}
+          .form=${this.form}
+          .context=${this.config.context}
+          @config-changed=${this._handleConfigChanged}
+        ></hui-form-element-editor>
+      `;
+    }
     switch (type) {
       case "row":
         return html`
@@ -170,7 +186,7 @@ export class HuiSubElementEditor extends LitElement {
     .back-title {
       display: flex;
       align-items: center;
-      font-size: 18px;
+      font-size: var(--ha-font-size-l);
     }
   `;
 }

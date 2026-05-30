@@ -9,13 +9,8 @@ import secondsToDuration from "../../common/datetime/seconds_to_duration";
 import { computeStateDomain } from "../../common/entity/compute_state_domain";
 import { computeStateName } from "../../common/entity/compute_state_name";
 import { FIXED_DOMAIN_STATES } from "../../common/entity/get_states";
-import {
-  formatNumber,
-  getNumberFormatOptions,
-  isNumericState,
-} from "../../common/number/format_number";
-import { isUnavailableState, UNAVAILABLE, UNKNOWN } from "../../data/entity";
-import type { EntityRegistryDisplayEntry } from "../../data/entity_registry";
+import { UNAVAILABLE, UNKNOWN } from "../../data/entity/entity";
+import type { EntityRegistryDisplayEntry } from "../../data/entity/entity_registry";
 import { timerTimeRemaining } from "../../data/timer";
 import type { HomeAssistant } from "../../types";
 import "../ha-label-badge";
@@ -135,7 +130,6 @@ export class HaStateLabelBadge extends LitElement {
           ? html`<ha-state-icon
               .icon=${this.icon}
               .stateObj=${entityState}
-              .hass=${this.hass}
             ></ha-state-icon>`
           : ""}
         ${value && !image && !showIcon
@@ -147,7 +141,7 @@ export class HaStateLabelBadge extends LitElement {
     `;
   }
 
-  protected updated(changedProperties: PropertyValues): void {
+  protected updated(changedProperties: PropertyValues<this>): void {
     super.updated(changedProperties);
 
     if (this._connected && changedProperties.has("state")) {
@@ -176,16 +170,12 @@ export class HaStateLabelBadge extends LitElement {
         }
       // eslint-disable-next-line: disable=no-fallthrough
       default:
-        return entityState.state === UNKNOWN ||
-          entityState.state === UNAVAILABLE
+        return entityState.state === UNAVAILABLE ||
+          entityState.state === UNKNOWN
           ? "—"
-          : isNumericState(entityState)
-            ? formatNumber(
-                entityState.state,
-                this.hass!.locale,
-                getNumberFormatOptions(entityState, entry)
-              )
-            : this.hass!.formatEntityState(entityState);
+          : this.hass!.formatEntityStateToParts(entityState).find(
+              (part) => part.type === "value"
+            )?.value;
     }
   }
 
@@ -220,7 +210,7 @@ export class HaStateLabelBadge extends LitElement {
     _timerTimeRemaining = 0
   ) {
     // For unavailable states or certain domains, use a special translation that is truncated to fit within the badge label
-    if (isUnavailableState(entityState.state)) {
+    if (entityState.state === UNAVAILABLE || entityState.state === UNKNOWN) {
       return this.hass!.localize(`state_badge.default.${entityState.state}`);
     }
     const domainStateKey = getTruncatedKey(domain, entityState.state);
@@ -234,7 +224,11 @@ export class HaStateLabelBadge extends LitElement {
     if (domain === "timer") {
       return secondsToDuration(_timerTimeRemaining);
     }
-    return entityState.attributes.unit_of_measurement || null;
+    return (
+      this.hass!.formatEntityStateToParts(entityState).find(
+        (part) => part.type === "unit"
+      )?.value || null
+    );
   }
 
   private _clearInterval() {
@@ -267,7 +261,7 @@ export class HaStateLabelBadge extends LitElement {
       cursor: pointer;
     }
     .big {
-      font-size: 70%;
+      font-size: var(--ha-font-size-xs);
     }
     ha-label-badge {
       --ha-label-badge-color: var(--label-badge-red);

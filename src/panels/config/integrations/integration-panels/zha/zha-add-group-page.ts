@@ -1,19 +1,20 @@
-import "@material/mwc-button";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state, query } from "lit/decorators";
 import type { HASSDomEvent } from "../../../../../common/dom/fire_event";
 import { navigate } from "../../../../../common/navigate";
-import type { SelectionChangedEvent } from "../../../../../components/data-table/ha-data-table";
-import "../../../../../components/ha-spinner";
+import "../../../../../components/ha-button";
+import "../../../../../components/ha-card";
+import "../../../../../components/input/ha-input";
 import type { ZHADeviceEndpoint, ZHAGroup } from "../../../../../data/zha";
 import { addGroup, fetchGroupableDevices } from "../../../../../data/zha";
 import "../../../../../layouts/hass-subpage";
 import type { HomeAssistant } from "../../../../../types";
-import "../../../ha-config-section";
-import "../../../../../components/ha-textfield";
-import "./zha-device-endpoint-data-table";
-import type { ZHADeviceEndpointDataTable } from "./zha-device-endpoint-data-table";
+import "./zha-device-endpoint-list";
+import type {
+  DeviceEndpointSelectionChangedEvent,
+  ZHADeviceEndpointList,
+} from "./zha-device-endpoint-list";
 
 @customElement("zha-add-group-page")
 export class ZHAAddGroupPage extends LitElement {
@@ -21,7 +22,7 @@ export class ZHAAddGroupPage extends LitElement {
 
   @property({ type: Boolean }) public narrow = false;
 
-  @property({ attribute: false, type: Array })
+  @property({ attribute: false })
   public deviceEndpoints: ZHADeviceEndpoint[] = [];
 
   @state() private _processingAdd = false;
@@ -30,8 +31,8 @@ export class ZHAAddGroupPage extends LitElement {
 
   @state() private _groupId?: string;
 
-  @query("zha-device-endpoint-data-table", true)
-  private _zhaDevicesDataTable!: ZHADeviceEndpointDataTable;
+  @query("zha-device-endpoint-list", true)
+  private _zhaDeviceEndpointList!: ZHADeviceEndpointList;
 
   private _firstUpdatedCalled = false;
 
@@ -44,7 +45,7 @@ export class ZHAAddGroupPage extends LitElement {
     }
   }
 
-  protected firstUpdated(changedProperties: PropertyValues): void {
+  protected firstUpdated(changedProperties: PropertyValues<this>): void {
     super.firstUpdated(changedProperties);
     if (this.hass) {
       this._fetchData();
@@ -58,66 +59,67 @@ export class ZHAAddGroupPage extends LitElement {
         .hass=${this.hass}
         .narrow=${this.narrow}
         .header=${this.hass.localize("ui.panel.config.zha.groups.create_group")}
+        back-path="/config/zha/groups"
       >
-        <ha-config-section .isWide=${!this.narrow}>
-          <p slot="introduction">
-            ${this.hass.localize(
-              "ui.panel.config.zha.groups.create_group_details"
-            )}
-          </p>
-          <ha-textfield
-            type="string"
-            .value=${this._groupName}
-            @change=${this._handleNameChange}
-            .placeholder=${this.hass!.localize(
-              "ui.panel.config.zha.groups.group_name_placeholder"
-            )}
-          ></ha-textfield>
+        <div class="container">
+          <ha-card class="details-card">
+            <div class="card-header">
+              ${this.hass.localize("ui.panel.config.zha.groups.group_info")}
+            </div>
+            <div class="card-content">
+              <ha-input
+                type="text"
+                .value=${this._groupName}
+                @change=${this._handleNameChange}
+                .placeholder=${this.hass!.localize(
+                  "ui.panel.config.zha.groups.group_name_placeholder"
+                )}
+              ></ha-input>
 
-          <ha-textfield
-            type="number"
-            .value=${this._groupId}
-            @change=${this._handleGroupIdChange}
-            .placeholder=${this.hass!.localize(
-              "ui.panel.config.zha.groups.group_id_placeholder"
-            )}
-          ></ha-textfield>
+              <ha-input
+                type="number"
+                .value=${this._groupId}
+                @change=${this._handleGroupIdChange}
+                .placeholder=${this.hass!.localize(
+                  "ui.panel.config.zha.groups.group_id_placeholder"
+                )}
+              ></ha-input>
+            </div>
+          </ha-card>
 
-          <div class="header">
-            ${this.hass.localize("ui.panel.config.zha.groups.add_members")}
-          </div>
+          <section>
+            <h2>
+              ${this.hass.localize("ui.panel.config.zha.groups.add_members")}
+            </h2>
 
-          <zha-device-endpoint-data-table
-            .hass=${this.hass}
-            .deviceEndpoints=${this.deviceEndpoints}
-            .narrow=${this.narrow}
-            selectable
-            @selection-changed=${this._handleAddSelectionChanged}
-          >
-          </zha-device-endpoint-data-table>
-
-          <div class="buttons">
-            <mwc-button
-              .disabled=${!this._groupName ||
-              this._groupName === "" ||
-              this._processingAdd}
-              @click=${this._createGroup}
-              class="button"
+            <zha-device-endpoint-list
+              scrollable
+              show-device-link
+              .deviceEndpoints=${this.deviceEndpoints}
+              .narrow=${this.narrow}
+              .emptyText=${this.hass.localize(
+                "ui.panel.config.zha.groups.no_devices_to_add"
+              )}
+              selectable
+              @selection-changed=${this._handleAddSelectionChanged}
             >
-              ${this._processingAdd
-                ? html`<ha-spinner
-                    size="small"
-                    .ariaLabel=${this.hass!.localize(
-                      "ui.panel.config.zha.groups.creating_group"
-                    )}
-                  ></ha-spinner>`
-                : ""}
-              ${this.hass!.localize(
-                "ui.panel.config.zha.groups.create"
-              )}</mwc-button
-            >
-          </div>
-        </ha-config-section>
+            </zha-device-endpoint-list>
+
+            <div class="buttons">
+              <ha-button
+                .disabled=${!this._groupName ||
+                this._groupName === "" ||
+                this._processingAdd}
+                @click=${this._createGroup}
+                .loading=${this._processingAdd}
+              >
+                ${this.hass!.localize(
+                  "ui.panel.config.zha.groups.create"
+                )}</ha-button
+              >
+            </div>
+          </section>
+        </div>
       </hass-subpage>
     `;
   }
@@ -127,7 +129,7 @@ export class ZHAAddGroupPage extends LitElement {
   }
 
   private _handleAddSelectionChanged(
-    ev: HASSDomEvent<SelectionChangedEvent>
+    ev: HASSDomEvent<DeviceEndpointSelectionChangedEvent>
   ): void {
     this._selectedDevicesToAdd = ev.detail.value;
   }
@@ -150,46 +152,69 @@ export class ZHAAddGroupPage extends LitElement {
     this._selectedDevicesToAdd = [];
     this._processingAdd = false;
     this._groupName = "";
-    this._zhaDevicesDataTable.clearSelection();
+    this._zhaDeviceEndpointList.clearSelection();
     navigate(`/config/zha/group/${group.group_id}`, { replace: true });
   }
 
-  private _handleGroupIdChange(event) {
-    this._groupId = event.target.value;
+  private _handleGroupIdChange(event: InputEvent) {
+    this._groupId = (event.target as HTMLInputElement).value;
   }
 
-  private _handleNameChange(event) {
-    this._groupName = event.target.value || "";
+  private _handleNameChange(event: InputEvent) {
+    this._groupName = (event.target as HTMLInputElement).value || "";
   }
 
   static get styles(): CSSResultGroup {
     return [
       css`
-        .header {
-          font-family: var(--paper-font-display1_-_font-family);
-          -webkit-font-smoothing: var(
-            --paper-font-display1_-_-webkit-font-smoothing
-          );
-          font-size: var(--paper-font-display1_-_font-size);
-          font-weight: var(--paper-font-display1_-_font-weight);
-          letter-spacing: var(--paper-font-display1_-_letter-spacing);
-          line-height: var(--paper-font-display1_-_line-height);
-          opacity: var(--dark-primary-opacity);
+        .container {
+          box-sizing: border-box;
+          max-width: 720px;
+          margin: 0 auto;
+          padding: var(--ha-space-4) var(--ha-space-4)
+            calc(var(--ha-space-20) + var(--safe-area-inset-bottom, 0px));
         }
 
-        .button {
-          float: right;
+        .card-header {
+          padding: var(--ha-space-4) var(--ha-space-4) 0;
+          font-size: var(--ha-font-size-xl);
+          font-weight: var(--ha-font-weight-medium);
+          line-height: var(--ha-line-height-condensed);
         }
 
-        ha-config-section *:last-child {
-          padding-bottom: 24px;
+        .card-content {
+          display: grid;
+          gap: var(--ha-space-4);
+          padding: var(--ha-space-4);
         }
+
+        section {
+          margin-top: var(--ha-space-8);
+        }
+
+        h2 {
+          margin: 0 0 var(--ha-space-3);
+          font-family: var(--ha-font-family-body);
+          font-size: var(--ha-font-size-2xl);
+          font-weight: var(--ha-font-weight-medium);
+          line-height: var(--ha-line-height-condensed);
+        }
+
+        zha-device-endpoint-list {
+          display: block;
+          min-width: 0;
+        }
+
         .buttons {
-          align-items: flex-end;
-          padding: 8px;
+          display: flex;
+          justify-content: flex-end;
+          padding: var(--ha-space-4) 0 0;
         }
-        .buttons .warning {
-          --mdc-theme-primary: var(--error-color);
+
+        @media (max-width: 600px) {
+          .container {
+            padding-inline: var(--ha-space-2);
+          }
         }
       `,
     ];

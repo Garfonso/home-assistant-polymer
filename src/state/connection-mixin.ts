@@ -8,12 +8,16 @@ import {
   subscribeServices,
 } from "home-assistant-js-websocket";
 import { fireEvent } from "../common/dom/fire_event";
-import { subscribeAreaRegistry } from "../data/area_registry";
+import { computeStateName } from "../common/entity/compute_state_name";
+import { promiseTimeout } from "../common/util/promise-timeout";
+import { subscribeAreaRegistry } from "../data/area/area_registry";
 import { broadcastConnectionStatus } from "../data/connection-status";
-import { subscribeDeviceRegistry } from "../data/device_registry";
-import { subscribeFrontendUserData } from "../data/frontend";
+import { subscribeDeviceRegistry } from "../data/device/device_registry";
+import {
+  subscribeFrontendSystemData,
+  subscribeFrontendUserData,
+} from "../data/frontend";
 import { forwardHaptic } from "../data/haptics";
-import { DEFAULT_PANEL } from "../data/panel";
 import { serviceCallWillDisconnect } from "../data/service";
 import {
   DateFormat,
@@ -22,17 +26,22 @@ import {
   TimeFormat,
   TimeZone,
 } from "../data/translation";
+import { subscribeEntityRegistryDisplay } from "../data/ws-entity_registry_display";
+import { subscribeFloorRegistry } from "../data/ws-floor_registry";
 import { subscribePanels } from "../data/ws-panels";
 import { translationMetadata } from "../resources/translations-metadata";
 import type { Constructor, HomeAssistant, ServiceCallResponse } from "../types";
+import {
+  addBrandsAuth,
+  clearBrandsTokenRefresh,
+  fetchAndScheduleBrandsAccessToken,
+} from "../util/brands-url";
 import { getLocalLanguage } from "../util/common-translation";
 import { fetchWithAuth } from "../util/fetch-with-auth";
 import { getState } from "../util/ha-pref-storage";
 import hassCallApi, { hassCallApiRaw } from "../util/hass-call-api";
+import { callWS, setDebugConnection } from "../util/websocket";
 import type { HassBaseEl } from "./hass-base-mixin";
-import { promiseTimeout } from "../common/util/promise-timeout";
-import { subscribeFloorRegistry } from "../data/ws-floor_registry";
-import { subscribeEntityRegistryDisplay } from "../data/ws-entity_registry_display";
 
 export const connectionMixin = <T extends Constructor<HassBaseEl>>(
   superClass: T
@@ -58,8 +67,9 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
         panels: null as any,
         services: null as any,
         user: null as any,
+        userData: undefined,
+        systemData: undefined,
         panelUrl: (this as any)._panelUrl,
-        defaultPanel: DEFAULT_PANEL,
         language,
         selectedLanguage: null,
         locale: {
@@ -70,17 +80,19 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
           time_zone: TimeZone.local,
           first_weekday: FirstWeekday.language,
         },
-        resources: null as any,
         localize: () => "",
-
         translationMetadata,
+        kioskMode: false,
         dockedSidebar: "docked",
         vibrate: true,
-        debugConnection: false,
+        debugConnection: __DEV__,
         suspendWhenHidden: true,
         enableShortcuts: true,
-        moreInfoEntityId: null,
-        hassUrl: (path = "") => new URL(path, auth.data.hassUrl).toString(),
+        hassUrl: (path = "") =>
+          addBrandsAuth(
+            new URL(path, auth.data.hassUrl).toString(),
+            auth.data.hassUrl
+          ),
         callService: async (
           domain,
           service,
@@ -89,7 +101,7 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
           notifyOnError = true,
           returnResponse = false
         ) => {
-          if (__DEV__ || this.hass?.debugConnection) {
+          if (this.hass?.debugConnection) {
             // eslint-disable-next-line no-console
             console.log(
               "Calling service",
@@ -115,7 +127,7 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
             ) {
               return { context: { id: "" } };
             }
-            if (__DEV__ || this.hass?.debugConnection) {
+            if (this.hass?.debugConnection) {
               // eslint-disable-next-line no-console
               console.error(
                 "Error calling service",
@@ -126,12 +138,12 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
               );
             }
             if (notifyOnError) {
-              forwardHaptic("failure");
-              const lokalize = await this.hass!.loadBackendTranslation(
+              forwardHaptic(this, "failure");
+              const localize = await this.hass!.loadBackendTranslation(
                 "exceptions",
                 err.translation_domain
               );
-              const localizedErrorMessage = lokalize(
+              const localizedErrorMessage = localize(
                 `component.${err.translation_domain}.exceptions.${err.translation_key}.message`,
                 err.translation_placeholders
               );
@@ -167,31 +179,14 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
         ) => fetchWithAuth(auth, `${auth.data.hassUrl}${path}`, init),
         // For messages that do not get a response
         sendWS: (msg) => {
-          if (__DEV__ || this.hass?.debugConnection) {
+          if (this.hass?.debugConnection) {
             // eslint-disable-next-line no-console
             console.log("Sending", msg);
           }
           conn.sendMessage(msg);
         },
         // For messages that expect a response
-        callWS: <R>(msg) => {
-          if (__DEV__ || this.hass?.debugConnection) {
-            // eslint-disable-next-line no-console
-            console.log("Sending", msg);
-          }
-
-          const resp = conn.sendMessagePromise<R>(msg);
-
-          if (__DEV__ || this.hass?.debugConnection) {
-            resp.then(
-              // eslint-disable-next-line no-console
-              (result) => console.log("Received", result),
-              // eslint-disable-next-line no-console
-              (err) => console.error("Error", err)
-            );
-          }
-          return resp;
-        },
+        callWS: <R>(msg) => callWS<R>(conn, msg),
         loadBackendTranslation: (category, integration?, configFlow?) =>
           // @ts-ignore
           this._loadHassTranslations(
@@ -205,12 +200,28 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
           this._loadFragmentTranslations(this.hass?.language, fragment),
         formatEntityState: (stateObj, state) =>
           (state != null ? state : stateObj.state) ?? "",
+        formatEntityStateToParts: (stateObj, state) => [
+          {
+            type: "value",
+            value: (state != null ? state : stateObj.state) ?? "",
+          },
+        ],
         formatEntityAttributeName: (_stateObj, attribute) => attribute,
         formatEntityAttributeValue: (stateObj, attribute, value) =>
           value != null ? value : (stateObj.attributes[attribute] ?? ""),
+        formatEntityAttributeValueToParts: (stateObj, attribute, value) => [
+          {
+            type: "value",
+            value:
+              value != null ? value : (stateObj.attributes[attribute] ?? ""),
+          },
+        ],
+        formatEntityName: (stateObj) => computeStateName(stateObj),
         ...getState(),
         ...this._pendingHass,
       };
+
+      setDebugConnection(this.hass.debugConnection);
 
       this.hassConnected();
     }
@@ -280,11 +291,30 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
       subscribeConfig(conn, (config) => this._updateHass({ config }));
       subscribeServices(conn, (services) => this._updateHass({ services }));
       subscribePanels(conn, (panels) => this._updateHass({ panels }));
-      subscribeFrontendUserData(conn, "core", (userData) =>
-        this._updateHass({ userData })
-      );
-
+      // Catch errors to userData and systemData subscription (e.g. if the
+      // backend isn't up to date) and set to null so frontend can continue
+      subscribeFrontendUserData(conn, "core", ({ value: userData }) =>
+        this._updateHass({ userData: userData || {} })
+      ).catch(() => {
+        // eslint-disable-next-line no-console
+        console.error(
+          "Failed to subscribe to user data, setting to empty object"
+        );
+        this._updateHass({ userData: {} });
+      });
+      subscribeFrontendSystemData(conn, "core", ({ value: systemData }) =>
+        this._updateHass({ systemData: systemData || {} })
+      ).catch(() => {
+        // eslint-disable-next-line no-console
+        console.error(
+          "Failed to subscribe to system data, setting to empty object"
+        );
+        this._updateHass({ systemData: {} });
+      });
       clearInterval(this.__backendPingInterval);
+
+      this._refreshBrandsAccessToken();
+
       this.__backendPingInterval = setInterval(() => {
         if (this.hass?.connected) {
           // If the backend is busy, or the connection is latent,
@@ -309,6 +339,8 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
       this._updateHass({ connected: true });
       broadcastConnectionStatus("connected");
 
+      this._refreshBrandsAccessToken();
+
       // on reconnect always fetch config as we might miss an update while we were disconnected
       // @ts-ignore
       this.hass!.callWS({ type: "get_config" }).then((config: HassConfig) => {
@@ -326,5 +358,17 @@ export const connectionMixin = <T extends Constructor<HassBaseEl>>(
       this._updateHass({ connected: false });
       broadcastConnectionStatus("disconnected");
       clearInterval(this.__backendPingInterval);
+      clearBrandsTokenRefresh();
+    }
+
+    private async _refreshBrandsAccessToken() {
+      // The brands WS handler may not be registered yet after a server restart;
+      // fetchAndScheduleBrandsAccessToken retries internally. If the token
+      // changed, re-render so any brand <img> elements that rendered against a
+      // different (or missing) token recompute their src and re-fetch.
+      const changed = await fetchAndScheduleBrandsAccessToken(this.hass!);
+      if (changed) {
+        this._updateHass({});
+      }
     }
   };

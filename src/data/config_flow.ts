@@ -1,7 +1,5 @@
 import type { Connection } from "home-assistant-js-websocket";
-import { getCollection } from "home-assistant-js-websocket";
 import type { LocalizeFunc } from "../common/translations/localize";
-import { debounce } from "../common/util/debounce";
 import type { HomeAssistant } from "../types";
 import type {
   DataEntryFlowProgress,
@@ -14,6 +12,7 @@ export const DISCOVERY_SOURCES = [
   "bluetooth",
   "dhcp",
   "discovery",
+  "esphome",
   "hardware",
   "hassio",
   "homekit",
@@ -41,7 +40,6 @@ export const createConfigFlow = (
     "config/config_entries/flow",
     {
       handler,
-      show_advanced_options: Boolean(hass.userData?.showAdvanced),
       entry_id,
     },
     HEADERS
@@ -93,31 +91,20 @@ export const fetchConfigFlowInProgress = (
     type: "config_entries/flow/progress",
   });
 
-const subscribeConfigFlowInProgressUpdates = (conn: Connection, store) =>
-  conn.subscribeEvents(
-    debounce(
-      () =>
-        fetchConfigFlowInProgress(conn).then((flows: DataEntryFlowProgress[]) =>
-          store.setState(flows, true)
-        ),
-      500,
-      true
-    ),
-    "config_entry_discovered"
-  );
-
-export const getConfigFlowInProgressCollection = (conn: Connection) =>
-  getCollection<DataEntryFlowProgress[]>(
-    conn,
-    "_configFlowProgress",
-    fetchConfigFlowInProgress,
-    subscribeConfigFlowInProgressUpdates
-  );
+export interface ConfigFlowInProgressMessage {
+  type: null | "added" | "removed";
+  flow_id: string;
+  flow: DataEntryFlowProgress;
+}
 
 export const subscribeConfigFlowInProgress = (
   hass: HomeAssistant,
-  onChange: (flows: DataEntryFlowProgress[]) => void
-) => getConfigFlowInProgressCollection(hass.connection).subscribe(onChange);
+  onChange: (update: ConfigFlowInProgressMessage[]) => void
+) =>
+  hass.connection.subscribeMessage<ConfigFlowInProgressMessage[]>(
+    (message) => onChange(message),
+    { type: "config_entries/flow/subscribe" }
+  );
 
 export const localizeConfigFlowTitle = (
   localize: LocalizeFunc,

@@ -1,12 +1,10 @@
-import { consume } from "@lit-labs/context";
 import type { HassEntities } from "home-assistant-js-websocket";
 import type { PropertyValues } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import { customElement, property } from "lit/decorators";
 import memoizeOne from "memoize-one";
 import { computeStateDomain } from "../../../common/entity/compute_state_domain";
 import { debounce } from "../../../common/util/debounce";
-import { fullEntitiesContext } from "../../../data/context";
-import type { EntityRegistryEntry } from "../../../data/entity_registry";
+import type { CloudStatus } from "../../../data/cloud";
 import type { ScriptEntity } from "../../../data/script";
 import type { RouterOptions } from "../../../layouts/hass-router-page";
 import { HassRouterPage } from "../../../layouts/hass-router-page";
@@ -18,7 +16,7 @@ const equal = (a: ScriptEntity[], b: ScriptEntity[]): boolean => {
   if (a.length !== b.length) {
     return false;
   }
-  return a.every((enityA, index) => enityA === b[index]);
+  return a.every((entityA, index) => entityA === b[index]);
 };
 
 @customElement("ha-config-script")
@@ -29,13 +27,9 @@ class HaConfigScript extends HassRouterPage {
 
   @property({ attribute: "is-wide", type: Boolean }) public isWide = false;
 
-  @property({ attribute: false }) public showAdvanced = false;
+  @property({ attribute: false }) public cloudStatus?: CloudStatus;
 
   @property({ attribute: false }) public scripts: ScriptEntity[] = [];
-
-  @state()
-  @consume({ context: fullEntitiesContext, subscribe: true })
-  _entityReg!: EntityRegistryEntry[];
 
   protected routerOptions: RouterOptions = {
     defaultPage: "dashboard",
@@ -72,7 +66,7 @@ class HaConfigScript extends HassRouterPage {
       ) as ScriptEntity[]
   );
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
     this.hass.loadBackendTranslation("device_automation");
   }
@@ -82,8 +76,7 @@ class HaConfigScript extends HassRouterPage {
     pageEl.narrow = this.narrow;
     pageEl.isWide = this.isWide;
     pageEl.route = this.routeTail;
-    pageEl.showAdvanced = this.showAdvanced;
-    pageEl.entityRegistry = this._entityReg;
+    pageEl.cloudStatus = this.cloudStatus;
 
     if (this.hass) {
       if (!pageEl.scripts || !changedProps) {
@@ -98,7 +91,7 @@ class HaConfigScript extends HassRouterPage {
       this._currentPage === "show"
     ) {
       pageEl.creatingNew = undefined;
-      const scriptId = this.routeTail.path.substr(1);
+      const scriptId = this.routeTail.path.slice(1);
       pageEl.entityId = scriptId === "new" ? null : scriptId;
       return;
     }
@@ -108,7 +101,7 @@ class HaConfigScript extends HassRouterPage {
       this._currentPage !== "dashboard"
     ) {
       pageEl.creatingNew = undefined;
-      const scriptId = this.routeTail.path.substr(1);
+      const scriptId = this.routeTail.path.slice(1);
       pageEl.scriptId = scriptId === "new" ? null : scriptId;
     }
   }

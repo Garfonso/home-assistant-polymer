@@ -1,15 +1,18 @@
-import { mdiAlertOutline } from "@mdi/js";
+import { mdiAlertOutline, mdiClose } from "@mdi/js";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
+import { classMap } from "lit/directives/class-map";
 import { ifDefined } from "lit/directives/if-defined";
 import { fireEvent } from "../../common/dom/fire_event";
-import "../../components/ha-md-dialog";
-import type { HaMdDialog } from "../../components/ha-md-dialog";
+import "../../components/ha-button";
+import "../../components/ha-dialog";
+import "../../components/ha-dialog-footer";
 import "../../components/ha-dialog-header";
 import "../../components/ha-svg-icon";
-import "../../components/ha-button";
-import "../../components/ha-textfield";
-import type { HaTextField } from "../../components/ha-textfield";
+import "../../components/ha-textarea";
+import type { HaTextArea } from "../../components/ha-textarea";
+import "../../components/input/ha-input";
+import type { HaInput } from "../../components/input/ha-input";
 import type { HomeAssistant } from "../../types";
 import type { DialogBoxParams } from "./show-dialog-box";
 
@@ -19,11 +22,15 @@ class DialogBox extends LitElement {
 
   @state() private _params?: DialogBoxParams;
 
+  @state() private _open = false;
+
   @state() private _closeState?: "canceled" | "confirmed";
 
-  @query("ha-textfield") private _textField?: HaTextField;
+  @state() private _loading = false;
 
-  @query("ha-md-dialog") private _dialog?: HaMdDialog;
+  @state() private _validInput = true;
+
+  @query("ha-input, ha-textarea") private _textField?: HaInput | HaTextArea;
 
   private _closePromise?: Promise<void>;
 
@@ -34,9 +41,17 @@ class DialogBox extends LitElement {
       await this._closePromise;
     }
     this._params = params;
+    this._validInput = true;
+    this._open = true;
+    await this.updateComplete;
+    this._validateInput();
   }
 
   public closeDialog(): boolean {
+    if (!this._open) {
+      // Dialog is already closing
+      return true;
+    }
     if (this._params?.confirmation || this._params?.prompt) {
       return false;
     }
@@ -52,24 +67,36 @@ class DialogBox extends LitElement {
       return nothing;
     }
 
-    const confirmPrompt = this._params.confirmation || this._params.prompt;
-
+    const confirmPrompt = this._params.confirmation || !!this._params.prompt;
     const dialogTitle =
       this._params.title ||
       (this._params.confirmation &&
         this.hass.localize("ui.dialogs.generic.default_confirmation_title"));
 
     return html`
-      <ha-md-dialog
-        open
-        .disableCancelAction=${confirmPrompt || false}
+      <ha-dialog
+        .open=${this._open}
+        type=${confirmPrompt ? "alert" : "standard"}
+        ?prevent-scrim-close=${confirmPrompt}
         @closed=${this._dialogClosed}
-        type="alert"
         aria-labelledby="dialog-box-title"
         aria-describedby="dialog-box-description"
       >
-        <div slot="headline">
-          <span .title=${dialogTitle} id="dialog-box-title">
+        <ha-dialog-header slot="header">
+          ${!confirmPrompt
+            ? html`<slot name="headerNavigationIcon" slot="navigationIcon">
+                <ha-icon-button
+                  data-dialog="close"
+                  .label=${this.hass?.localize("ui.common.close") ?? "Close"}
+                  .path=${mdiClose}
+                ></ha-icon-button
+              ></slot>`
+            : nothing}
+          <h1
+            class=${classMap({ title: true, alert: confirmPrompt })}
+            slot="title"
+            id="dialog-box-title"
+          >
             ${this._params.warning
               ? html`<ha-svg-icon
                   .path=${mdiAlertOutline}
@@ -77,14 +104,17 @@ class DialogBox extends LitElement {
                 ></ha-svg-icon> `
               : nothing}
             ${dialogTitle}
-          </span>
-        </div>
-        <div slot="content" id="dialog-box-description">
+          </h1>
+          ${this._params.subtitle
+            ? html`<span slot="subtitle">${this._params.subtitle}</span>`
+            : nothing}
+        </ha-dialog-header>
+        <div id="dialog-box-description">
           ${this._params.text ? html` <p>${this._params.text}</p> ` : ""}
-          ${this._params.prompt
+          ${this._params.prompt && !this._params.multiline
             ? html`
-                <ha-textfield
-                  dialogInitialFocus
+                <ha-input
+                  autofocus
                   value=${ifDefined(this._params.defaultValue)}
                   .placeholder=${this._params.placeholder}
                   .label=${this._params.inputLabel
@@ -95,35 +125,59 @@ class DialogBox extends LitElement {
                     : "text"}
                   .min=${this._params.inputMin}
                   .max=${this._params.inputMax}
-                ></ha-textfield>
+                  .disabled=${this._loading}
+                  @input=${this._validateInput}
+                >
+                  ${this._params.inputSuffix
+                    ? html`<span slot="end">${this._params.inputSuffix}</span>`
+                    : nothing}
+                </ha-input>
               `
-            : ""}
+            : this._params.prompt && this._params.multiline
+              ? html`
+                  <ha-textarea
+                    resize="auto"
+                    autofocus
+                    .value=${this._params.defaultValue}
+                    .placeholder=${this._params.placeholder}
+                    .label=${this._params.inputLabel}
+                    .disabled=${this._loading}
+                    @input=${this._validateInput}
+                  ></ha-textarea>
+                `
+              : nothing}
         </div>
-        <div slot="actions">
-          ${confirmPrompt &&
-          html`
-            <ha-button
-              @click=${this._dismiss}
-              ?dialogInitialFocus=${!this._params.prompt &&
-              this._params.destructive}
-            >
-              ${this._params.dismissText
-                ? this._params.dismissText
-                : this.hass.localize("ui.common.cancel")}
-            </ha-button>
-          `}
+        <ha-dialog-footer slot="footer">
+          ${confirmPrompt
+            ? html`
+                <ha-button
+                  slot="secondaryAction"
+                  @click=${this._dismiss}
+                  ?autofocus=${!this._params.prompt && this._params.destructive}
+                  ?disabled=${this._loading}
+                  appearance="plain"
+                >
+                  ${this._params.dismissText
+                    ? this._params.dismissText
+                    : this.hass.localize("ui.common.cancel")}
+                </ha-button>
+              `
+            : nothing}
           <ha-button
+            slot="primaryAction"
             @click=${this._confirm}
-            ?dialogInitialFocus=${!this._params.prompt &&
-            !this._params.destructive}
-            ?destructive=${this._params.destructive}
+            ?autofocus=${!this._params.prompt && !this._params.destructive}
+            ?disabled=${this._loading ||
+            (!!this._params.prompt && !this._validInput)}
+            .loading=${this._loading}
+            variant=${this._params.destructive ? "danger" : "brand"}
           >
             ${this._params.confirmText
               ? this._params.confirmText
               : this.hass.localize("ui.common.ok")}
           </ha-button>
-        </div>
-      </ha-md-dialog>
+        </ha-dialog-footer>
+      </ha-dialog>
     `;
   }
 
@@ -139,7 +193,21 @@ class DialogBox extends LitElement {
     this._closeDialog();
   }
 
-  private _confirm(): void {
+  private async _confirm(): Promise<void> {
+    if (this._params?.prompt && !this._textField?.reportValidity()) {
+      return;
+    }
+
+    if (this._params!.action) {
+      this._loading = true;
+      try {
+        await this._params!.action(this._textField?.value);
+      } catch (_err) {
+        this._loading = false;
+        return;
+      }
+      this._loading = false;
+    }
     this._closeState = "confirmed";
     if (this._params!.confirm) {
       this._params!.confirm(this._textField?.value);
@@ -147,21 +215,28 @@ class DialogBox extends LitElement {
     this._closeDialog();
   }
 
+  private _validateInput(): void {
+    this._validInput = this._params?.prompt
+      ? (this._textField?.checkValidity() ?? true)
+      : true;
+  }
+
   private _closeDialog() {
-    fireEvent(this, "dialog-closed", { dialog: this.localName });
-    this._dialog?.close();
+    this._open = false;
     this._closePromise = new Promise((resolve) => {
       this._closeResolve = resolve;
     });
   }
 
   private _dialogClosed() {
+    fireEvent(this, "dialog-closed", { dialog: this.localName });
     if (!this._closeState) {
-      fireEvent(this, "dialog-closed", { dialog: this.localName });
       this._cancel();
     }
     this._closeState = undefined;
     this._params = undefined;
+    this._open = false;
+    this._loading = false;
     this._closeResolve?.();
     this._closeResolve = undefined;
   }
@@ -184,8 +259,21 @@ class DialogBox extends LitElement {
     .secondary {
       color: var(--secondary-text-color);
     }
-    ha-textfield {
+    ha-input {
       width: 100%;
+    }
+    .title {
+      font-weight: inherit;
+      font-size: inherit;
+      margin: inherit;
+    }
+    .title.alert {
+      padding: 0 var(--ha-space-2);
+    }
+    @media all and (min-width: 450px) and (min-height: 500px) {
+      .title.alert {
+        padding: 0 var(--ha-space-1);
+      }
     }
   `;
 }

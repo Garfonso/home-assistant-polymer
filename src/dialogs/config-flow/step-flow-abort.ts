@@ -1,4 +1,3 @@
-import "@material/mwc-button";
 import type { CSSResultGroup, PropertyValues } from "lit";
 import { html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
@@ -20,7 +19,9 @@ class StepFlowAbort extends LitElement {
 
   @property({ attribute: false }) public domain!: string;
 
-  protected firstUpdated(changed: PropertyValues) {
+  @property({ attribute: false }) public handler!: string;
+
+  protected firstUpdated(changed: PropertyValues<this>) {
     super.firstUpdated(changed);
     if (this.step.reason === "missing_credentials") {
       this._handleMissingCreds();
@@ -32,20 +33,8 @@ class StepFlowAbort extends LitElement {
       return nothing;
     }
     return html`
-      <h2>
-        ${this.params.flowConfig.renderAbortHeader
-          ? this.params.flowConfig.renderAbortHeader(this.hass, this.step)
-          : this.hass.localize(`component.${this.domain}.title`)}
-      </h2>
       <div class="content">
         ${this.params.flowConfig.renderAbortDescription(this.hass, this.step)}
-      </div>
-      <div class="buttons">
-        <mwc-button @click=${this._flowDone}
-          >${this.hass.localize(
-            "ui.panel.config.integrations.config_flow.close"
-          )}</mwc-button
-        >
       </div>
     `;
   }
@@ -58,8 +47,7 @@ class StepFlowAbort extends LitElement {
       applicationCredentialAddedCallback: () => {
         showConfigFlowDialog(this.params.dialogParentElement!, {
           dialogClosedCallback: this.params.dialogClosedCallback,
-          startFlowHandler: this.domain,
-          showAdvanced: this.hass.userData?.showAdvanced,
+          startFlowHandler: this.handler,
           navigateToResult: this.params.navigateToResult,
         });
       },
@@ -69,6 +57,10 @@ class StepFlowAbort extends LitElement {
 
   private _flowDone(): void {
     fireEvent(this, "flow-update", { step: undefined });
+  }
+
+  public close(): void {
+    this._flowDone();
   }
 
   static get styles(): CSSResultGroup {

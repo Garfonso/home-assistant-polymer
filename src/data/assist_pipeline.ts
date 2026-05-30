@@ -1,6 +1,5 @@
 import type { HomeAssistant } from "../types";
 import type { ConversationResult } from "./conversation";
-import type { ResolvedMediaSource } from "./media_source";
 import type { SpeechMetadata } from "./stt";
 
 export interface AssistPipeline {
@@ -53,9 +52,15 @@ interface PipelineRunStartEvent extends PipelineEventBase {
   data: {
     pipeline: string;
     language: string;
+    conversation_id: string;
     runner_data: {
       stt_binary_handler_id: number | null;
       timeout: number;
+    };
+    tts_output?: {
+      token: string;
+      url: string;
+      mime_type: string;
     };
   };
 }
@@ -109,9 +114,10 @@ interface PipelineIntentStartEvent extends PipelineEventBase {
   };
 }
 
-interface ConversationChatLogAssistantDelta {
+export interface ConversationChatLogAssistantDelta {
   role: "assistant";
   content: string;
+  thinking_content?: string;
   tool_calls: {
     id: string;
     tool_name: string;
@@ -119,7 +125,7 @@ interface ConversationChatLogAssistantDelta {
   }[];
 }
 
-interface ConversationChatLogToolResultDelta {
+export interface ConversationChatLogToolResultDelta {
   role: "tool_result";
   agent_id: string;
   tool_call_id: string;
@@ -129,7 +135,8 @@ interface ConversationChatLogToolResultDelta {
 interface PipelineIntentProgressEvent extends PipelineEventBase {
   type: "intent-progress";
   data: {
-    chat_log_delta:
+    tts_start_streaming?: boolean;
+    chat_log_delta?:
       | Partial<ConversationChatLogAssistantDelta>
       // These always come in 1 chunk
       | ConversationChatLogToolResultDelta;
@@ -156,7 +163,12 @@ interface PipelineTTSStartEvent extends PipelineEventBase {
 interface PipelineTTSEndEvent extends PipelineEventBase {
   type: "tts-end";
   data: {
-    tts_output: ResolvedMediaSource;
+    tts_output: {
+      media_id: string;
+      token: string;
+      url: string;
+      mime_type: string;
+    };
   };
 }
 
@@ -203,6 +215,8 @@ export interface PipelineRun {
   stage: "ready" | "wake_word" | "stt" | "intent" | "tts" | "done" | "error";
   run: PipelineRunStartEvent["data"];
   error?: PipelineErrorEvent["data"];
+  started: Date;
+  finished?: Date;
   wake_word?: PipelineWakeWordStartEvent["data"] &
     Partial<PipelineWakeWordEndEvent["data"]> & { done: boolean };
   stt?: PipelineSTTStartEvent["data"] &
@@ -224,6 +238,7 @@ export const processEvent = (
       stage: "ready",
       run: event.data,
       events: [event],
+      started: new Date(event.timestamp),
     };
     return run;
   }
@@ -279,9 +294,14 @@ export const processEvent = (
       tts: { ...run.tts!, ...event.data, done: true },
     };
   } else if (event.type === "run-end") {
-    run = { ...run, stage: "done" };
+    run = { ...run, finished: new Date(event.timestamp), stage: "done" };
   } else if (event.type === "error") {
-    run = { ...run, stage: "error", error: event.data };
+    run = {
+      ...run,
+      finished: new Date(event.timestamp),
+      stage: "error",
+      error: event.data,
+    };
   } else {
     run = { ...run };
   }

@@ -1,6 +1,8 @@
-import "@material/mwc-linear-progress/mwc-linear-progress";
-import type { LinearProgress } from "@material/mwc-linear-progress/mwc-linear-progress";
-import { mdiDotsVertical, mdiPlayBoxMultiple } from "@mdi/js";
+import {
+  mdiDotsVertical,
+  mdiPlayBoxMultiple,
+  mdiSpeakerMultiple,
+} from "@mdi/js";
 import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, query, state } from "lit/decorators";
@@ -8,16 +10,18 @@ import { classMap } from "lit/directives/class-map";
 import { styleMap } from "lit/directives/style-map";
 import { applyThemesOnElement } from "../../../common/dom/apply_themes_on_element";
 import { fireEvent } from "../../../common/dom/fire_event";
-import { computeStateName } from "../../../common/entity/compute_state_name";
+import { stateActive } from "../../../common/entity/state_active";
 import { supportsFeature } from "../../../common/entity/supports-feature";
 import { extractColors } from "../../../common/image/extract_color";
-import { stateActive } from "../../../common/entity/state_active";
 import { debounce } from "../../../common/util/debounce";
 import "../../../components/ha-card";
 import "../../../components/ha-icon-button";
+import "../../../components/ha-slider";
+import type { HaSlider } from "../../../components/ha-slider";
 import "../../../components/ha-state-icon";
+import { showJoinMediaPlayersDialog } from "../../../components/media-player/show-join-media-players-dialog";
 import { showMediaBrowserDialog } from "../../../components/media-player/show-media-browser-dialog";
-import { isUnavailableState } from "../../../data/entity";
+import { UNAVAILABLE, UNKNOWN } from "../../../data/entity/entity";
 import type {
   MediaPickedEvent,
   MediaPlayerEntity,
@@ -78,7 +82,7 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
 
   @state() private _cardHeight = 0;
 
-  @query("mwc-linear-progress") private _progressBar?: LinearProgress;
+  @query("ha-slider") private _progressBar?: HaSlider;
 
   @state() private _marqueeActive = false;
 
@@ -145,7 +149,7 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
 
     if (!stateObj) {
       return html`
-        <hui-warning>
+        <hui-warning .hass=${this.hass}>
           ${createEntityNotFoundWarning(this.hass, this._config.entity)}
         </hui-warning>
       `;
@@ -169,9 +173,12 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
     const entityState = stateObj.state;
 
     const isOffState =
-      !stateActive(stateObj) && !isUnavailableState(entityState);
+      !stateActive(stateObj) &&
+      entityState !== UNAVAILABLE &&
+      entityState !== UNKNOWN;
     const isUnavailable =
-      isUnavailableState(entityState) ||
+      entityState === UNAVAILABLE ||
+      entityState === UNKNOWN ||
       (isOffState &&
         !supportsFeature(stateObj, MediaPlayerEntityFeature.TURN_ON));
     const hasNoImage = !this._image;
@@ -185,6 +192,8 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
 
     const mediaDescription = computeMediaDescription(stateObj);
     const mediaTitleClean = cleanupMediaTitle(stateObj.attributes.media_title);
+
+    const groupMembers = stateObj.attributes.group_members?.length;
 
     return html`
       <ha-card>
@@ -229,14 +238,12 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
         >
           <div class="top-info">
             <div class="icon-name">
-              <ha-state-icon
-                class="icon"
-                .stateObj=${stateObj}
-                .hass=${this.hass}
-              ></ha-state-icon>
+              <ha-state-icon class="icon" .stateObj=${stateObj}></ha-state-icon>
               <div>
-                ${this._config!.name ||
-                computeStateName(this.hass!.states[this._config!.entity])}
+                ${this.hass.formatEntityName(
+                  this.hass!.states[this._config!.entity],
+                  this._config.name
+                )}
               </div>
             </div>
             <div>
@@ -272,44 +279,71 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
                       ? ""
                       : html`
                           <div class="controls">
-                            ${controls!.map(
-                              (control) => html`
-                                <ha-icon-button
-                                  .label=${this.hass.localize(
-                                    `ui.card.media_player.${control.action}`
-                                  )}
-                                  .path=${control.icon}
-                                  action=${control.action}
-                                  @click=${this._handleClick}
-                                >
-                                </ha-icon-button>
-                              `
-                            )}
-                            ${supportsFeature(
-                              stateObj,
-                              MediaPlayerEntityFeature.BROWSE_MEDIA
-                            )
-                              ? html`
+                            <div class="start">
+                              ${controls!.map(
+                                (control) => html`
                                   <ha-icon-button
-                                    class="browse-media"
                                     .label=${this.hass.localize(
-                                      "ui.card.media_player.browse_media"
+                                      `ui.card.media_player.${control.action}`
                                     )}
-                                    .path=${mdiPlayBoxMultiple}
-                                    @click=${this._handleBrowseMedia}
-                                  ></ha-icon-button>
+                                    .path=${control.icon}
+                                    action=${control.action}
+                                    @click=${this._handleClick}
+                                  >
+                                  </ha-icon-button>
                                 `
-                              : ""}
+                              )}
+                            </div>
+                            <div class="end">
+                              ${supportsFeature(
+                                stateObj,
+                                MediaPlayerEntityFeature.BROWSE_MEDIA
+                              )
+                                ? html`
+                                    <ha-icon-button
+                                      class="browse-media"
+                                      .label=${this.hass.localize(
+                                        "ui.card.media_player.browse_media"
+                                      )}
+                                      .path=${mdiPlayBoxMultiple}
+                                      @click=${this._handleBrowseMedia}
+                                    ></ha-icon-button>
+                                  `
+                                : ""}
+                              ${supportsFeature(
+                                stateObj,
+                                MediaPlayerEntityFeature.GROUPING
+                              )
+                                ? html`
+                                    <ha-icon-button
+                                      class="join-media"
+                                      .label=${this.hass.localize(
+                                        "ui.card.media_player.join"
+                                      )}
+                                      @click=${this._handleJoinMediaPlayers}
+                                    >
+                                      <ha-svg-icon
+                                        .path=${mdiSpeakerMultiple}
+                                      ></ha-svg-icon>
+                                      ${groupMembers && groupMembers > 1
+                                        ? html`<span class="badge">
+                                            ${stateObj.attributes.group_members
+                                              ?.length}
+                                          </span>`
+                                        : nothing}
+                                    </ha-icon-button>
+                                  `
+                                : ""}
+                            </div>
                           </div>
                         `}
                   </div>
                   ${!this._showProgressBar
                     ? ""
                     : html`
-                        <mwc-linear-progress
-                          determinate
+                        <ha-slider
                           style=${styleMap({
-                            "--mdc-theme-primary":
+                            "--ha-slider-indicator-color":
                               this._foregroundColor || "var(--accent-color)",
                             cursor: supportsFeature(
                               stateObj,
@@ -320,7 +354,7 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
                           })}
                           @click=${this._handleSeek}
                         >
-                        </mwc-linear-progress>
+                        </ha-slider>
                       `}
                 </div>
               `
@@ -330,7 +364,7 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
     `;
   }
 
-  protected shouldUpdate(changedProps: PropertyValues): boolean {
+  protected shouldUpdate(changedProps: PropertyValues<this>): boolean {
     return (
       hasConfigOrEntityChanged(this, changedProps) ||
       changedProps.size > 1 ||
@@ -509,6 +543,12 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
     });
   }
 
+  private _handleJoinMediaPlayers(): void {
+    showJoinMediaPlayersDialog(this, {
+      entityId: this._config!.entity,
+    });
+  }
+
   private _handleClick(e: MouseEvent): void {
     handleMediaControlClick(
       this.hass!,
@@ -519,9 +559,10 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
 
   private _updateProgressBar(): void {
     if (this._progressBar && this._stateObj?.attributes.media_duration) {
-      this._progressBar.progress =
-        getCurrentProgress(this._stateObj) /
-        this._stateObj!.attributes.media_duration;
+      this._progressBar.value =
+        (getCurrentProgress(this._stateObj) /
+          this._stateObj!.attributes.media_duration) *
+        100;
     }
   }
 
@@ -529,16 +570,16 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
     return this.hass!.states[this._config!.entity] as MediaPlayerEntity;
   }
 
-  private _handleSeek(e: MouseEvent): void {
+  private _handleSeek(): void {
     const stateObj = this._stateObj!;
 
     if (!supportsFeature(stateObj, MediaPlayerEntityFeature.SEEK)) {
       return;
     }
 
-    const progressWidth = (this._progressBar as HTMLElement).offsetWidth;
+    const percentValue = this._progressBar?.value ?? 0;
+    const percent = percentValue ? percentValue / 100 : 0;
 
-    const percent = e.offsetX / progressWidth;
     const position = this._stateObj!.attributes.media_duration! * percent;
 
     this.hass!.callService("media_player", "media_seek", {
@@ -700,24 +741,30 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
       align-items: center;
     }
 
+    .controls > .start {
+      flex-grow: 1;
+    }
+
     .controls ha-icon-button {
-      --mdc-icon-button-size: 44px;
+      --ha-icon-button-size: 44px;
       --mdc-icon-size: 30px;
     }
 
     ha-icon-button[action="media_play"],
     ha-icon-button[action="media_play_pause"],
     ha-icon-button[action="media_pause"],
-    ha-icon-button[action="media_stop"],
-    ha-icon-button[action="turn_on"],
-    ha-icon-button[action="turn_off"] {
-      --mdc-icon-button-size: 56px;
+    ha-icon-button[action="media_stop"] {
+      --ha-icon-button-size: 56px;
       --mdc-icon-size: 40px;
     }
 
     ha-icon-button.browse-media {
-      position: absolute;
-      right: 4px;
+      --mdc-icon-size: 24px;
+      inset-inline-end: 4px;
+      inset-inline-start: initial;
+    }
+
+    ha-icon-button.join-media {
       --mdc-icon-size: 24px;
       inset-inline-end: 4px;
       inset-inline-start: initial;
@@ -765,10 +812,14 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
       padding-top: 16px;
     }
 
-    mwc-linear-progress {
+    ha-slider {
+      --track-size: 8px;
       width: 100%;
-      margin-top: 4px;
-      --mdc-linear-progress-buffer-color: rgba(200, 200, 200, 0.5);
+      --ha-slider-track-color: rgba(200, 200, 200, 0.5);
+    }
+
+    ha-slider::part(thumb) {
+      display: none;
     }
 
     .no-image .controls {
@@ -785,15 +836,17 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
     }
 
     .narrow ha-icon-button {
-      --mdc-icon-button-size: 40px;
+      --ha-icon-button-size: 40px;
       --mdc-icon-size: 28px;
     }
 
     .narrow ha-icon-button[action="media_play"],
     .narrow ha-icon-button[action="media_play_pause"],
-    .narrow ha-icon-button[action="media_pause"],
-    .narrow ha-icon-button[action="turn_on"] {
-      --mdc-icon-button-size: 50px;
+    .narrow
+      ha-icon-button[action="media_pause"]
+      .narrow
+      ha-icon-button[action="media_stop"] {
+      --ha-icon-button-size: 50px;
       --mdc-icon-size: 36px;
     }
 
@@ -803,6 +856,25 @@ export class HuiMediaControlCard extends LitElement implements LovelaceCard {
 
     .no-progress.player:not(.no-controls) {
       padding-bottom: 0px;
+    }
+
+    .badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: auto;
+      height: auto;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-width: 8px;
+      min-height: 16px;
+      border-radius: 10px;
+      font-weight: var(--ha-font-weight-normal);
+      font-size: var(--ha-font-size-xs);
+      background-color: var(--accent-color);
+      padding: 0 4px;
+      color: var(--text-accent-color, var(--text-primary-color));
     }
   `;
 }

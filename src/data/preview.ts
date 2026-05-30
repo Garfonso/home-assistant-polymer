@@ -6,13 +6,19 @@ const HAS_CUSTOM_PREVIEW = ["generic_camera", "template"];
 export interface GenericPreview {
   state: string;
   attributes: Record<string, any>;
+  error?: string;
+  domain?: string;
 }
 
 export const subscribePreviewGeneric = (
   hass: HomeAssistant,
   domain: string,
   flow_id: string,
-  flow_type: "config_flow" | "options_flow",
+  flow_type:
+    | "config_flow"
+    | "options_flow"
+    | "config_subentries_flow"
+    | "repair_flow",
   user_input: Record<string, any>,
   callback: (preview: GenericPreview) => void
 ): Promise<UnsubscribeFunc> =>

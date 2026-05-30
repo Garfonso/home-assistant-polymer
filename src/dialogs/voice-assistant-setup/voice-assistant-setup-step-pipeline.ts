@@ -20,9 +20,9 @@ import { getLanguageScores, listAgents } from "../../data/conversation";
 import { listSTTEngines } from "../../data/stt";
 import { listTTSEngines, listTTSVoices } from "../../data/tts";
 import type { HomeAssistant } from "../../types";
+import { documentationUrl } from "../../util/documentation-url";
 import { AssistantSetupStyles } from "./styles";
 import { STEP } from "./voice-assistant-setup-dialog";
-import { documentationUrl } from "../../util/documentation-url";
 
 const OPTIONS = ["cloud", "focused_local", "full_local"] as const;
 
@@ -235,10 +235,7 @@ export class HaVoiceAssistantSetupStepPipeline extends LitElement {
           : nothing}
       </div>
       <div class="footer">
-        <ha-button
-          @click=${this._createPipeline}
-          unelevated
-          .disabled=${!this._value}
+        <ha-button @click=${this._createPipeline} .disabled=${!this._value}
           >${this.hass.localize("ui.common.next")}</ha-button
         >
       </div>`;
@@ -254,7 +251,7 @@ export class HaVoiceAssistantSetupStepPipeline extends LitElement {
   }
 
   private async _hasCloud(): Promise<boolean> {
-    if (!isComponentLoaded(this.hass, "cloud")) {
+    if (!isComponentLoaded(this.hass.config, "cloud")) {
       return false;
     }
     const cloudStatus = await fetchCloudStatus(this.hass);
@@ -346,10 +343,7 @@ export class HaVoiceAssistantSetupStepPipeline extends LitElement {
         let pipelineName = "Home Assistant Cloud";
         let i = 1;
         while (
-          pipelines.pipelines.find(
-            // eslint-disable-next-line no-loop-func
-            (pipeline) => pipeline.name === pipelineName
-          )
+          pipelines.pipelines.find((pipeline) => pipeline.name === pipelineName)
         ) {
           pipelineName = `Home Assistant Cloud ${i}`;
           i++;
@@ -430,7 +424,7 @@ export class HaVoiceAssistantSetupStepPipeline extends LitElement {
         width: 100%;
         height: 10px;
         display: flex;
-        gap: 4px;
+        gap: var(--ha-space-1);
         margin: 8px 0;
       }
       .segment {
@@ -439,10 +433,12 @@ export class HaVoiceAssistantSetupStepPipeline extends LitElement {
         transition: background-color 0.3s;
       }
       .segment:first-child {
-        border-radius: 4px 0 0 4px;
+        border-radius: var(--ha-border-radius-sm) var(--ha-border-radius-square)
+          var(--ha-border-radius-square) var(--ha-border-radius-sm);
       }
       .segment:last-child {
-        border-radius: 0 4px 4px 0;
+        border-radius: var(--ha-border-radius-square) var(--ha-border-radius-sm)
+          var(--ha-border-radius-sm) var(--ha-border-radius-square);
       }
       .perf-bar.high .segment {
         background-color: var(--success-color);

@@ -1,6 +1,7 @@
-import type {
-  LovelaceSectionConfig,
-  LovelaceStrategySectionConfig,
+import {
+  isStrategySection,
+  type LovelaceSectionConfig,
+  type LovelaceStrategySectionConfig,
 } from "../../../data/lovelace/config/section";
 import type { LovelaceStrategyConfig } from "../../../data/lovelace/config/strategy";
 import type {
@@ -14,10 +15,12 @@ import type {
   LovelaceViewConfig,
 } from "../../../data/lovelace/config/view";
 import { isStrategyView } from "../../../data/lovelace/config/view";
+import type { LovelaceDashboardSuggestions } from "../../../data/lovelace/dashboard";
 import type { AsyncReturnType, HomeAssistant } from "../../../types";
 import { cleanLegacyStrategyConfig, isLegacyStrategy } from "./legacy-strategy";
 import type {
   LovelaceDashboardStrategy,
+  LovelaceDashboardStrategyGetCreateSuggestions,
   LovelaceSectionStrategy,
   LovelaceStrategy,
   LovelaceViewStrategy,
@@ -33,17 +36,38 @@ const STRATEGIES: Record<LovelaceStrategyConfigType, Record<string, any>> = {
     map: () => import("./map/map-dashboard-strategy"),
     iframe: () => import("./iframe/iframe-dashboard-strategy"),
     areas: () => import("./areas/areas-dashboard-strategy"),
+    home: () => import("./home/home-dashboard-strategy"),
+    energy: () => import("../../energy/strategies/energy-dashboard-strategy"),
   },
   view: {
     "original-states": () =>
       import("./original-states/original-states-view-strategy"),
+    "energy-overview": () =>
+      import("../../energy/strategies/energy-overview-view-strategy"),
     energy: () => import("../../energy/strategies/energy-view-strategy"),
+    water: () => import("../../energy/strategies/water-view-strategy"),
+    gas: () => import("../../energy/strategies/gas-view-strategy"),
+    power: () => import("../../energy/strategies/power-view-strategy"),
     map: () => import("./map/map-view-strategy"),
     iframe: () => import("./iframe/iframe-view-strategy"),
     area: () => import("./areas/area-view-strategy"),
     "areas-overview": () => import("./areas/areas-overview-view-strategy"),
+    "home-overview": () => import("./home/home-overview-view-strategy"),
+    "home-media-players": () =>
+      import("./home/home-media-players-view-strategy"),
+    "home-area": () => import("./home/home-area-view-strategy"),
+    "home-other-devices": () =>
+      import("./home/home-other-devices-view-strategy"),
+    light: () => import("../../light/strategies/light-view-strategy"),
+    security: () => import("../../security/strategies/security-view-strategy"),
+    climate: () => import("../../climate/strategies/climate-view-strategy"),
+    maintenance: () =>
+      import("../../maintenance/strategies/maintenance-view-strategy"),
   },
-  section: {},
+  section: {
+    "common-controls": () =>
+      import("./usage_prediction/common-controls-section-strategy"),
+  },
 };
 
 export type LovelaceStrategyConfigType = "dashboard" | "view" | "section";
@@ -237,7 +261,7 @@ export const expandLovelaceConfigStrategies = async (
       if (newView.sections) {
         newView.sections = await Promise.all(
           newView.sections.map(async (section) => {
-            const newSection = isStrategyView(section)
+            const newSection = isStrategySection(section)
               ? await generateLovelaceSectionStrategy(section, hass)
               : { ...section };
             return newSection;
@@ -251,3 +275,37 @@ export const expandLovelaceConfigStrategies = async (
 
   return newConfig;
 };
+
+interface DashboardStrategyClassWithSuggestions extends LovelaceDashboardStrategy {
+  getCreateSuggestions?: LovelaceDashboardStrategyGetCreateSuggestions;
+}
+
+async function readDashboardCreateSuggestions(
+  hass: HomeAssistant,
+  strategyClass: DashboardStrategyClassWithSuggestions
+): Promise<LovelaceDashboardSuggestions | undefined> {
+  const fn = strategyClass.getCreateSuggestions;
+  if (typeof fn !== "function") {
+    return undefined;
+  }
+  return fn.call(strategyClass, hass);
+}
+
+/** Loads a dashboard strategy and any optional create-dialog field suggestions. */
+export async function loadDashboardStrategyWithCreateSuggestions(
+  hass: HomeAssistant,
+  strategyType: string
+): Promise<{
+  strategyClass: LovelaceDashboardStrategy;
+  fieldSuggestions: LovelaceDashboardSuggestions | undefined;
+}> {
+  const strategyClass = (await getLovelaceStrategy(
+    "dashboard",
+    strategyType
+  )) as LovelaceDashboardStrategy;
+  const fieldSuggestions = await readDashboardCreateSuggestions(
+    hass,
+    strategyClass
+  );
+  return { strategyClass, fieldSuggestions };
+}

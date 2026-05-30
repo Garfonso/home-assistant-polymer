@@ -2,9 +2,9 @@ import type { PropertyValues } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property } from "lit/decorators";
 import { fireEvent } from "../../common/dom/fire_event";
-import "../../components/ha-progress-ring";
 import "../../components/ha-spinner";
-import { ON, UNAVAILABLE } from "../../data/entity";
+import "../../components/progress/ha-progress-ring";
+import { ON, UNAVAILABLE } from "../../data/entity/entity";
 import {
   updateCanInstall,
   type UpdateEntity,
@@ -24,7 +24,7 @@ export class HaVoiceAssistantSetupStepUpdate extends LitElement {
 
   private _refreshTimeout?: number;
 
-  protected override willUpdate(changedProperties: PropertyValues): void {
+  protected override willUpdate(changedProperties: PropertyValues<this>): void {
     super.willUpdate(changedProperties);
 
     if (!this.updateEntityId) {
@@ -131,7 +131,7 @@ export class HaVoiceAssistantSetupStepUpdate extends LitElement {
       );
       this._refreshTimeout = window.setTimeout(() => {
         this._nextStep();
-      }, 5000);
+      }, 10000);
     } else {
       this._nextStep();
     }

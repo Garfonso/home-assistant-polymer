@@ -1,11 +1,11 @@
-import "@material/mwc-button/mwc-button";
 import { mdiOpenInNew } from "@mdi/js";
-import type { CSSResultGroup, TemplateResult } from "lit";
+import type { CSSResultGroup, TemplateResult, PropertyValues } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { fireEvent } from "../common/dom/fire_event";
 import type { LocalizeFunc } from "../common/translations/localize";
 import "../components/ha-analytics";
+import "../components/ha-button";
 import "../components/ha-svg-icon";
 import type { Analytics } from "../data/analytics";
 import { setAnalyticsPreferences } from "../data/analytics";
@@ -49,18 +49,14 @@ class OnboardingAnalytics extends LitElement {
       </ha-analytics>
       ${this._error ? html`<div class="error">${this._error}</div>` : ""}
       <div class="footer">
-        <mwc-button
-          unelevated
-          @click=${this._save}
-          .disabled=${!this._analyticsDetails}
-        >
+        <ha-button @click=${this._save} .disabled=${!this._analyticsDetails}>
           ${this.localize("ui.panel.page-onboarding.analytics.finish")}
-        </mwc-button>
+        </ha-button>
       </div>
     `;
   }
 
-  protected firstUpdated(changedProps) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
     this.addEventListener("keypress", (ev) => {
       if (ev.key === "Enter") {

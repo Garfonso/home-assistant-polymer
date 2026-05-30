@@ -1,7 +1,8 @@
 import type { PropertyValues } from "lit";
-import { html, LitElement } from "lit";
+import { css, html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators";
 import {
+  array,
   assert,
   boolean,
   literal,
@@ -11,21 +12,24 @@ import {
   string,
   union,
 } from "superstruct";
+import { ensureArray } from "../../../../../common/array/ensure-array";
 import { createDurationData } from "../../../../../common/datetime/create_duration_data";
 import { fireEvent } from "../../../../../common/dom/fire_event";
 import "../../../../../components/ha-form/ha-form";
 import type { SchemaUnion } from "../../../../../components/ha-form/types";
 import type { StateCondition } from "../../../../../data/automation";
+import { STATE_CONDITION_HIDDEN_ATTRIBUTES } from "../../../../../data/entity/entity_attributes";
 import type { HomeAssistant } from "../../../../../types";
 import { forDictStruct } from "../../structs";
 import type { ConditionElement } from "../ha-automation-condition-row";
 
 const stateConditionStruct = object({
   alias: optional(string()),
+  note: optional(string()),
   condition: literal("state"),
   entity_id: optional(string()),
   attribute: optional(string()),
-  state: optional(string()),
+  state: optional(union([string(), array(string())])),
   for: optional(union([number(), string(), forDictStruct])),
   enabled: optional(boolean()),
 });
@@ -36,29 +40,7 @@ const SCHEMA = [
     name: "attribute",
     selector: {
       attribute: {
-        hide_attributes: [
-          "access_token",
-          "available_modes",
-          "color_modes",
-          "editable",
-          "effect_list",
-          "entity_picture",
-          "event_types",
-          "fan_modes",
-          "fan_speed_list",
-          "forecast",
-          "friendly_name",
-          "hvac_modes",
-          "icon",
-          "operation_list",
-          "options",
-          "preset_modes",
-          "sound_mode_list",
-          "source_list",
-          "state_class",
-          "swing_modes",
-          "token",
-        ],
+        hide_attributes: STATE_CONDITION_HIDDEN_ATTRIBUTES,
       },
     },
     context: {
@@ -69,7 +51,7 @@ const SCHEMA = [
     name: "state",
     required: true,
     selector: {
-      state: {},
+      state: { multiple: true },
     },
     context: {
       filter_entity: "entity_id",
@@ -88,10 +70,10 @@ export class HaStateCondition extends LitElement implements ConditionElement {
   @property({ type: Boolean }) public disabled = false;
 
   public static get defaultConfig(): StateCondition {
-    return { condition: "state", entity_id: "", state: "" };
+    return { condition: "state", entity_id: "", state: [] };
   }
 
-  public shouldUpdate(changedProperties: PropertyValues) {
+  public shouldUpdate(changedProperties: PropertyValues<this>) {
     if (changedProperties.has("condition")) {
       try {
         assert(this.condition, stateConditionStruct);
@@ -105,7 +87,11 @@ export class HaStateCondition extends LitElement implements ConditionElement {
 
   protected render() {
     const trgFor = createDurationData(this.condition.for);
-    const data = { ...this.condition, for: trgFor };
+    const data = {
+      ...this.condition,
+      state: ensureArray(this.condition.state) || [],
+      for: trgFor,
+    };
 
     return html`
       <ha-form
@@ -129,10 +115,9 @@ export class HaStateCondition extends LitElement implements ConditionElement {
         : {}
     );
 
-    // We should not cleanup state in the above, as it is required.
-    // Set it to empty string if it is undefined.
-    if (!newCondition.state) {
-      newCondition.state = "";
+    // Ensure `state` stays an array for multi-select. If absent, set to []
+    if (newCondition.state === undefined || newCondition.state === "") {
+      newCondition.state = [];
     }
 
     fireEvent(this, "value-changed", { value: newCondition });
@@ -158,6 +143,13 @@ export class HaStateCondition extends LitElement implements ConditionElement {
         );
     }
   };
+
+  static styles = css`
+    :host {
+      display: block;
+      margin-bottom: var(--ha-space-3);
+    }
+  `;
 }
 
 declare global {

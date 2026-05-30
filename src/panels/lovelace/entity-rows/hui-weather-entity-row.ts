@@ -3,8 +3,7 @@ import { LitElement, css, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { ifDefined } from "lit/directives/if-defined";
-import { computeStateName } from "../../../common/entity/compute_state_name";
-import { isUnavailableState } from "../../../data/entity";
+import { UNAVAILABLE, UNKNOWN } from "../../../data/entity/entity";
 import type { ActionHandlerEvent } from "../../../data/lovelace/action_handler";
 import type { ForecastEvent, WeatherEntity } from "../../../data/weather";
 import {
@@ -51,7 +50,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
     const forecastType = getDefaultForecastType(stateObj);
     if (forecastType) {
       this._subscribed = subscribeForecast(
-        this.hass!,
+        this.hass!.connection,
         stateObj.entity_id,
         forecastType,
         (event) => {
@@ -81,7 +80,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
     this._config = config;
   }
 
-  protected shouldUpdate(changedProps: PropertyValues): boolean {
+  protected shouldUpdate(changedProps: PropertyValues<this>): boolean {
     return (
       hasConfigOrEntityChanged(this, changedProps) ||
       changedProps.size > 1 ||
@@ -105,7 +104,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
 
     if (!stateObj) {
       return html`
-        <hui-warning>
+        <hui-warning .hass=${this.hass}>
           ${createEntityNotFoundWarning(this.hass, this._config.entity)}
         </hui-warning>
       `;
@@ -118,6 +117,8 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
 
     const forecastData = getForecast(stateObj.attributes, this._forecastEvent);
     const forecast = forecastData?.forecast;
+
+    const name = this.hass!.formatEntityName(stateObj, this._config.name);
 
     return html`
       <div
@@ -140,7 +141,6 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
           <ha-state-icon
             class="weather-icon"
             .stateObj=${stateObj}
-            .hass=${this.hass}
           ></ha-state-icon>
         `}
       </div>
@@ -155,7 +155,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
           hasDoubleClick: hasAction(this._config!.double_tap_action),
         })}
       >
-        ${this._config.name || computeStateName(stateObj)}
+        ${name}
         ${hasSecondary
           ? html`
               <div class="secondary">
@@ -193,7 +193,8 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
         })}
       >
         <div>
-          ${isUnavailableState(stateObj.state) ||
+          ${stateObj.state === UNAVAILABLE ||
+          stateObj.state === UNKNOWN ||
           stateObj.attributes.temperature === undefined ||
           stateObj.attributes.temperature === null
             ? this.hass.formatEntityState(stateObj)
@@ -248,7 +249,7 @@ class HuiWeatherEntityRow extends LitElement implements LovelaceRow {
         .icon-image:focus {
           outline: none;
           background-color: var(--divider-color);
-          border-radius: 50%;
+          border-radius: var(--ha-border-radius-circle);
         }
 
         .weather-icon {

@@ -1,83 +1,109 @@
-import { consume } from "@lit-labs/context";
+import "@home-assistant/webawesome/dist/components/divider/divider";
+import { consume } from "@lit/context";
 import {
+  mdiAppleKeyboardCommand,
   mdiArrowDown,
   mdiArrowUp,
+  mdiCommentEditOutline,
+  mdiCommentTextOutline,
   mdiContentCopy,
   mdiContentCut,
-  mdiContentDuplicate,
+  mdiContentPaste,
   mdiDelete,
   mdiDotsVertical,
   mdiFlask,
   mdiPlayCircleOutline,
   mdiPlaylistEdit,
+  mdiPlusCircleMultipleOutline,
   mdiRenameBox,
   mdiStopCircleOutline,
 } from "@mdi/js";
 import deepClone from "deep-clone-simple";
-import type { CSSResultGroup } from "lit";
-import { LitElement, css, html, nothing } from "lit";
-import { customElement, property, state } from "lit/decorators";
+import type {
+  HassServiceTarget,
+  UnsubscribeFunc,
+} from "home-assistant-js-websocket";
+import { dump } from "js-yaml";
+import type { CSSResultGroup, PropertyValues, TemplateResult } from "lit";
+import { LitElement, html, nothing } from "lit";
+import { customElement, property, query, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
+import memoizeOne from "memoize-one";
+import { ensureArray } from "../../../../common/array/ensure-array";
 import { storage } from "../../../../common/decorators/storage";
 import { fireEvent } from "../../../../common/dom/fire_event";
+import { preventDefaultStopPropagation } from "../../../../common/dom/prevent_default_stop_propagation";
 import { stopPropagation } from "../../../../common/dom/stop_propagation";
 import { capitalizeFirstLetter } from "../../../../common/string/capitalize-first-letter";
+import { truncateWithEllipsis } from "../../../../common/string/truncate-with-ellipsis";
 import { handleStructError } from "../../../../common/structs/handle-errors";
-import "../../../../components/ha-md-button-menu";
-import "../../../../components/ha-md-menu-item";
-import "../../../../components/ha-md-divider";
+import { copyToClipboard } from "../../../../common/util/copy-clipboard";
+import { debounce } from "../../../../common/util/debounce";
+import "../../../../components/automation/ha-automation-row";
+import type { HaAutomationRow } from "../../../../components/automation/ha-automation-row";
+import "../../../../components/automation/ha-automation-row-event-chip";
+import "../../../../components/automation/ha-automation-row-live-test";
+import type { LiveTestState } from "../../../../components/automation/ha-automation-row-live-test";
+import "../../../../components/ha-alert";
 import "../../../../components/ha-card";
+import "../../../../components/ha-condition-icon";
+import "../../../../components/ha-dropdown";
+import type { HaDropdownSelectEvent } from "../../../../components/ha-dropdown";
+import "../../../../components/ha-dropdown-item";
 import "../../../../components/ha-expansion-panel";
 import "../../../../components/ha-icon-button";
 import type {
   AutomationClipboard,
   Condition,
+  ConditionSidebarConfig,
+  PlatformCondition,
 } from "../../../../data/automation";
-import { testCondition } from "../../../../data/automation";
+import {
+  isCondition,
+  subscribeCondition,
+  testCondition,
+} from "../../../../data/automation";
 import { describeCondition } from "../../../../data/automation_i18n";
-import { CONDITION_ICONS } from "../../../../data/condition";
-import { validateConfig } from "../../../../data/config";
+import type { ConditionDescriptions } from "../../../../data/condition";
+import { CONDITION_BUILDING_BLOCKS } from "../../../../data/condition";
+import {
+  validateConfig,
+  type InvalidConfig,
+  type ValidConfig,
+} from "../../../../data/config";
 import { fullEntitiesContext } from "../../../../data/context";
-import type { EntityRegistryEntry } from "../../../../data/entity_registry";
+import type { DeviceCondition } from "../../../../data/device/device_automation";
+import type { EntityRegistryEntry } from "../../../../data/entity/entity_registry";
+import type { TargetSelector } from "../../../../data/selector";
 import {
   showAlertDialog,
-  showConfirmationDialog,
   showPromptDialog,
 } from "../../../../dialogs/generic/show-dialog-box";
-import { haStyle } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
+import { isMac } from "../../../../util/is_mac";
+import { showEditorToast } from "../editor-toast";
+import "../ha-automation-editor-warning";
+import { overflowStyles, rowStyles } from "../styles";
+import "../target/ha-automation-row-targets";
 import "./ha-automation-condition-editor";
+import type HaAutomationConditionEditor from "./ha-automation-condition-editor";
+import "./types/ha-automation-condition-and";
+import "./types/ha-automation-condition-device";
+import "./types/ha-automation-condition-not";
+import "./types/ha-automation-condition-numeric_state";
+import "./types/ha-automation-condition-or";
+import "./types/ha-automation-condition-state";
+import "./types/ha-automation-condition-sun";
+import "./types/ha-automation-condition-template";
+import "./types/ha-automation-condition-time";
+import "./types/ha-automation-condition-trigger";
+import "./types/ha-automation-condition-zone";
 
 export interface ConditionElement extends LitElement {
   condition: Condition;
+  expandAll?: () => void;
+  collapseAll?: () => void;
 }
-
-const preventDefault = (ev) => ev.preventDefault();
-
-export const handleChangeEvent = (
-  element: ConditionElement,
-  ev: CustomEvent
-) => {
-  ev.stopPropagation();
-  const name = (ev.currentTarget as any)?.name;
-  if (!name) {
-    return;
-  }
-  const newVal = ev.detail?.value || (ev.currentTarget as any)?.value;
-
-  if ((element.condition[name] || "") === newVal) {
-    return;
-  }
-
-  let newCondition: Condition;
-  if (!newVal) {
-    newCondition = { ...element.condition };
-    delete newCondition[name];
-  } else {
-    newCondition = { ...element.condition, [name]: newVal };
-  }
-  fireEvent(element, "value-changed", { value: newCondition });
-};
 
 @customElement("ha-automation-condition-row")
 export default class HaAutomationConditionRow extends LitElement {
@@ -87,9 +113,30 @@ export default class HaAutomationConditionRow extends LitElement {
 
   @property({ type: Boolean }) public disabled = false;
 
+  @property({ type: Boolean }) public root = false;
+
   @property({ type: Boolean }) public first?: boolean;
 
   @property({ type: Boolean }) public last?: boolean;
+
+  @property({ type: Boolean }) public narrow = false;
+
+  @property({ type: Boolean }) public highlight?: boolean;
+
+  @property({ type: Boolean, attribute: "sort-selected" })
+  public sortSelected = false;
+
+  @state() private _collapsed = true;
+
+  @state() private _isNew = false;
+
+  @state() private _warnings?: string[];
+
+  @property({ attribute: false })
+  public conditionDescriptions: ConditionDescriptions = {};
+
+  @property({ type: Boolean, attribute: "sidebar" })
+  public optionsInSidebar = false;
 
   @storage({
     key: "automationClipboard",
@@ -101,15 +148,346 @@ export default class HaAutomationConditionRow extends LitElement {
 
   @state() private _yamlMode = false;
 
-  @state() private _warnings?: string[];
-
   @state() private _testing = false;
 
   @state() private _testingResult?: boolean;
 
+  @state() private _selected = false;
+
+  @state() private _liveTestResult: {
+    state: LiveTestState;
+    message?: string;
+  } = { state: "unknown" };
+
   @state()
   @consume({ context: fullEntitiesContext, subscribe: true })
-  _entityReg!: EntityRegistryEntry[];
+  _entityReg: EntityRegistryEntry[] = [];
+
+  @query("ha-automation-condition-editor")
+  public conditionEditor?: HaAutomationConditionEditor;
+
+  @query("ha-automation-row")
+  private _automationRowElement?: HaAutomationRow;
+
+  private _testingTimeout?: number;
+
+  private _conditionUnsub?: Promise<UnsubscribeFunc>;
+
+  get selected() {
+    return this._selected;
+  }
+
+  private _renderOverflowLabel(label: string, shortcut?: TemplateResult) {
+    return html`
+      <div class="overflow-label">
+        ${label}
+        ${this.optionsInSidebar && !this.narrow
+          ? shortcut ||
+            html`<span
+              class="shortcut-placeholder ${isMac ? "mac" : ""}"
+            ></span>`
+          : nothing}
+      </div>
+    `;
+  }
+
+  private _renderRow() {
+    const descriptionHasTarget =
+      "target" in (this.conditionDescriptions[this.condition.condition] || {});
+
+    const target = descriptionHasTarget
+      ? (this.condition as PlatformCondition).target
+      : "device_id" in this.condition &&
+          (this.condition as DeviceCondition).device_id
+        ? { device_id: [(this.condition as DeviceCondition).device_id] }
+        : undefined;
+
+    const conditionTargetSpec =
+      this.conditionDescriptions[this.condition.condition]?.target;
+
+    const noteTooltipText = truncateWithEllipsis(
+      this.condition.note?.trim() || "",
+      250
+    );
+
+    return html`
+      <ha-condition-icon
+        slot="leading-icon"
+        .hass=${this.hass}
+        .condition=${this.condition.condition}
+      ></ha-condition-icon>
+      <h3 slot="header">
+        ${capitalizeFirstLetter(
+          describeCondition(this.condition, this.hass, this._entityReg)
+        )}
+        ${target !== undefined || (descriptionHasTarget && !this._isNew)
+          ? this._renderTargets(
+              target,
+              descriptionHasTarget && !this._isNew,
+              conditionTargetSpec,
+              this.condition.condition !== "device"
+            )
+          : nothing}
+        ${this.condition.note?.trim()
+          ? html`
+              <ha-svg-icon
+                id="note-icon"
+                tabindex="0"
+                .path=${mdiCommentTextOutline}
+                .label=${this.hass.localize(
+                  "ui.panel.config.automation.editor.note.label"
+                )}
+                class="note-indicator"
+              ></ha-svg-icon>
+              <ha-tooltip for="note-icon"><p>${noteTooltipText}</p></ha-tooltip>
+            `
+          : nothing}
+      </h3>
+      <ha-automation-row-event-chip
+        .show=${this._testing}
+        .variant=${this._testingResult ? "success" : "warning"}
+        slot="event"
+        class="event-chip"
+        aria-live="polite"
+      >
+        ${this.hass.localize(
+          `ui.panel.config.automation.editor.conditions.testing_${
+            this._testingResult ? "pass" : "error"
+          }`
+        )}
+      </ha-automation-row-event-chip>
+
+      <slot name="icons" slot="icons"></slot>
+
+      <ha-dropdown
+        slot="icons"
+        @click=${preventDefaultStopPropagation}
+        @keydown=${stopPropagation}
+        @wa-select=${this._handleDropdownSelect}
+        placement="bottom-end"
+      >
+        <ha-icon-button
+          slot="trigger"
+          .label=${this.hass.localize("ui.common.menu")}
+          .path=${mdiDotsVertical}
+        >
+        </ha-icon-button>
+
+        <ha-dropdown-item value="test">
+          <ha-svg-icon slot="icon" .path=${mdiFlask}></ha-svg-icon>
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              "ui.panel.config.automation.editor.conditions.test"
+            )
+          )}
+        </ha-dropdown-item>
+        <ha-dropdown-item value="rename" .disabled=${this.disabled}>
+          <ha-svg-icon slot="icon" .path=${mdiRenameBox}></ha-svg-icon>
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              "ui.panel.config.automation.editor.conditions.rename"
+            )
+          )}
+        </ha-dropdown-item>
+        <ha-dropdown-item value="edit_note">
+          <ha-svg-icon slot="icon" .path=${mdiCommentEditOutline}></ha-svg-icon>
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              `ui.panel.config.automation.editor.note.${this.condition.note ? "edit" : "add"}`
+            )
+          )}
+        </ha-dropdown-item>
+
+        <wa-divider></wa-divider>
+
+        <ha-dropdown-item value="duplicate" .disabled=${this.disabled}>
+          <ha-svg-icon
+            slot="icon"
+            .path=${mdiPlusCircleMultipleOutline}
+          ></ha-svg-icon>
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              "ui.panel.config.automation.editor.actions.duplicate"
+            )
+          )}
+        </ha-dropdown-item>
+
+        <ha-dropdown-item value="copy" .disabled=${this.disabled}>
+          <ha-svg-icon slot="icon" .path=${mdiContentCopy}></ha-svg-icon
+          >${this._renderOverflowLabel(
+            this.hass.localize(
+              "ui.panel.config.automation.editor.triggers.copy"
+            ),
+            html`<span class="shortcut">
+              <span
+                >${isMac
+                  ? html`<ha-svg-icon
+                      .path=${mdiAppleKeyboardCommand}
+                    ></ha-svg-icon>`
+                  : this.hass.localize(
+                      "ui.panel.config.automation.editor.ctrl"
+                    )}</span
+              >
+              <span>+</span>
+              <span>C</span>
+            </span>`
+          )}
+        </ha-dropdown-item>
+
+        <ha-dropdown-item value="cut" .disabled=${this.disabled}>
+          <ha-svg-icon slot="icon" .path=${mdiContentCut}></ha-svg-icon
+          >${this._renderOverflowLabel(
+            this.hass.localize(
+              "ui.panel.config.automation.editor.triggers.cut"
+            ),
+            html`<span class="shortcut">
+              <span
+                >${isMac
+                  ? html`<ha-svg-icon
+                      .path=${mdiAppleKeyboardCommand}
+                    ></ha-svg-icon>`
+                  : this.hass.localize(
+                      "ui.panel.config.automation.editor.ctrl"
+                    )}</span
+              >
+              <span>+</span>
+              <span>X</span>
+            </span>`
+          )}
+        </ha-dropdown-item>
+
+        ${this._pasteAvailable()
+          ? html`
+              <ha-dropdown-item value="paste">
+                <ha-svg-icon slot="icon" .path=${mdiContentPaste}></ha-svg-icon>
+                ${this._renderOverflowLabel(
+                  this.hass.localize(
+                    "ui.panel.config.automation.editor.actions.paste"
+                  ),
+                  html`<span class="shortcut">
+                    <span
+                      >${isMac
+                        ? html`<ha-svg-icon
+                            .path=${mdiAppleKeyboardCommand}
+                          ></ha-svg-icon>`
+                        : this.hass.localize(
+                            "ui.panel.config.automation.editor.ctrl"
+                          )}</span
+                    >
+                    <span>+</span>
+                    <span>V</span>
+                  </span>`
+                )}
+              </ha-dropdown-item>
+            `
+          : nothing}
+        ${!this.optionsInSidebar
+          ? html`
+              <ha-dropdown-item
+                value="move_up"
+                .disabled=${this.disabled || !!this.first}
+              >
+                ${this.hass.localize(
+                  "ui.panel.config.automation.editor.move_up"
+                )}
+                <ha-svg-icon slot="icon" .path=${mdiArrowUp}></ha-svg-icon
+              ></ha-dropdown-item>
+              <ha-dropdown-item
+                value="move_down"
+                .disabled=${this.disabled || !!this.last}
+              >
+                ${this.hass.localize(
+                  "ui.panel.config.automation.editor.move_down"
+                )}
+                <ha-svg-icon slot="icon" .path=${mdiArrowDown}></ha-svg-icon
+              ></ha-dropdown-item>
+            `
+          : nothing}
+
+        <ha-dropdown-item value="toggle_yaml_mode">
+          <ha-svg-icon slot="icon" .path=${mdiPlaylistEdit}></ha-svg-icon>
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              `ui.panel.config.automation.editor.edit_${!this._yamlMode ? "yaml" : "ui"}`
+            )
+          )}
+        </ha-dropdown-item>
+
+        <wa-divider></wa-divider>
+
+        <ha-dropdown-item value="disable" .disabled=${this.disabled}>
+          <ha-svg-icon
+            slot="icon"
+            .path=${this.condition.enabled === false
+              ? mdiPlayCircleOutline
+              : mdiStopCircleOutline}
+          ></ha-svg-icon>
+
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              `ui.panel.config.automation.editor.actions.${this.condition.enabled === false ? "enable" : "disable"}`
+            )
+          )}
+        </ha-dropdown-item>
+        <ha-dropdown-item
+          variant="danger"
+          value="delete"
+          .disabled=${this.disabled}
+        >
+          <ha-svg-icon
+            class="warning"
+            slot="icon"
+            .path=${mdiDelete}
+          ></ha-svg-icon>
+          ${this._renderOverflowLabel(
+            this.hass.localize(
+              "ui.panel.config.automation.editor.actions.delete"
+            ),
+            html`<span class="shortcut">
+              <span
+                >${isMac
+                  ? html`<ha-svg-icon
+                      .path=${mdiAppleKeyboardCommand}
+                    ></ha-svg-icon>`
+                  : this.hass.localize(
+                      "ui.panel.config.automation.editor.ctrl"
+                    )}</span
+              >
+              <span>+</span>
+              <span
+                >${this.hass.localize(
+                  "ui.panel.config.automation.editor.del"
+                )}</span
+              >
+            </span>`
+          )}
+        </ha-dropdown-item>
+      </ha-dropdown>
+      ${!this.optionsInSidebar
+        ? html`${this._warnings
+              ? html`<ha-automation-editor-warning
+                  .localize=${this.hass.localize}
+                  .warnings=${this._warnings}
+                >
+                </ha-automation-editor-warning>`
+              : nothing}
+            <ha-automation-condition-editor
+              .hass=${this.hass}
+              .condition=${this.condition}
+              .description=${this.conditionDescriptions[
+                this.condition.condition
+              ]}
+              .disabled=${this.disabled}
+              .yamlMode=${this._yamlMode}
+              .uiSupported=${this._uiSupported(
+                this._getType(this.condition, this.conditionDescriptions)
+              )}
+              .narrow=${this.narrow}
+              @ui-mode-not-available=${this._handleUiModeNotAvailable}
+            ></ha-automation-condition-editor>`
+        : nothing}
+    `;
+  }
 
   protected render() {
     if (!this.condition) {
@@ -117,7 +495,16 @@ export default class HaAutomationConditionRow extends LitElement {
     }
 
     return html`
-      <ha-card outlined>
+      <ha-card
+        outlined
+        class=${classMap({
+          selected: this._selected,
+          "building-block":
+            this.optionsInSidebar &&
+            CONDITION_BUILDING_BLOCKS.includes(this.condition.condition) &&
+            !this._collapsed,
+        })}
+      >
         ${this.condition.enabled === false
           ? html`
               <div class="disabled-bar">
@@ -126,218 +513,184 @@ export default class HaAutomationConditionRow extends LitElement {
                 )}
               </div>
             `
-          : ""}
-
-        <ha-expansion-panel left-chevron>
-          <ha-svg-icon
-            slot="leading-icon"
-            class="condition-icon"
-            .path=${CONDITION_ICONS[this.condition.condition]}
-          ></ha-svg-icon>
-          <h3 slot="header">
-            ${capitalizeFirstLetter(
-              describeCondition(this.condition, this.hass, this._entityReg)
-            )}
-          </h3>
-
-          <slot name="icons" slot="icons"></slot>
-
-          <ha-md-button-menu
-            slot="icons"
-            @click=${preventDefault}
-            @keydown=${stopPropagation}
-            @closed=${stopPropagation}
-            positioning="fixed"
-          >
-            <ha-icon-button
-              slot="trigger"
-              .label=${this.hass.localize("ui.common.menu")}
-              .path=${mdiDotsVertical}
-            >
-            </ha-icon-button>
-
-            <ha-md-menu-item .clickAction=${this._testCondition}>
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.conditions.test"
+          : nothing}
+        ${this.optionsInSidebar
+          ? html`<ha-automation-row
+              .disabled=${this.condition.enabled === false}
+              .leftChevron=${CONDITION_BUILDING_BLOCKS.includes(
+                this.condition.condition
               )}
-              <ha-svg-icon slot="start" .path=${mdiFlask}></ha-svg-icon>
-            </ha-md-menu-item>
-            <ha-md-menu-item
-              .clickAction=${this._renameCondition}
-              .disabled=${this.disabled}
-            >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.conditions.rename"
+              .collapsed=${this._collapsed}
+              .selected=${this._selected}
+              .highlight=${this.highlight}
+              .buildingBlock=${CONDITION_BUILDING_BLOCKS.includes(
+                this.condition.condition
               )}
-              <ha-svg-icon slot="start" .path=${mdiRenameBox}></ha-svg-icon>
-            </ha-md-menu-item>
-
-            <ha-md-divider role="separator" tabindex="-1"></ha-md-divider>
-
-            <ha-md-menu-item
-              .clickAction=${this._duplicateCondition}
-              .disabled=${this.disabled}
-            >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.actions.duplicate"
-              )}
-              <ha-svg-icon
-                slot="start"
-                .path=${mdiContentDuplicate}
-              ></ha-svg-icon>
-            </ha-md-menu-item>
-
-            <ha-md-menu-item
-              .clickAction=${this._copyCondition}
-              .disabled=${this.disabled}
-            >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.triggers.copy"
-              )}
-              <ha-svg-icon slot="start" .path=${mdiContentCopy}></ha-svg-icon>
-            </ha-md-menu-item>
-
-            <ha-md-menu-item
-              .clickAction=${this._cutCondition}
-              .disabled=${this.disabled}
-            >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.triggers.cut"
-              )}
-              <ha-svg-icon slot="start" .path=${mdiContentCut}></ha-svg-icon>
-            </ha-md-menu-item>
-
-            <ha-md-menu-item
-              .clickAction=${this._moveUp}
-              .disabled=${this.disabled || this.first}
-            >
-              ${this.hass.localize("ui.panel.config.automation.editor.move_up")}
-              <ha-svg-icon slot="start" .path=${mdiArrowUp}></ha-svg-icon
-            ></ha-md-menu-item>
-
-            <ha-md-menu-item
-              .clickAction=${this._moveDown}
-              .disabled=${this.disabled || this.last}
-            >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.move_down"
-              )}
-              <ha-svg-icon slot="start" .path=${mdiArrowDown}></ha-svg-icon
-            ></ha-md-menu-item>
-
-            <ha-md-menu-item
-              .clickAction=${this._toggleYamlMode}
-              .disabled=${this._warnings}
-            >
-              ${this.hass.localize(
-                `ui.panel.config.automation.editor.edit_${!this._yamlMode ? "yaml" : "ui"}`
-              )}
-              <ha-svg-icon slot="start" .path=${mdiPlaylistEdit}></ha-svg-icon>
-            </ha-md-menu-item>
-
-            <ha-md-divider role="separator" tabindex="-1"></ha-md-divider>
-
-            <ha-md-menu-item
-              .clickAction=${this._onDisable}
-              .disabled=${this.disabled}
-            >
-              ${this.condition.enabled === false
-                ? this.hass.localize(
-                    "ui.panel.config.automation.editor.actions.enable"
-                  )
-                : this.hass.localize(
-                    "ui.panel.config.automation.editor.actions.disable"
-                  )}
-              <ha-svg-icon
-                slot="start"
-                .path=${this.condition.enabled === false
-                  ? mdiPlayCircleOutline
-                  : mdiStopCircleOutline}
-              ></ha-svg-icon>
-            </ha-md-menu-item>
-            <ha-md-menu-item
-              class="warning"
-              .clickAction=${this._onDelete}
-              .disabled=${this.disabled}
-            >
-              ${this.hass.localize(
-                "ui.panel.config.automation.editor.actions.delete"
-              )}
-              <ha-svg-icon
-                class="warning"
-                slot="start"
-                .path=${mdiDelete}
-              ></ha-svg-icon>
-            </ha-md-menu-item>
-          </ha-md-button-menu>
-
-          <div
-            class=${classMap({
-              "card-content": true,
-              disabled: this.condition.enabled === false,
-            })}
-          >
-            ${this._warnings
-              ? html`<ha-alert
-                  alert-type="warning"
-                  .title=${this.hass.localize(
-                    "ui.errors.config.editor_not_supported"
-                  )}
-                >
-                  ${this._warnings!.length > 0 &&
-                  this._warnings![0] !== undefined
-                    ? html` <ul>
-                        ${this._warnings!.map(
-                          (warning) => html`<li>${warning}</li>`
-                        )}
-                      </ul>`
-                    : ""}
-                  ${this.hass.localize(
-                    "ui.errors.config.edit_in_yaml_supported"
-                  )}
-                </ha-alert>`
-              : ""}
-            <ha-automation-condition-editor
-              @ui-mode-not-available=${this._handleUiModeNotAvailable}
-              @value-changed=${this._handleChangeEvent}
-              .yamlMode=${this._yamlMode}
-              .disabled=${this.disabled}
-              .hass=${this.hass}
-              .condition=${this.condition}
-            ></ha-automation-condition-editor>
-          </div>
-        </ha-expansion-panel>
-        <div
-          class="testing ${classMap({
-            active: this._testing,
-            pass: this._testingResult === true,
-            error: this._testingResult === false,
-          })}"
-        >
-          ${this._testingResult
-            ? this.hass.localize(
-                "ui.panel.config.automation.editor.conditions.testing_pass"
-              )
-            : this.hass.localize(
-                "ui.panel.config.automation.editor.conditions.testing_error"
-              )}
-        </div>
+              .sortSelected=${this.sortSelected}
+              .dim=${this._testing}
+              @click=${this._toggleSidebar}
+              @toggle-collapsed=${this._toggleCollapse}
+              >${this._renderRow()}
+              <ha-automation-row-live-test
+                slot="icons"
+                .state=${this.condition.condition !== "trigger"
+                  ? this._liveTestResult.state
+                  : "unknown"}
+                .label=${this.hass.localize(
+                  `ui.panel.config.automation.editor.conditions.live_test_state.${this.condition.condition !== "trigger" ? this._liveTestResult.state : "unknown"}`
+                )}
+                .message=${this._liveTestResult.message}
+              ></ha-automation-row-live-test
+            ></ha-automation-row>`
+          : html`
+              <ha-expansion-panel
+                left-chevron
+                @expanded-changed=${this._expansionPanelChanged}
+              >
+                ${this._renderRow()}
+              </ha-expansion-panel>
+            `}
       </ha-card>
+
+      ${this.optionsInSidebar &&
+      CONDITION_BUILDING_BLOCKS.includes(this.condition.condition)
+        ? html`<ha-automation-condition-editor
+            class=${this._collapsed ? "hidden" : ""}
+            .hass=${this.hass}
+            .condition=${this.condition}
+            .disabled=${this.disabled}
+            .uiSupported=${this._uiSupported(
+              this._getType(this.condition, this.conditionDescriptions)
+            )}
+            indent
+            .selected=${this._selected}
+            .narrow=${this.narrow}
+            @value-changed=${this._onValueChange}
+          ></ha-automation-condition-editor>`
+        : nothing}
     `;
   }
 
-  private _handleUiModeNotAvailable(ev: CustomEvent) {
-    // Prevent possible parent action-row from switching to yamlMode
-    ev.stopPropagation();
-    this._warnings = handleStructError(this.hass, ev.detail).warnings;
-    if (!this._yamlMode) {
-      this._yamlMode = true;
+  private _renderTargets = memoizeOne(
+    (
+      target?: HassServiceTarget,
+      targetRequired = false,
+      targetSpec?: TargetSelector["target"],
+      interactive = false
+    ) =>
+      html`<ha-automation-row-targets
+        .target=${target}
+        .targetRequired=${targetRequired}
+        .selector=${targetSpec ? { target: targetSpec } : undefined}
+        .interactive=${interactive}
+      ></ha-automation-row-targets>`
+  );
+
+  public connectedCallback(): void {
+    super.connectedCallback();
+    this._subscribeCondition();
+  }
+
+  protected firstUpdated(changedProperties: PropertyValues<this>): void {
+    super.firstUpdated(changedProperties);
+
+    if (this.root) {
+      this._collapsed = false;
     }
   }
 
-  private _handleChangeEvent(ev: CustomEvent) {
-    if (ev.detail.yaml) {
+  protected willUpdate(changedProperties: PropertyValues) {
+    // on yaml toggle --> clear warnings
+    if (changedProperties.has("yamlMode")) {
       this._warnings = undefined;
+    }
+  }
+
+  protected override updated(changedProps: PropertyValues<this>): void {
+    super.updated(changedProps);
+    if (
+      changedProps.has("condition") &&
+      changedProps.get("condition") !== undefined
+    ) {
+      this._resetSubscription();
+      this._debounceSubscribeCondition();
+    }
+  }
+
+  public disconnectedCallback() {
+    super.disconnectedCallback();
+    this._debounceSubscribeCondition.cancel();
+    if (this._testingTimeout !== undefined) {
+      clearTimeout(this._testingTimeout);
+    }
+    this._resetSubscription();
+  }
+
+  private _resetSubscription() {
+    this._liveTestResult = {
+      state: "unknown",
+      message: this.hass.localize(
+        "ui.panel.config.automation.editor.conditions.live_test_state.unknown"
+      ),
+    };
+    if (this._conditionUnsub) {
+      this._conditionUnsub.then((unsub) => unsub());
+      this._conditionUnsub = undefined;
+    }
+  }
+
+  private _debounceSubscribeCondition = debounce(
+    () => this._subscribeCondition(),
+    500
+  );
+
+  private async _subscribeCondition() {
+    this._resetSubscription();
+
+    if (!this.condition) {
+      return;
+    }
+
+    const conditionUnsub = subscribeCondition(
+      this.hass.connection,
+      (result) => {
+        if (result.error) {
+          this._handleLiveTestError(result.error);
+        } else {
+          this._liveTestResult = {
+            state: result.result ? "pass" : "fail",
+            message: this.hass.localize(
+              `ui.panel.config.automation.editor.conditions.testing_${result.result ? "pass" : "error"}`
+            ),
+          };
+        }
+      },
+      this.condition
+    );
+    conditionUnsub.catch((err: any) => {
+      this._handleLiveTestError(err);
+      if (this._conditionUnsub === conditionUnsub) {
+        this._conditionUnsub = undefined;
+      }
+    });
+    this._conditionUnsub = conditionUnsub;
+  }
+
+  private _handleLiveTestError(error: any) {
+    const invalid =
+      typeof error !== "string" && error.code === "invalid_format";
+    this._liveTestResult = {
+      state: invalid ? "invalid" : "unknown",
+      message: this.hass.localize(
+        `ui.panel.config.automation.editor.conditions.${invalid ? "invalid_condition" : "live_test_state.unknown"}`
+      ),
+    };
+  }
+
+  private _onValueChange(event: CustomEvent) {
+    // reload sidebar if sort, deleted,... happend
+    if (this._selected && this.optionsInSidebar) {
+      this.openSidebar(event.detail.value);
     }
   }
 
@@ -346,96 +699,122 @@ export default class HaAutomationConditionRow extends LitElement {
       ...this._clipboard,
       condition: deepClone(this.condition),
     };
+    copyToClipboard(dump(this.condition));
   }
 
   private _onDisable = () => {
     const enabled = !(this.condition.enabled ?? true);
     const value = { ...this.condition, enabled };
     fireEvent(this, "value-changed", { value });
+
+    if (this._selected && this.optionsInSidebar) {
+      this.openSidebar(value); // refresh sidebar
+    }
+
+    if (this._yamlMode && !this.optionsInSidebar) {
+      this.conditionEditor?.yamlEditor?.setValue(value);
+    }
   };
 
   private _onDelete = () => {
-    showConfirmationDialog(this, {
-      title: this.hass.localize(
-        "ui.panel.config.automation.editor.conditions.delete_confirm_title"
-      ),
-      text: this.hass.localize(
-        "ui.panel.config.automation.editor.conditions.delete_confirm_text"
-      ),
-      dismissText: this.hass.localize("ui.common.cancel"),
-      confirmText: this.hass.localize("ui.common.delete"),
-      destructive: true,
-      confirm: () => {
-        fireEvent(this, "value-changed", { value: null });
+    fireEvent(this, "value-changed", { value: null });
+    if (this._selected) {
+      fireEvent(this, "close-sidebar");
+    }
+
+    showEditorToast(this, {
+      message: this.hass.localize("ui.common.successfully_deleted"),
+      duration: 4000,
+      action: {
+        text: this.hass.localize("ui.common.undo"),
+        action: () => {
+          fireEvent(window, "undo-change");
+        },
       },
     });
   };
 
   private _switchUiMode() {
-    this._warnings = undefined;
     this._yamlMode = false;
   }
 
   private _switchYamlMode() {
-    this._warnings = undefined;
     this._yamlMode = true;
   }
 
   private _testCondition = async () => {
-    if (this._testing) {
+    if (this._testing && this._testingTimeout === undefined) {
       return;
     }
-    this._testingResult = undefined;
-    this._testing = true;
-    const condition = this.condition;
 
+    if (this._testingTimeout !== undefined) {
+      clearTimeout(this._testingTimeout);
+    }
+
+    const condition = this.condition;
+    requestAnimationFrame(() => {
+      // @ts-ignore is supported in all browsers except firefox
+      if (this.scrollIntoViewIfNeeded) {
+        // @ts-ignore is supported in all browsers except firefox
+        this.scrollIntoViewIfNeeded();
+        return;
+      }
+      this.scrollIntoView();
+    });
+
+    let validateResult: Record<"conditions", InvalidConfig | ValidConfig>;
     try {
-      const validateResult = await validateConfig(this.hass, {
+      validateResult = await validateConfig(this.hass, {
         conditions: condition,
       });
-
-      // Abort if condition changed.
-      if (this.condition !== condition) {
-        this._testing = false;
-        return;
-      }
-
-      if (!validateResult.conditions.valid) {
-        showAlertDialog(this, {
-          title: this.hass.localize(
-            "ui.panel.config.automation.editor.conditions.invalid_condition"
-          ),
-          text: validateResult.conditions.error,
-        });
-        this._testing = false;
-        return;
-      }
-
-      let result: { result: boolean };
-      try {
-        result = await testCondition(this.hass, condition);
-      } catch (err: any) {
-        if (this.condition !== condition) {
-          this._testing = false;
-          return;
-        }
-
-        showAlertDialog(this, {
-          title: this.hass.localize(
-            "ui.panel.config.automation.editor.conditions.test_failed"
-          ),
-          text: err.message,
-        });
-        this._testing = false;
-        return;
-      }
-
-      this._testingResult = result.result;
-    } finally {
-      setTimeout(() => {
-        this._testing = false;
-      }, 2500);
+    } catch (err: any) {
+      showAlertDialog(this, {
+        title: this.hass.localize(
+          "ui.panel.config.automation.editor.conditions.validation_failed"
+        ),
+      });
+      // eslint-disable-next-line no-console
+      console.error("Error validating condition", err);
+      return;
     }
+
+    // Abort if condition changed.
+    if (this.condition !== condition) {
+      return;
+    }
+
+    if (!validateResult.conditions.valid) {
+      showAlertDialog(this, {
+        title: this.hass.localize(
+          "ui.panel.config.automation.editor.conditions.invalid_condition"
+        ),
+        text: validateResult.conditions.error,
+      });
+      return;
+    }
+
+    let result: { result: boolean };
+    try {
+      result = await testCondition(this.hass, condition);
+    } catch (err: any) {
+      if (this.condition !== condition) {
+        return;
+      }
+
+      showAlertDialog(this, {
+        title: this.hass.localize(
+          "ui.panel.config.automation.editor.conditions.test_failed"
+        ),
+        text: err.message,
+      });
+      return;
+    }
+
+    this._testingResult = result.result;
+    this._testing = true;
+    this._testingTimeout = window.setTimeout(() => {
+      this._testing = false;
+    }, 2500);
   };
 
   private _renameCondition = async (): Promise<void> => {
@@ -463,6 +842,44 @@ export default class HaAutomationConditionRow extends LitElement {
       fireEvent(this, "value-changed", {
         value,
       });
+
+      if (this._selected && this.optionsInSidebar) {
+        this.openSidebar(value); // refresh sidebar
+      } else if (this._yamlMode) {
+        this.conditionEditor?.yamlEditor?.setValue(value);
+      }
+    }
+  };
+
+  private _editNoteCondition = async (): Promise<void> => {
+    const note = await showPromptDialog(this, {
+      title: this.hass.localize(
+        `ui.panel.config.automation.editor.note.${this.condition.note ? "edit" : "add"}`
+      ),
+      inputLabel: this.hass.localize(
+        "ui.panel.config.automation.editor.note.label"
+      ),
+      inputType: "string",
+      defaultValue: this.condition.note,
+      confirmText: this.hass.localize("ui.common.submit"),
+      multiline: true,
+    });
+    if (note !== null) {
+      const value = { ...this.condition };
+      if (note === "") {
+        delete value.note;
+      } else {
+        value.note = note;
+      }
+      fireEvent(this, "value-changed", {
+        value,
+      });
+
+      if (this._selected && this.optionsInSidebar) {
+        this.openSidebar(value); // refresh sidebar
+      } else if (this._yamlMode) {
+        this.conditionEditor?.yamlEditor?.setValue(value);
+      }
     }
   };
 
@@ -470,14 +887,49 @@ export default class HaAutomationConditionRow extends LitElement {
     fireEvent(this, "duplicate");
   };
 
+  private _insertAfter = (value: Condition | Condition[]) => {
+    if (ensureArray(value).some((val) => !isCondition(val))) {
+      return false;
+    }
+    fireEvent(this, "insert-after", { value });
+    return true;
+  };
+
   private _copyCondition = () => {
     this._setClipboard();
+    if (this._selected && this.optionsInSidebar) {
+      this.openSidebar(); // refresh sidebar
+    }
+    showEditorToast(this, {
+      message: this.hass.localize(
+        "ui.panel.config.automation.editor.conditions.copied_to_clipboard"
+      ),
+      duration: 2000,
+    });
   };
 
   private _cutCondition = () => {
     this._setClipboard();
     fireEvent(this, "value-changed", { value: null });
+    if (this._selected) {
+      fireEvent(this, "close-sidebar");
+    }
+    showEditorToast(this, {
+      message: this.hass.localize(
+        "ui.panel.config.automation.editor.conditions.cut_to_clipboard"
+      ),
+      duration: 2000,
+    });
   };
+
+  private _pasteCondition = () => {
+    const condition = this._clipboard?.condition;
+    if (!condition) return;
+
+    fireEvent(this, "paste", { item: condition });
+  };
+
+  private _pasteAvailable = () => !!this._clipboard?.condition;
 
   private _moveUp = () => {
     fireEvent(this, "move-up");
@@ -487,88 +939,198 @@ export default class HaAutomationConditionRow extends LitElement {
     fireEvent(this, "move-down");
   };
 
-  private _toggleYamlMode = () => {
+  private _toggleYamlMode = (item?: HTMLElement) => {
     if (this._yamlMode) {
       this._switchUiMode();
     } else {
       this._switchYamlMode();
     }
-    this.expand();
+
+    if (!this.optionsInSidebar) {
+      this.expand();
+    } else if (item) {
+      this.openSidebar();
+    }
   };
 
   public expand() {
+    if (this.optionsInSidebar) {
+      this._collapsed = false;
+      return;
+    }
+
     this.updateComplete.then(() => {
       this.shadowRoot!.querySelector("ha-expansion-panel")!.expanded = true;
     });
   }
 
+  public collapse() {
+    this._collapsed = true;
+  }
+
+  public expandAll() {
+    this.expand();
+
+    this.conditionEditor?.expandAll();
+  }
+
+  public collapseAll() {
+    this.collapse();
+
+    this.conditionEditor?.collapseAll();
+  }
+
+  private _handleUiModeNotAvailable(ev: CustomEvent) {
+    this._warnings = handleStructError(this.hass, ev.detail).warnings;
+    if (!this._yamlMode) {
+      this._yamlMode = true;
+    }
+  }
+
+  private _toggleSidebar(ev: Event) {
+    ev?.stopPropagation();
+
+    if (this._selected) {
+      fireEvent(this, "request-close-sidebar");
+      return;
+    }
+    this.openSidebar();
+  }
+
+  public markAsNew(): void {
+    this._isNew = true;
+  }
+
+  private _expansionPanelChanged(ev: CustomEvent) {
+    if (!ev.detail.expanded) {
+      this._isNew = false;
+    }
+  }
+
+  public openSidebar(condition?: Condition): void {
+    const sidebarCondition = condition || this.condition;
+    fireEvent(this, "open-sidebar", {
+      save: (value) => {
+        fireEvent(this, "value-changed", { value });
+      },
+      close: (focus?: boolean) => {
+        this._selected = false;
+        this._isNew = false;
+        fireEvent(this, "close-sidebar");
+        if (focus) {
+          this.focus();
+        }
+      },
+      rename: () => {
+        this._renameCondition();
+      },
+      editNote: this._editNoteCondition,
+      toggleYamlMode: () => {
+        this._toggleYamlMode();
+        this.openSidebar();
+      },
+      disable: this._onDisable,
+      delete: this._onDelete,
+      duplicate: this._duplicateCondition,
+      insertAfter: this._insertAfter,
+      copy: this._copyCondition,
+      cut: this._cutCondition,
+      paste: this._pasteCondition,
+      pasteAvailable: this._pasteAvailable,
+      test: this._testCondition,
+      config: sidebarCondition,
+      uiSupported: this._uiSupported(
+        this._getType(sidebarCondition, this.conditionDescriptions)
+      ),
+      description: this.conditionDescriptions[sidebarCondition.condition],
+      yamlMode: this._yamlMode,
+    } satisfies ConditionSidebarConfig);
+    this._selected = true;
+    this._collapsed = false;
+
+    if (this.narrow) {
+      window.setTimeout(() => {
+        this.scrollIntoView({
+          block: "start",
+          behavior: "smooth",
+        });
+      }, 180); // duration of transition of added padding for bottom sheet
+    }
+  }
+
+  private _getType = memoizeOne(
+    (condition: Condition, conditionDescriptions: ConditionDescriptions) => {
+      if (condition.condition in conditionDescriptions) {
+        return "platform";
+      }
+
+      return condition.condition;
+    }
+  );
+
+  private _uiSupported = memoizeOne(
+    (type: string) =>
+      customElements.get(`ha-automation-condition-${type}`) !== undefined
+  );
+
+  private _toggleCollapse() {
+    this._collapsed = !this._collapsed;
+  }
+
+  public focus() {
+    this._automationRowElement?.focus();
+  }
+
+  private _handleDropdownSelect(ev: HaDropdownSelectEvent) {
+    ev.stopPropagation();
+    const action = ev.detail?.item?.value;
+
+    if (!action) {
+      return;
+    }
+
+    switch (action) {
+      case "test":
+        this._testCondition();
+        break;
+      case "rename":
+        this._renameCondition();
+        break;
+      case "edit_note":
+        this._editNoteCondition();
+        break;
+      case "duplicate":
+        this._duplicateCondition();
+        break;
+      case "copy":
+        this._copyCondition();
+        break;
+      case "cut":
+        this._cutCondition();
+        break;
+      case "paste":
+        this._pasteCondition();
+        break;
+      case "move_up":
+        this._moveUp();
+        break;
+      case "move_down":
+        this._moveDown();
+        break;
+      case "toggle_yaml_mode":
+        this._toggleYamlMode(ev.target as HTMLElement);
+        break;
+      case "disable":
+        this._onDisable();
+        break;
+      case "delete":
+        this._onDelete();
+        break;
+    }
+  }
+
   static get styles(): CSSResultGroup {
-    return [
-      haStyle,
-      css`
-        .disabled {
-          opacity: 0.5;
-          pointer-events: none;
-        }
-        ha-expansion-panel {
-          --expansion-panel-summary-padding: 0 0 0 8px;
-          --expansion-panel-content-padding: 0;
-        }
-        h3 {
-          margin: 0;
-          font-size: inherit;
-          font-weight: inherit;
-        }
-        .condition-icon {
-          display: none;
-        }
-        @media (min-width: 870px) {
-          .condition-icon {
-            display: inline-block;
-            color: var(--secondary-text-color);
-            opacity: 0.9;
-          }
-        }
-        .card-content {
-          padding: 16px;
-        }
-        .disabled-bar {
-          background: var(--divider-color, #e0e0e0);
-          text-align: center;
-          border-top-right-radius: var(--ha-card-border-radius, 12px);
-          border-top-left-radius: var(--ha-card-border-radius, 12px);
-        }
-        .testing {
-          position: absolute;
-          top: 0px;
-          right: 0px;
-          left: 0px;
-          text-transform: uppercase;
-          font-weight: bold;
-          font-size: 14px;
-          background-color: var(--divider-color, #e0e0e0);
-          color: var(--text-primary-color);
-          max-height: 0px;
-          overflow: hidden;
-          transition: max-height 0.3s;
-          text-align: center;
-          border-top-right-radius: var(--ha-card-border-radius, 12px);
-          border-top-left-radius: var(--ha-card-border-radius, 12px);
-        }
-        .testing.active {
-          max-height: 100px;
-        }
-        .testing.error {
-          background-color: var(--accent-color);
-        }
-        .testing.pass {
-          background-color: var(--success-color);
-        }
-        ha-md-menu-item > ha-svg-icon {
-          --mdc-icon-size: 24px;
-        }
-      `,
-    ];
+    return [rowStyles, overflowStyles];
   }
 }
 

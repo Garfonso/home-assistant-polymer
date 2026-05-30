@@ -1,24 +1,38 @@
-import "@material/mwc-button";
+import { mdiPlus } from "@mdi/js";
 import type { CSSResultGroup } from "lit";
 import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
-import { mdiClose, mdiPlus } from "@mdi/js";
 import { fireEvent } from "../../../../common/dom/fire_event";
-import "../../../../components/ha-alert";
-import "../../../../components/ha-domain-icon";
-import "../../../../components/ha-icon-picker";
-import "../../../../components/ha-textarea";
-import "../../../../components/ha-textfield";
-import "../../../../components/ha-labels-picker";
-import "../../category/ha-category-picker";
-import "../../../../components/ha-expansion-panel";
-import "../../../../components/chips/ha-chip-set";
 import "../../../../components/chips/ha-assist-chip";
+import "../../../../components/chips/ha-chip-set";
+import "../../../../components/ha-alert";
 import "../../../../components/ha-area-picker";
+import "../../../../components/ha-dialog";
+import "../../../../components/ha-dialog-footer";
+import "../../../../components/ha-domain-icon";
+import "../../../../components/ha-expansion-panel";
+import "../../../../components/ha-icon-picker";
+import "../../../../components/ha-labels-picker";
+import "../../../../components/ha-suggest-with-ai-button";
+import type { SuggestWithAIGenerateTask } from "../../../../components/ha-suggest-with-ai-button";
+import "../../../../components/ha-svg-icon";
+import "../../../../components/ha-textarea";
+import "../../../../components/input/ha-input";
+import "../../category/ha-category-picker";
 
+import { supportsMarkdownHelper } from "../../../../common/translations/markdown_support";
+import type { GenDataTaskResult } from "../../../../data/ai_task";
+import type { AutomationConfig } from "../../../../data/automation";
+import type { ScriptConfig } from "../../../../data/script";
 import type { HassDialog } from "../../../../dialogs/make-dialog-manager";
 import { haStyle, haStyleDialog } from "../../../../resources/styles";
 import type { HomeAssistant } from "../../../../types";
+import {
+  type MetadataSuggestionResult,
+  generateMetadataSuggestionTask,
+  processMetadataSuggestion,
+} from "../../common/suggest-metadata-ai";
+import { buildEntityMetadataInspirations } from "../../common/suggest-metadata-inspirations";
 import type {
   EntityRegistryUpdate,
   SaveDialogParams,
@@ -28,7 +42,7 @@ import type {
 class DialogAutomationSave extends LitElement implements HassDialog {
   @property({ attribute: false }) public hass!: HomeAssistant;
 
-  @state() private _opened = false;
+  @state() private _open = false;
 
   @state() private _error?: string;
 
@@ -36,16 +50,16 @@ class DialogAutomationSave extends LitElement implements HassDialog {
 
   @state() private _entryUpdates!: EntityRegistryUpdate;
 
-  private _params!: SaveDialogParams;
+  @state() private _params?: SaveDialogParams;
 
-  private _newName?: string;
+  @state() private _newName?: string;
 
   private _newIcon?: string;
 
   private _newDescription?: string;
 
   public showDialog(params: SaveDialogParams): void {
-    this._opened = true;
+    this._open = true;
     this._params = params;
     this._newIcon = "icon" in params.config ? params.config.icon : undefined;
     this._newName =
@@ -66,18 +80,19 @@ class DialogAutomationSave extends LitElement implements HassDialog {
       this._entryUpdates.category ? "category" : "",
       this._entryUpdates.labels.length > 0 ? "labels" : "",
       this._entryUpdates.area ? "area" : "",
-    ];
+    ].filter(Boolean);
   }
 
-  public closeDialog() {
-    this._params.onClose();
-
-    if (this._opened) {
-      fireEvent(this, "dialog-closed", { dialog: this.localName });
-    }
-    this._opened = false;
-    this._visibleOptionals = [];
+  public closeDialog(): boolean {
+    this._open = false;
     return true;
+  }
+
+  private _dialogClosed() {
+    this._params?.onClose();
+    this._visibleOptionals = [];
+    this._params = undefined;
+    fireEvent(this, "dialog-closed", { dialog: this.localName });
   }
 
   protected _renderOptionalChip(id: string, label: string) {
@@ -93,14 +108,15 @@ class DialogAutomationSave extends LitElement implements HassDialog {
   }
 
   protected _renderDiscard() {
-    if (!this._params.onDiscard) {
+    if (!this._params?.onDiscard) {
       return nothing;
     }
     return html`
       <ha-button
-        @click=${this._handleDiscard}
         slot="secondaryAction"
-        class="destructive"
+        appearance="plain"
+        variant="danger"
+        @click=${this._handleDiscard}
       >
         ${this.hass.localize("ui.common.dont_save")}
       </ha-button>
@@ -108,45 +124,40 @@ class DialogAutomationSave extends LitElement implements HassDialog {
   }
 
   protected _renderInputs() {
-    if (this._params.hideInputs) {
+    if (!this._params || this._params.hideInputs) {
       return nothing;
     }
 
     return html`
-      <ha-textfield
-        dialogInitialFocus
+      <ha-input
+        autofocus
         .value=${this._newName}
         .placeholder=${this.hass.localize(
           `ui.panel.config.${this._params.domain}.editor.default_name`
         )}
         .label=${this.hass.localize("ui.panel.config.automation.editor.alias")}
         required
-        type="string"
+        type="text"
         @input=${this._valueChanged}
-      ></ha-textfield>
+      ></ha-input>
 
       ${this._params.domain === "script" &&
       this._visibleOptionals.includes("icon")
         ? html`
             <ha-icon-picker
-              .hass=${this.hass}
               .label=${this.hass.localize(
                 "ui.panel.config.automation.editor.icon"
               )}
               .value=${this._newIcon}
               @value-changed=${this._iconChanged}
             >
-              <ha-domain-icon
-                slot="fallback"
-                domain=${this._params.domain}
-                .hass=${this.hass}
-              >
+              <ha-domain-icon slot="start" domain=${this._params.domain}>
               </ha-domain-icon>
             </ha-icon-picker>
           `
         : nothing}
       ${this._visibleOptionals.includes("description")
-        ? html` <ha-textarea
+        ? html`<ha-textarea
             .label=${this.hass.localize(
               "ui.panel.config.automation.editor.description.label"
             )}
@@ -154,8 +165,9 @@ class DialogAutomationSave extends LitElement implements HassDialog {
               "ui.panel.config.automation.editor.description.placeholder"
             )}
             name="description"
-            autogrow
+            resize="auto"
             .value=${this._newDescription}
+            .hint=${supportsMarkdownHelper(this.hass.localize)}
             @input=${this._valueChanged}
           ></ha-textarea>`
         : nothing}
@@ -164,6 +176,9 @@ class DialogAutomationSave extends LitElement implements HassDialog {
             id="category"
             .hass=${this.hass}
             .scope=${this._params.domain}
+            .label=${this.hass.localize(
+              "ui.components.category-picker.category"
+            )}
             .value=${this._entryUpdates.category}
             @value-changed=${this._registryEntryChanged}
           ></ha-category-picker>`
@@ -201,12 +216,6 @@ class DialogAutomationSave extends LitElement implements HassDialog {
             )
           : nothing}
         ${this._renderOptionalChip(
-          "area",
-          this.hass.localize(
-            "ui.panel.config.automation.editor.dialog.add_area"
-          )
-        )}
-        ${this._renderOptionalChip(
           "category",
           this.hass.localize(
             "ui.panel.config.automation.editor.dialog.add_category"
@@ -218,37 +227,41 @@ class DialogAutomationSave extends LitElement implements HassDialog {
             "ui.panel.config.automation.editor.dialog.add_labels"
           )
         )}
+        ${this._renderOptionalChip(
+          "area",
+          this.hass.localize(
+            "ui.panel.config.automation.editor.dialog.add_area"
+          )
+        )}
       </ha-chip-set>
     `;
   }
 
   protected render() {
-    if (!this._opened) {
+    if (!this._params) {
       return nothing;
     }
 
     const title = this.hass.localize(
       this._params.config.alias
         ? "ui.panel.config.automation.editor.rename"
-        : "ui.panel.config.automation.editor.save"
+        : "ui.common.save"
     );
 
     return html`
       <ha-dialog
-        open
-        scrimClickAction
-        @closed=${this.closeDialog}
-        .heading=${title}
+        .open=${this._open}
+        @closed=${this._dialogClosed}
+        header-title=${this._params.title || title}
       >
-        <ha-dialog-header slot="heading">
-          <ha-icon-button
-            slot="navigationIcon"
-            dialogAction="cancel"
-            .label=${this.hass.localize("ui.common.close")}
-            .path=${mdiClose}
-          ></ha-icon-button>
-          <span slot="title">${this._params.title || title}</span>
-        </ha-dialog-header>
+        ${this._params.hideInputs
+          ? nothing
+          : html`<ha-suggest-with-ai-button
+              slot="headerActionItems"
+              .hass=${this.hass}
+              .generateTask=${this._generateTask}
+              @suggestion=${this._handleSuggestion}
+            ></ha-suggest-with-ai-button>`}
         ${this._error
           ? html`<ha-alert alert-type="error"
               >${this.hass.localize(
@@ -259,20 +272,24 @@ class DialogAutomationSave extends LitElement implements HassDialog {
         ${this._params.description
           ? html`<p>${this._params.description}</p>`
           : nothing}
-        ${this._renderInputs()} ${this._renderDiscard()}
-
-        <div slot="primaryAction">
-          <mwc-button @click=${this.closeDialog}>
+        ${this._renderInputs()}
+        <ha-dialog-footer slot="footer">
+          ${this._renderDiscard()}
+          <ha-button
+            slot="secondaryAction"
+            appearance="plain"
+            @click=${this.closeDialog}
+          >
             ${this.hass.localize("ui.common.cancel")}
-          </mwc-button>
-          <mwc-button @click=${this._save}>
+          </ha-button>
+          <ha-button slot="primaryAction" @click=${this._save}>
             ${this.hass.localize(
               this._params.config.alias && !this._params.onDiscard
                 ? "ui.panel.config.automation.editor.rename"
-                : "ui.panel.config.automation.editor.save"
+                : "ui.common.save"
             )}
-          </mwc-button>
-        </div>
+          </ha-button>
+        </ha-dialog-footer>
       </ha-dialog>
     `;
   }
@@ -307,11 +324,77 @@ class DialogAutomationSave extends LitElement implements HassDialog {
   }
 
   private _handleDiscard() {
-    this._params.onDiscard?.();
+    this._params?.onDiscard?.();
     this.closeDialog();
   }
 
+  private _generateTask = async (): Promise<SuggestWithAIGenerateTask> => {
+    if (!this._params) {
+      throw new Error("Dialog params not set");
+    }
+    return generateMetadataSuggestionTask<AutomationConfig | ScriptConfig>(
+      this.hass.connection,
+      this.hass.language,
+      this._params.domain,
+      this._params.config,
+      await buildEntityMetadataInspirations(
+        this.hass.connection,
+        this.hass.states,
+        this._params.domain
+      )
+    );
+  };
+
+  private async _handleSuggestion(
+    event: CustomEvent<GenDataTaskResult<MetadataSuggestionResult>>
+  ) {
+    if (!this._params) {
+      throw new Error("Dialog params not set");
+    }
+    const result = event.detail;
+    const processed = await processMetadataSuggestion(
+      this.hass.connection,
+      this._params.domain,
+      result
+    );
+
+    if (processed.name) {
+      this._newName = processed.name;
+    }
+
+    if (processed.description) {
+      this._newDescription = processed.description;
+      if (!this._visibleOptionals.includes("description")) {
+        this._visibleOptionals = [...this._visibleOptionals, "description"];
+      }
+    }
+
+    if (processed.category) {
+      this._entryUpdates = {
+        ...this._entryUpdates,
+        category: processed.category,
+      };
+      if (!this._visibleOptionals.includes("category")) {
+        this._visibleOptionals = [...this._visibleOptionals, "category"];
+      }
+    }
+
+    if (processed.labels?.length) {
+      this._entryUpdates = {
+        ...this._entryUpdates,
+        labels: processed.labels,
+      };
+      if (!this._visibleOptionals.includes("labels")) {
+        this._visibleOptionals = [...this._visibleOptionals, "labels"];
+      }
+    }
+  }
+
   private async _save(): Promise<void> {
+    if (!this._params) {
+      return;
+    }
+
     if (!this._newName) {
       this._error = "Name is required";
       return;
@@ -347,17 +430,10 @@ class DialogAutomationSave extends LitElement implements HassDialog {
       haStyleDialog,
       css`
         ha-dialog {
-          --dialog-content-padding: 0 24px 24px 24px;
+          --dialog-content-padding: 0 var(--ha-space-6) var(--ha-space-6)
+            var(--ha-space-6);
         }
 
-        @media all and (min-width: 500px) {
-          ha-dialog {
-            --mdc-dialog-min-width: min(500px, 95vw);
-            --mdc-dialog-max-width: min(500px, 95vw);
-          }
-        }
-
-        ha-textfield,
         ha-textarea,
         ha-icon-picker,
         ha-category-picker,
@@ -369,15 +445,16 @@ class DialogAutomationSave extends LitElement implements HassDialog {
         ha-category-picker,
         ha-labels-picker,
         ha-area-picker,
-        ha-chip-set {
-          margin-top: 16px;
+        ha-chip-set:has(> ha-assist-chip) {
+          margin-top: var(--ha-space-4);
         }
         ha-alert {
           display: block;
-          margin-bottom: 16px;
+          margin-bottom: var(--ha-space-4);
         }
-        .destructive {
-          --mdc-theme-primary: var(--error-color);
+
+        ha-suggest-with-ai-button {
+          margin: var(--ha-space-2) var(--ha-space-4);
         }
       `,
     ];

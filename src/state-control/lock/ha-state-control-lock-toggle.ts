@@ -1,18 +1,22 @@
 import type { PropertyValues, TemplateResult } from "lit";
-import { css, html, LitElement } from "lit";
+import { html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { styleMap } from "lit/directives/style-map";
+import { fireEvent } from "../../common/dom/fire_event";
 import { stateColorCss } from "../../common/entity/state_color";
 import "../../components/ha-control-button";
 import "../../components/ha-control-switch";
 import "../../components/ha-state-icon";
-import { UNAVAILABLE, UNKNOWN } from "../../data/entity";
+import { UNAVAILABLE, UNKNOWN } from "../../data/entity/entity";
 import { forwardHaptic } from "../../data/haptics";
 import type { LockEntity } from "../../data/lock";
 import { callProtectedLockService } from "../../data/lock";
+import {
+  stateControlPulseStyle,
+  stateControlToggleStyle,
+} from "../../resources/state-control-styles";
 import type { HomeAssistant } from "../../types";
-import { fireEvent } from "../../common/dom/fire_event";
 
 declare global {
   interface HASSDomEvents {
@@ -28,7 +32,7 @@ export class HaStateControlLockToggle extends LitElement {
 
   @state() private _isOn = false;
 
-  public willUpdate(changedProps: PropertyValues): void {
+  public willUpdate(changedProps: PropertyValues<this>): void {
     super.willUpdate(changedProps);
     if (changedProps.has("stateObj")) {
       this._isOn =
@@ -68,7 +72,7 @@ export class HaStateControlLockToggle extends LitElement {
     if (!this.hass || !this.stateObj) {
       return;
     }
-    forwardHaptic("light");
+    forwardHaptic(this, "light");
     fireEvent(this, "lock-service-called");
     callProtectedLockService(
       this,
@@ -92,7 +96,6 @@ export class HaStateControlLockToggle extends LitElement {
             @click=${this._turnOn}
           >
             <ha-state-icon
-              .hass=${this.hass}
               .stateObj=${this.stateObj}
               .stateValue=${locking ? "locking" : "locked"}
             ></ha-state-icon>
@@ -102,7 +105,6 @@ export class HaStateControlLockToggle extends LitElement {
             @click=${this._turnOff}
           >
             <ha-state-icon
-              .hass=${this.hass}
               .stateObj=${this.stateObj}
               .stateValue=${unlocking ? "unlocking" : "unlocked"}
             ></ha-state-icon>
@@ -118,7 +120,7 @@ export class HaStateControlLockToggle extends LitElement {
         reversed
         .checked=${this._isOn}
         @change=${this._valueChanged}
-        .ariaLabel=${this._isOn
+        .label=${this._isOn
           ? this.hass.localize("ui.card.lock.unlock")
           : this.hass.localize("ui.card.lock.lock")}
         style=${styleMap({
@@ -129,14 +131,12 @@ export class HaStateControlLockToggle extends LitElement {
       >
         <ha-state-icon
           slot="icon-on"
-          .hass=${this.hass}
           .stateObj=${this.stateObj}
           .stateValue=${locking ? "locking" : "locked"}
           class=${classMap({ pulse: locking })}
         ></ha-state-icon>
         <ha-state-icon
           slot="icon-off"
-          .hass=${this.hass}
           .stateObj=${this.stateObj}
           .stateValue=${unlocking ? "unlocking" : "unlocked"}
           class=${classMap({ pulse: unlocking })}
@@ -145,56 +145,7 @@ export class HaStateControlLockToggle extends LitElement {
     `;
   }
 
-  static styles = css`
-    @keyframes pulse {
-      0% {
-        opacity: 1;
-      }
-      50% {
-        opacity: 0;
-      }
-      100% {
-        opacity: 1;
-      }
-    }
-    ha-control-switch {
-      height: 45vh;
-      max-height: 320px;
-      min-height: 200px;
-      --control-switch-thickness: 130px;
-      --control-switch-border-radius: 36px;
-      --control-switch-padding: 6px;
-      --mdc-icon-size: 24px;
-    }
-    .pulse {
-      animation: pulse 1s infinite;
-    }
-    .buttons {
-      display: flex;
-      flex-direction: column;
-      width: 130px;
-      height: 45vh;
-      max-height: 320px;
-      min-height: 200px;
-      padding: 6px;
-      box-sizing: border-box;
-    }
-    ha-control-button {
-      flex: 1;
-      width: 100%;
-      --control-button-border-radius: 36px;
-      --mdc-icon-size: 24px;
-    }
-    ha-control-button.active {
-      --control-button-icon-color: white;
-      --control-button-background-color: var(--color);
-      --control-button-focus-color: var(--color);
-      --control-button-background-opacity: 1;
-    }
-    ha-control-button:not(:last-child) {
-      margin-bottom: 6px;
-    }
-  `;
+  static styles = [stateControlToggleStyle, stateControlPulseStyle];
 }
 
 declare global {

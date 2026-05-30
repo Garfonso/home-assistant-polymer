@@ -1,5 +1,3 @@
-import "@material/mwc-list/mwc-list";
-import "@material/mwc-list/mwc-list-item";
 import { mdiSwapHorizontal } from "@mdi/js";
 import type { UnsubscribeFunc } from "home-assistant-js-websocket";
 import type { CSSResultGroup, TemplateResult } from "lit";
@@ -7,12 +5,14 @@ import { css, html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { fireEvent } from "../../../../../common/dom/fire_event";
 import { computeDeviceNameDisplay } from "../../../../../common/entity/compute_device_name";
-import { createCloseHeading } from "../../../../../components/ha-dialog";
+import "../../../../../components/ha-dialog";
 import "../../../../../components/ha-expansion-panel";
 import "../../../../../components/ha-help-tooltip";
 import "../../../../../components/ha-svg-icon";
-import type { DeviceRegistryEntry } from "../../../../../data/device_registry";
-import { subscribeDeviceRegistry } from "../../../../../data/device_registry";
+import "../../../../../components/item/ha-list-item-base";
+import "../../../../../components/list/ha-list-base";
+import type { DeviceRegistryEntry } from "../../../../../data/device/device_registry";
+import { subscribeDeviceRegistry } from "../../../../../data/device/device_registry";
 import type {
   ZWaveJSNodeStatisticsUpdatedMessage,
   ZWaveJSRouteStatistics,
@@ -51,17 +51,24 @@ class DialogZWaveJSNodeStatistics extends LitElement {
     nlwr?: WorkingRouteStatistics;
   } = {};
 
+  @state() private _open = false;
+
   private _subscribedNodeStatistics?: Promise<UnsubscribeFunc>;
 
   private _subscribedDeviceRegistry?: UnsubscribeFunc;
 
   public showDialog(params: ZWaveJSNodeStatisticsDialogParams): void {
     this.device = params.device;
+    this._open = true;
     this._subscribeDeviceRegistry();
     this._subscribeNodeStatistics();
   }
 
   public closeDialog(): void {
+    this._open = false;
+  }
+
+  private _dialogClosed(): void {
     this._nodeStatistics = undefined;
     this.device = undefined;
 
@@ -77,114 +84,109 @@ class DialogZWaveJSNodeStatistics extends LitElement {
 
     return html`
       <ha-dialog
-        open
-        @closed=${this.closeDialog}
-        .heading=${createCloseHeading(
-          this.hass,
-          this.hass.localize("ui.panel.config.zwave_js.node_statistics.title")
+        .open=${this._open}
+        header-title=${this.hass.localize(
+          "ui.panel.config.zwave_js.node_statistics.title"
         )}
+        @closed=${this._dialogClosed}
       >
-        <mwc-list noninteractive>
-          <mwc-list-item twoline hasmeta>
-            <span>
+        <ha-list-base>
+          <ha-list-item-base>
+            <span slot="headline">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_tx.label"
               )}</span
             >
-            <span slot="secondary">
+            <span slot="supporting-text">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_tx.tooltip"
               )}
             </span>
-            <span slot="meta">${this._nodeStatistics?.commands_tx}</span>
-          </mwc-list-item>
-          <mwc-list-item twoline hasmeta>
-            <span>
+            <span slot="end">${this._nodeStatistics?.commands_tx}</span>
+          </ha-list-item-base>
+          <ha-list-item-base>
+            <span slot="headline">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_rx.label"
               )}</span
             >
-            <span slot="secondary">
+            <span slot="supporting-text">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_rx.tooltip"
               )}
             </span>
-            <span slot="meta">${this._nodeStatistics?.commands_rx}</span>
-          </mwc-list-item>
-          <mwc-list-item twoline hasmeta>
-            <span>
+            <span slot="end">${this._nodeStatistics?.commands_rx}</span>
+          </ha-list-item-base>
+          <ha-list-item-base>
+            <span slot="headline">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_dropped_tx.label"
               )}</span
             >
-            <span slot="secondary">
+            <span slot="supporting-text">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_dropped_tx.tooltip"
               )}
             </span>
-            <span slot="meta"
-              >${this._nodeStatistics?.commands_dropped_tx}</span
-            >
-          </mwc-list-item>
-          <mwc-list-item twoline hasmeta>
-            <span>
+            <span slot="end">${this._nodeStatistics?.commands_dropped_tx}</span>
+          </ha-list-item-base>
+          <ha-list-item-base>
+            <span slot="headline">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_dropped_rx.label"
               )}</span
             >
-            <span slot="secondary">
+            <span slot="supporting-text">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.commands_dropped_rx.tooltip"
               )}
             </span>
-            <span slot="meta"
-              >${this._nodeStatistics?.commands_dropped_rx}</span
-            >
-          </mwc-list-item>
-          <mwc-list-item twoline hasmeta>
-            <span>
+            <span slot="end">${this._nodeStatistics?.commands_dropped_rx}</span>
+          </ha-list-item-base>
+          <ha-list-item-base>
+            <span slot="headline">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.timeout_response.label"
               )}</span
             >
-            <span slot="secondary">
+            <span slot="supporting-text">
               ${this.hass.localize(
                 "ui.panel.config.zwave_js.node_statistics.timeout_response.tooltip"
               )}
             </span>
-            <span slot="meta">${this._nodeStatistics?.timeout_response}</span>
-          </mwc-list-item>
+            <span slot="end">${this._nodeStatistics?.timeout_response}</span>
+          </ha-list-item-base>
           ${this._nodeStatistics?.rtt
-            ? html`<mwc-list-item twoline hasmeta>
-                <span>
+            ? html`<ha-list-item-base>
+                <span slot="headline">
                   ${this.hass.localize(
                     "ui.panel.config.zwave_js.node_statistics.rtt.label"
                   )}</span
                 >
-                <span slot="secondary">
+                <span slot="supporting-text">
                   ${this.hass.localize(
                     "ui.panel.config.zwave_js.node_statistics.rtt.tooltip"
                   )}
                 </span>
-                <span slot="meta">${this._nodeStatistics.rtt}</span>
-              </mwc-list-item>`
+                <span slot="end">${this._nodeStatistics.rtt}</span>
+              </ha-list-item-base>`
             : ``}
           ${this._nodeStatistics?.rssi_translated
-            ? html`<mwc-list-item twoline hasmeta>
-                <span>
+            ? html`<ha-list-item-base>
+                <span slot="headline">
                   ${this.hass.localize(
                     "ui.panel.config.zwave_js.node_statistics.rssi.label"
                   )}</span
                 >
-                <span slot="secondary">
+                <span slot="supporting-text">
                   ${this.hass.localize(
                     "ui.panel.config.zwave_js.node_statistics.rssi.tooltip"
                   )}
                 </span>
-                <span slot="meta">${this._nodeStatistics.rssi_translated}</span>
-              </mwc-list-item>`
+                <span slot="end">${this._nodeStatistics.rssi_translated}</span>
+              </ha-list-item-base>`
             : ``}
-        </mwc-list>
+        </ha-list-base>
         ${Object.entries(this._workingRoutes).map(([wrKey, wrValue]) =>
           wrValue
             ? html`
@@ -419,7 +421,8 @@ class DialogZWaveJSNodeStatistics extends LitElement {
         devices.forEach((device) => {
           devicesIdToName[device.id] = computeDeviceNameDisplay(
             device,
-            this.hass
+            this.hass.localize,
+            this.hass.states
           );
         });
         this._deviceIDsToName = devicesIdToName;
@@ -442,10 +445,6 @@ class DialogZWaveJSNodeStatistics extends LitElement {
     return [
       haStyleDialog,
       css`
-        mwc-list-item {
-          height: 60px;
-        }
-
         .row {
           display: flex;
           justify-content: space-between;

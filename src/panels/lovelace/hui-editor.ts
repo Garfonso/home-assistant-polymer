@@ -1,27 +1,25 @@
 import { undoDepth } from "@codemirror/commands";
-import "@material/mwc-button";
 import { mdiClose } from "@mdi/js";
-import { dump, load } from "js-yaml";
 import type { CSSResultGroup, PropertyValues, TemplateResult } from "lit";
 import { css, html, LitElement } from "lit";
 import { customElement, property, state } from "lit/decorators";
 import { classMap } from "lit/directives/class-map";
 import { array, assert, object, optional, string, type } from "superstruct";
 import { deepEqual } from "../../common/util/deep-equal";
-import "../../components/ha-code-editor";
-import type { HaCodeEditor } from "../../components/ha-code-editor";
+import "../../components/ha-button";
+import "../../components/ha-yaml-editor";
+import type { HaYamlEditor } from "../../components/ha-yaml-editor";
 import "../../components/ha-icon-button";
+import "../../components/ha-top-app-bar-fixed";
+import type { LovelaceRawConfig } from "../../data/lovelace/config/types";
+import { isStrategyDashboard } from "../../data/lovelace/config/types";
 import {
   showAlertDialog,
   showConfirmationDialog,
 } from "../../dialogs/generic/show-dialog-box";
 import { haStyle } from "../../resources/styles";
 import type { HomeAssistant } from "../../types";
-import { showToast } from "../../util/toast";
 import type { Lovelace } from "./types";
-import "../../components/ha-top-app-bar-fixed";
-import type { LovelaceRawConfig } from "../../data/lovelace/config/types";
-import { isStrategyDashboard } from "../../data/lovelace/config/types";
 
 const lovelaceStruct = type({
   title: optional(string()),
@@ -36,6 +34,8 @@ const strategyStruct = type({
 
 @customElement("hui-editor")
 class LovelaceFullConfigEditor extends LitElement {
+  @property({ type: Boolean }) public narrow = false;
+
   @property({ attribute: false }) public hass!: HomeAssistant;
 
   @property({ attribute: false }) public lovelace?: Lovelace;
@@ -46,9 +46,13 @@ class LovelaceFullConfigEditor extends LitElement {
 
   @state() private _changed?: boolean;
 
+  private _config?: LovelaceRawConfig;
+
+  private _yamlError?: string;
+
   protected render(): TemplateResult | undefined {
     return html`
-      <ha-top-app-bar-fixed>
+      <ha-top-app-bar-fixed .narrow=${this.narrow}>
         <ha-icon-button
           slot="navigationIcon"
           .path=${mdiClose}
@@ -71,38 +75,33 @@ class LovelaceFullConfigEditor extends LitElement {
               )
             : this.hass!.localize("ui.panel.lovelace.editor.raw_editor.saved")}
         </div>
-        <mwc-button
-          raised
+        <ha-button
           slot="actionItems"
           @click=${this._handleSave}
           .disabled=${!this._changed}
           >${this.hass!.localize(
             "ui.panel.lovelace.editor.raw_editor.save"
-          )}</mwc-button
+          )}</ha-button
         >
         <div class="content">
-          <ha-code-editor
-            mode="yaml"
+          <ha-yaml-editor
             autofocus
-            autocomplete-entities
-            autocomplete-icons
-            .hass=${this.hass}
             @value-changed=${this._yamlChanged}
             @editor-save=${this._handleSave}
-            dir="ltr"
+            disable-fullscreen
           >
-          </ha-code-editor>
+          </ha-yaml-editor>
         </div>
       </ha-top-app-bar-fixed>
     `;
   }
 
-  protected firstUpdated(changedProps: PropertyValues) {
+  protected firstUpdated(changedProps: PropertyValues<this>) {
     super.firstUpdated(changedProps);
-    this.yamlEditor.value = dump(this.lovelace!.rawConfig);
+    this.yamlEditor.setValue(this.lovelace!.rawConfig);
   }
 
-  protected updated(changedProps: PropertyValues) {
+  protected updated(changedProps: PropertyValues<this>) {
     const oldLovelace = changedProps.get("lovelace") as Lovelace | undefined;
     if (
       !this._saving &&
@@ -111,21 +110,7 @@ class LovelaceFullConfigEditor extends LitElement {
       oldLovelace.rawConfig !== this.lovelace.rawConfig &&
       !deepEqual(oldLovelace.rawConfig, this.lovelace.rawConfig)
     ) {
-      showToast(this, {
-        message: this.hass!.localize(
-          "ui.panel.lovelace.editor.raw_editor.lovelace_changed"
-        ),
-        action: {
-          action: () => {
-            this.yamlEditor.value = dump(this.lovelace!.rawConfig);
-          },
-          text: this.hass!.localize(
-            "ui.panel.lovelace.editor.raw_editor.reload"
-          ),
-        },
-        duration: -1,
-        dismissable: false,
-      });
+      this.yamlEditor.setValue(this.lovelace!.rawConfig);
     }
   }
 
@@ -142,22 +127,21 @@ class LovelaceFullConfigEditor extends LitElement {
           --app-header-text-color: var(--app-header-edit-text-color, #fff);
         }
 
-        mwc-button[disabled] {
-          background-color: var(--mdc-theme-on-primary);
-          border-radius: 4px;
-        }
-
         .content {
           height: calc(100vh - var(--header-height));
         }
 
         .comments {
-          font-size: 16px;
+          font-size: var(--ha-font-size-l);
+        }
+
+        ha-yaml-editor {
+          height: 100%;
         }
 
         .save-button {
           opacity: 0;
-          font-size: 14px;
+          font-size: var(--ha-font-size-m);
           padding: 0px 10px;
         }
 
@@ -168,7 +152,9 @@ class LovelaceFullConfigEditor extends LitElement {
     ];
   }
 
-  private _yamlChanged() {
+  private _yamlChanged(ev: CustomEvent) {
+    this._config = ev.detail.isValid ? ev.detail.value : undefined;
+    this._yamlError = ev.detail.errorMsg;
     this._changed = undoDepth(this.yamlEditor.codemirror!.state) > 0;
     if (this._changed && !window.onbeforeunload) {
       window.onbeforeunload = () => true;
@@ -197,16 +183,17 @@ class LovelaceFullConfigEditor extends LitElement {
     }
   }
 
-  private async _removeConfig() {
+  private async _resetConfig() {
     try {
       await this.lovelace!.deleteConfig();
     } catch (err: any) {
       showAlertDialog(this, {
         text: this.hass.localize(
-          "ui.panel.lovelace.editor.raw_editor.error_remove",
+          "ui.panel.lovelace.editor.raw_editor.error_save_yaml",
           { error: err }
         ),
       });
+      return;
     }
     window.onbeforeunload = null;
     if (this.closeEditor) {
@@ -217,21 +204,27 @@ class LovelaceFullConfigEditor extends LitElement {
   private async _handleSave() {
     this._saving = true;
 
-    const value = this.yamlEditor.value;
-
-    if (!value) {
+    if (!this.yamlEditor.yaml) {
       showConfirmationDialog(this, {
         title: this.hass.localize(
-          "ui.panel.lovelace.editor.raw_editor.confirm_delete_config_title"
+          "ui.panel.lovelace.editor.raw_editor.confirm_reset_config_title"
         ),
         text: this.hass.localize(
-          "ui.panel.lovelace.editor.raw_editor.confirm_delete_config_text"
+          "ui.panel.lovelace.editor.raw_editor.confirm_reset_config_text"
         ),
-        confirmText: this.hass.localize("ui.common.delete"),
+        confirmText: this.hass.localize("ui.common.reset"),
         dismissText: this.hass.localize("ui.common.cancel"),
-        confirm: () => this._removeConfig(),
+        confirm: () => this._resetConfig(),
         destructive: true,
       });
+      return;
+    }
+
+    if (this._yamlError) {
+      showAlertDialog(this, {
+        text: this._yamlError,
+      });
+      this._saving = false;
       return;
     }
 
@@ -247,19 +240,8 @@ class LovelaceFullConfigEditor extends LitElement {
       }
     }
 
-    let config: LovelaceRawConfig;
-    try {
-      config = load(value) as LovelaceRawConfig;
-    } catch (err: any) {
-      showAlertDialog(this, {
-        text: this.hass.localize(
-          "ui.panel.lovelace.editor.raw_editor.error_parse_yaml",
-          { error: err }
-        ),
-      });
-      this._saving = false;
-      return;
-    }
+    const config: LovelaceRawConfig = this._config!;
+
     try {
       if (isStrategyDashboard(config)) {
         assert(config, strategyStruct);
@@ -298,8 +280,8 @@ class LovelaceFullConfigEditor extends LitElement {
     this._saving = false;
   }
 
-  private get yamlEditor(): HaCodeEditor {
-    return this.shadowRoot!.querySelector("ha-code-editor")! as HaCodeEditor;
+  private get yamlEditor(): HaYamlEditor {
+    return this.shadowRoot!.querySelector("ha-yaml-editor")! as HaYamlEditor;
   }
 }
 

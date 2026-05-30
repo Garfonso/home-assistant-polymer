@@ -1,10 +1,11 @@
 import { html, LitElement } from "lit";
-import { customElement, property } from "lit/decorators";
+import { customElement, property, query } from "lit/decorators";
 import { useAmPm } from "../common/datetime/use_am_pm";
 import { fireEvent } from "../common/dom/fire_event";
 import type { FrontendLocaleData } from "../data/translation";
+import type { ValueChangedEvent } from "../types";
 import "./ha-base-time-input";
-import type { TimeChangedEvent } from "./ha-base-time-input";
+import type { HaBaseTimeInput, TimeChangedEvent } from "./ha-base-time-input";
 
 @customElement("ha-time-input")
 export class HaTimeInput extends LitElement {
@@ -20,30 +21,49 @@ export class HaTimeInput extends LitElement {
 
   @property({ type: Boolean }) public required = false;
 
+  @property({ attribute: "auto-validate", type: Boolean }) autoValidate = false;
+
   @property({ type: Boolean, attribute: "enable-second" })
   public enableSecond = false;
 
   @property({ type: Boolean, reflect: true }) public clearable?: boolean;
 
+  @property({ attribute: "placeholder-labels", type: Boolean })
+  public placeholderLabels = false;
+
+  @query("ha-base-time-input") private _input?: HaBaseTimeInput;
+
+  public reportValidity(): boolean {
+    return this._input?.reportValidity() ?? true;
+  }
+
   protected render() {
     const useAMPM = useAmPm(this.locale);
 
-    const parts = this.value?.split(":") || [];
-    let hours = parts[0];
-    const numberHours = Number(parts[0]);
-    if (numberHours && useAMPM && numberHours > 12 && numberHours < 24) {
-      hours = String(numberHours - 12).padStart(2, "0");
-    }
-    if (useAMPM && numberHours === 0) {
-      hours = "12";
+    let hours = NaN;
+    let minutes = NaN;
+    let seconds = NaN;
+    let numberHours = 0;
+    if (this.value) {
+      const parts = this.value?.split(":") || [];
+      minutes = parts[1] ? Number(parts[1]) : 0;
+      seconds = parts[2] ? Number(parts[2]) : 0;
+      hours = parts[0] ? Number(parts[0]) : 0;
+      numberHours = hours;
+      if (numberHours && useAMPM && numberHours > 12 && numberHours < 24) {
+        hours = numberHours - 12;
+      }
+      if (useAMPM && numberHours === 0) {
+        hours = 12;
+      }
     }
 
     return html`
       <ha-base-time-input
         .label=${this.label}
-        .hours=${Number(hours)}
-        .minutes=${Number(parts[1])}
-        .seconds=${Number(parts[2])}
+        .hours=${hours}
+        .minutes=${minutes}
+        .seconds=${seconds}
         .format=${useAMPM ? 12 : 24}
         .amPm=${useAMPM && numberHours >= 12 ? "PM" : "AM"}
         .disabled=${this.disabled}
@@ -52,16 +72,24 @@ export class HaTimeInput extends LitElement {
         .required=${this.required}
         .clearable=${this.clearable && this.value !== undefined}
         .helper=${this.helper}
+        .placeholderLabels=${this.placeholderLabels}
+        .autoValidate=${this.autoValidate}
+        day-label="dd"
+        hour-label="hh"
+        min-label="mm"
+        sec-label="ss"
+        ms-label="ms"
       ></ha-base-time-input>
     `;
   }
 
-  private _timeChanged(ev: CustomEvent<{ value?: TimeChangedEvent }>) {
+  private _timeChanged(ev: ValueChangedEvent<TimeChangedEvent | undefined>) {
     ev.stopPropagation();
     const eventValue = ev.detail.value;
 
     const useAMPM = useAmPm(this.locale);
     let value: string | undefined;
+    let updateHours = 0;
 
     // An undefined eventValue means the time selector is being cleared,
     // the `value` variable will (intentionally) be left undefined.
@@ -73,6 +101,8 @@ export class HaTimeInput extends LitElement {
     ) {
       let hours = eventValue.hours || 0;
       if (eventValue && useAMPM) {
+        updateHours =
+          hours >= 12 && hours < 24 ? hours - 12 : hours === 0 ? 12 : 0;
         if (eventValue.amPm === "PM" && hours < 12) {
           hours += 12;
         }
@@ -89,6 +119,17 @@ export class HaTimeInput extends LitElement {
           ? eventValue.seconds.toString().padStart(2, "0")
           : "00"
       }`;
+    }
+
+    if (updateHours) {
+      // If the user entered a 24hr time in a 12hr input, we need to refresh the
+      // input to ensure it resets back to the 12hr equivalent.
+      this.updateComplete.then(() => {
+        const input = this._input;
+        if (input) {
+          input.hours = updateHours;
+        }
+      });
     }
 
     if (value === this.value) {

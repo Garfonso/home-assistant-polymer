@@ -1,5 +1,6 @@
-import type { UnsubscribeFunc } from "home-assistant-js-websocket";
+import type { Connection, UnsubscribeFunc } from "home-assistant-js-websocket";
 import type { HomeAssistant } from "../types";
+import { callWS } from "../util/websocket";
 
 export enum InclusionState {
   /** The controller isn't doing anything regarding inclusion. */
@@ -80,7 +81,7 @@ enum QRCodeVersion {
   SmartStart = 1,
 }
 
-enum Protocols {
+export enum Protocols {
   ZWave = 0,
   ZWaveLongRange = 1,
 }
@@ -151,12 +152,35 @@ export interface QRProvisioningInformation {
   maxInclusionRequestInterval?: number | undefined;
   uuid?: string | undefined;
   supportedProtocols?: Protocols[] | undefined;
+  status?: ProvisioningEntryStatus;
 }
 
 export interface PlannedProvisioningEntry {
   /** The device specific key (DSK) in the form aaaaa-bbbbb-ccccc-ddddd-eeeee-fffff-11111-22222 */
   dsk: string;
   securityClasses: SecurityClass[];
+  status?: ProvisioningEntryStatus;
+}
+
+export enum ProvisioningEntryStatus {
+  Active = 0,
+  Inactive = 1,
+}
+
+export interface DeviceConfig {
+  filename: string;
+  manufacturer: string;
+  manufacturerId: number;
+  label: string;
+  description: string;
+  devices: {
+    productType: number;
+    productId: number;
+  }[];
+  firmwareVersion: {
+    min: string;
+    max: string;
+  };
 }
 
 export const MINIMUM_QR_STRING_LENGTH = 52;
@@ -195,6 +219,7 @@ export interface ZWaveJSController {
   is_rebuilding_routes: boolean;
   inclusion_state: InclusionState;
   nodes: ZWaveJSNodeStatus[];
+  supports_long_range: boolean;
 }
 
 export interface ZWaveJSNodeStatus {
@@ -301,7 +326,10 @@ export interface ZWaveJSRefreshNodeStatusMessage {
 
 export interface ZWaveJSRebuildRoutesStatusMessage {
   event: string;
-  rebuild_routes_status: Record<number, string>;
+  rebuild_routes_status: Record<
+    number,
+    "pending" | "skipped" | "done" | "failed"
+  >;
 }
 
 export interface ZWaveJSControllerStatisticsUpdatedMessage {
@@ -334,6 +362,8 @@ export enum ProtocolDataRate {
 export interface ZWaveJSNodeStatisticsUpdatedMessage {
   event: "statistics updated";
   source: "node";
+  nodeId?: number;
+  node_id?: number;
   commands_tx: number;
   commands_rx: number;
   commands_dropped_tx: number;
@@ -415,6 +445,7 @@ export interface ZwaveJSProvisioningEntry {
   dsk: string;
   securityClasses: SecurityClass[];
   nodeId?: number;
+  status: ProvisioningEntryStatus;
   [prop: string]: any;
 }
 
@@ -448,7 +479,7 @@ export const invokeZWaveCCApi = <T = unknown>(
   });
 
 export const fetchZwaveNetworkStatus = (
-  hass: HomeAssistant,
+  connection: Connection,
   device_or_entry_id: {
     device_id?: string;
     entry_id?: string;
@@ -460,7 +491,7 @@ export const fetchZwaveNetworkStatus = (
   if (!device_or_entry_id.device_id && !device_or_entry_id.entry_id) {
     throw new Error("Either device or entry ID should be supplied.");
   }
-  return hass.callWS({
+  return callWS<ZWaveJSNetwork>(connection, {
     type: "zwave_js/network_status",
     device_id: device_or_entry_id.device_id,
     entry_id: device_or_entry_id.entry_id,
@@ -555,7 +586,7 @@ export const zwaveTryParseDskFromQrCode = (
 export const zwaveValidateDskAndEnterPin = (
   hass: HomeAssistant,
   entry_id: string,
-  pin: string
+  pin: string | false
 ) =>
   hass.callWS({
     type: "zwave_js/validate_dsk_and_enter_pin",
@@ -585,19 +616,38 @@ export const zwaveParseQrCode = (
     qr_code_string,
   });
 
+export const lookupZwaveDevice = (
+  hass: HomeAssistant,
+  entry_id: string,
+  manufacturerId: number,
+  productType: number,
+  productId: number,
+  applicationVersion?: string
+): Promise<DeviceConfig> =>
+  hass.callWS({
+    type: "zwave_js/lookup_device",
+    entry_id,
+    manufacturerId,
+    productType,
+    productId,
+    applicationVersion,
+  });
+
 export const provisionZwaveSmartStartNode = (
   hass: HomeAssistant,
   entry_id: string,
   qr_provisioning_information?: QRProvisioningInformation,
-  qr_code_string?: string,
-  planned_provisioning_entry?: PlannedProvisioningEntry
-): Promise<QRProvisioningInformation> =>
+  protocol?: Protocols,
+  device_name?: string,
+  area_id?: string
+): Promise<string> =>
   hass.callWS({
     type: "zwave_js/provision_smart_start_node",
     entry_id,
-    qr_code_string,
     qr_provisioning_information,
-    planned_provisioning_entry,
+    protocol,
+    device_name,
+    area_id,
   });
 
 export const unprovisionZwaveSmartStartNode = (
@@ -611,6 +661,16 @@ export const unprovisionZwaveSmartStartNode = (
     entry_id,
     dsk,
     node_id,
+  });
+
+export const subscribeNewDevices = (
+  hass: HomeAssistant,
+  entry_id: string,
+  callbackFunction: (message: any) => void
+): Promise<UnsubscribeFunc> =>
+  hass.connection.subscribeMessage((message) => callbackFunction(message), {
+    type: "zwave_js/subscribe_new_devices",
+    entry_id: entry_id,
   });
 
 export const fetchZwaveNodeStatus = (
@@ -758,35 +818,32 @@ export const removeFailedZwaveNode = (
   );
 
 export const rebuildZwaveNetworkRoutes = (
-  hass: HomeAssistant,
+  connection: Connection,
   entry_id: string
 ): Promise<UnsubscribeFunc> =>
-  hass.callWS({
+  callWS(connection, {
     type: "zwave_js/begin_rebuilding_routes",
     entry_id,
   });
 
 export const stopRebuildingZwaveNetworkRoutes = (
-  hass: HomeAssistant,
+  connection: Connection,
   entry_id: string
 ): Promise<UnsubscribeFunc> =>
-  hass.callWS({
+  callWS(connection, {
     type: "zwave_js/stop_rebuilding_routes",
     entry_id,
   });
 
 export const subscribeRebuildZwaveNetworkRoutesProgress = (
-  hass: HomeAssistant,
+  connection: Connection,
   entry_id: string,
   callbackFunction: (message: ZWaveJSRebuildRoutesStatusMessage) => void
 ): Promise<UnsubscribeFunc> =>
-  hass.connection.subscribeMessage(
-    (message: any) => callbackFunction(message),
-    {
-      type: "zwave_js/subscribe_rebuild_routes_progress",
-      entry_id,
-    }
-  );
+  connection.subscribeMessage((message: any) => callbackFunction(message), {
+    type: "zwave_js/subscribe_rebuild_routes_progress",
+    entry_id,
+  });
 
 export const subscribeZwaveControllerStatistics = (
   hass: HomeAssistant,
@@ -869,7 +926,8 @@ export const uploadFirmwareAndBeginUpdate = async (
   hass: HomeAssistant,
   device_id: string,
   file: File,
-  target?: number
+  target?: number,
+  signal?: AbortSignal
 ) => {
   const fd = new FormData();
   fd.append("file", file);
@@ -881,6 +939,7 @@ export const uploadFirmwareAndBeginUpdate = async (
     {
       method: "POST",
       body: fd,
+      signal,
     }
   );
 
@@ -993,17 +1052,6 @@ export const setZWaveJSLogLevel = (
     type: "zwave_js/update_log_config",
     entry_id,
     config: { level },
-  });
-
-export interface ZWaveJSIntegrationSettings {
-  installer_mode: boolean;
-}
-
-export const fetchZwaveIntegrationSettings = (
-  hass: HomeAssistant
-): Promise<ZWaveJSIntegrationSettings> =>
-  hass.callWS({
-    type: "zwave_js/get_integration_settings",
   });
 
 export const cancelSecureBootstrapS2 = (

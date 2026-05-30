@@ -1,17 +1,28 @@
 import { ensureArray } from "../../../common/array/ensure-array";
-import type { MediaQueriesListener } from "../../../common/dom/media_query";
-import { listenMediaQuery } from "../../../common/dom/media_query";
+import {
+  checkTimeInRange,
+  isValidTimeString,
+} from "../../../common/datetime/check_time";
+import {
+  WEEKDAYS_SHORT,
+  type WeekdayShort,
+} from "../../../common/datetime/weekday";
 import { isValidEntityId } from "../../../common/entity/valid_entity_id";
-import { UNKNOWN } from "../../../data/entity";
+import { UNKNOWN } from "../../../data/entity/entity";
+import { getUserPerson } from "../../../data/person";
 import type { HomeAssistant } from "../../../types";
 
 export type Condition =
+  | ViewColumnsCondition
+  | LocationCondition
   | NumericStateCondition
   | StateCondition
   | ScreenCondition
+  | TimeCondition
   | UserCondition
   | OrCondition
-  | AndCondition;
+  | AndCondition
+  | NotCondition;
 
 // Legacy conditional card condition
 export interface LegacyCondition {
@@ -24,9 +35,26 @@ interface BaseCondition {
   condition: string;
 }
 
+export interface ConditionContext {
+  max_columns?: number;
+  entity_id?: string;
+}
+
+export interface ViewColumnsCondition extends BaseCondition {
+  condition: "view_columns";
+  min?: number;
+  max?: number;
+}
+
+export interface LocationCondition extends BaseCondition {
+  condition: "location";
+  locations?: string[];
+}
+
 export interface NumericStateCondition extends BaseCondition {
   condition: "numeric_state";
   entity?: string;
+  attribute?: string;
   below?: string | number;
   above?: string | number;
 }
@@ -34,6 +62,7 @@ export interface NumericStateCondition extends BaseCondition {
 export interface StateCondition extends BaseCondition {
   condition: "state";
   entity?: string;
+  attribute?: string;
   state?: string | string[];
   state_not?: string | string[];
 }
@@ -41,6 +70,13 @@ export interface StateCondition extends BaseCondition {
 export interface ScreenCondition extends BaseCondition {
   condition: "screen";
   media_query?: string;
+}
+
+export interface TimeCondition extends BaseCondition {
+  condition: "time";
+  after?: string;
+  before?: string;
+  weekdays?: WeekdayShort[];
 }
 
 export interface UserCondition extends BaseCondition {
@@ -58,6 +94,11 @@ export interface AndCondition extends BaseCondition {
   conditions?: Condition[];
 }
 
+export interface NotCondition extends BaseCondition {
+  condition: "not";
+  conditions?: Condition[];
+}
+
 function getValueFromEntityId(
   hass: HomeAssistant,
   value: string
@@ -70,13 +111,27 @@ function getValueFromEntityId(
 
 function checkStateCondition(
   condition: StateCondition | LegacyCondition,
-  hass: HomeAssistant
+  hass: HomeAssistant,
+  context: ConditionContext
 ) {
-  const state =
-    condition.entity && hass.states[condition.entity]
-      ? hass.states[condition.entity].state
-      : UNKNOWN;
+  const entityId = condition.entity || context.entity_id;
+  const stateObj = entityId ? hass.states[entityId] : undefined;
+  const attribute = "attribute" in condition ? condition.attribute : undefined;
+  let state: string;
+  if (!stateObj) {
+    state = UNKNOWN;
+  } else if (attribute) {
+    const attrValue = stateObj.attributes[attribute];
+    state = attrValue == null ? UNKNOWN : String(attrValue);
+  } else {
+    state = stateObj.state;
+  }
   let value = condition.state ?? condition.state_not;
+
+  // Guard against invalid/incomplete condition configuration
+  if (value === undefined) {
+    return false;
+  }
 
   // Handle entity_id, UI should be updated for conditional card (filters does not have UI for now)
   if (Array.isArray(value)) {
@@ -99,10 +154,14 @@ function checkStateCondition(
 
 function checkStateNumericCondition(
   condition: NumericStateCondition,
-  hass: HomeAssistant
+  hass: HomeAssistant,
+  context: ConditionContext
 ) {
-  const state = (condition.entity ? hass.states[condition.entity] : undefined)
-    ?.state;
+  const entityId = condition.entity || context.entity_id;
+  const stateObj = entityId ? hass.states[entityId] : undefined;
+  const state = condition.attribute
+    ? stateObj?.attributes[condition.attribute]
+    : stateObj?.state;
   let above = condition.above;
   let below = condition.below;
 
@@ -132,10 +191,39 @@ function checkStateNumericCondition(
   );
 }
 
+function checkViewColumnsCondition(
+  condition: ViewColumnsCondition,
+  context: ConditionContext
+) {
+  if (!context.max_columns) return true;
+  return (
+    (condition.min == null || context.max_columns >= condition.min) &&
+    (condition.max == null || context.max_columns <= condition.max)
+  );
+}
+
 function checkScreenCondition(condition: ScreenCondition, _: HomeAssistant) {
   return condition.media_query
     ? matchMedia(condition.media_query).matches
     : false;
+}
+
+function checkTimeCondition(
+  condition: Omit<TimeCondition, "condition">,
+  hass: HomeAssistant
+) {
+  return checkTimeInRange(hass, condition);
+}
+
+function checkLocationCondition(
+  condition: LocationCondition,
+  hass: HomeAssistant
+) {
+  const stateObj = getUserPerson(hass);
+  if (!stateObj) {
+    return false;
+  }
+  return condition.locations?.includes(stateObj.state);
 }
 
 function checkUserCondition(condition: UserCondition, hass: HomeAssistant) {
@@ -144,44 +232,73 @@ function checkUserCondition(condition: UserCondition, hass: HomeAssistant) {
     : false;
 }
 
-function checkAndCondition(condition: AndCondition, hass: HomeAssistant) {
+function checkAndCondition(
+  condition: AndCondition,
+  hass: HomeAssistant,
+  context: ConditionContext
+) {
   if (!condition.conditions) return true;
-  return checkConditionsMet(condition.conditions, hass);
+  return checkConditionsMet(condition.conditions, hass, context);
 }
 
-function checkOrCondition(condition: OrCondition, hass: HomeAssistant) {
+function checkNotCondition(
+  condition: NotCondition,
+  hass: HomeAssistant,
+  context: ConditionContext
+) {
   if (!condition.conditions) return true;
-  return condition.conditions.some((c) => checkConditionsMet([c], hass));
+  return !checkConditionsMet(condition.conditions, hass, context);
+}
+
+function checkOrCondition(
+  condition: OrCondition,
+  hass: HomeAssistant,
+  context: ConditionContext
+) {
+  if (!condition.conditions) return true;
+  return condition.conditions.some((c) =>
+    checkConditionsMet([c], hass, context)
+  );
 }
 
 /**
  * Return the result of applying conditions
  * @param conditions conditions to apply
  * @param hass Home Assistant object
+ * @param context optional context for conditions that need runtime information
  * @returns true if conditions are respected
  */
 export function checkConditionsMet(
   conditions: (Condition | LegacyCondition)[],
-  hass: HomeAssistant
+  hass: HomeAssistant,
+  context: ConditionContext
 ): boolean {
   return conditions.every((c) => {
     if ("condition" in c) {
       switch (c.condition) {
+        case "view_columns":
+          return checkViewColumnsCondition(c, context);
+        case "time":
+          return checkTimeCondition(c, hass);
         case "screen":
           return checkScreenCondition(c, hass);
         case "user":
           return checkUserCondition(c, hass);
+        case "location":
+          return checkLocationCondition(c, hass);
         case "numeric_state":
-          return checkStateNumericCondition(c, hass);
+          return checkStateNumericCondition(c, hass, context);
         case "and":
-          return checkAndCondition(c, hass);
+          return checkAndCondition(c, hass, context);
+        case "not":
+          return checkNotCondition(c, hass, context);
         case "or":
-          return checkOrCondition(c, hass);
+          return checkOrCondition(c, hass, context);
         default:
-          return checkStateCondition(c, hass);
+          return checkStateCondition(c, hass, context);
       }
     }
-    return checkStateCondition(c, hass);
+    return checkStateCondition(c, hass, context);
   });
 }
 
@@ -229,21 +346,55 @@ export function extractConditionEntityIds(
 }
 
 function validateStateCondition(condition: StateCondition | LegacyCondition) {
-  return (
-    condition.entity != null &&
-    (condition.state != null || condition.state_not != null)
-  );
+  return condition.state != null || condition.state_not != null;
 }
 
 function validateScreenCondition(condition: ScreenCondition) {
   return condition.media_query != null;
 }
 
+function validateTimeCondition(condition: TimeCondition) {
+  // Check if time strings are present and non-empty
+  const hasAfter = condition.after != null && condition.after !== "";
+  const hasBefore = condition.before != null && condition.before !== "";
+  const hasTime = hasAfter || hasBefore;
+
+  const hasWeekdays =
+    condition.weekdays != null && condition.weekdays.length > 0;
+  const weekdaysValid =
+    !hasWeekdays ||
+    condition.weekdays!.every((w: WeekdayShort) => WEEKDAYS_SHORT.includes(w));
+
+  // Validate time string formats if present
+  const timeStringsValid =
+    (!hasAfter || isValidTimeString(condition.after!)) &&
+    (!hasBefore || isValidTimeString(condition.before!));
+
+  // Prevent after and before being identical (creates zero-length interval)
+  const timeRangeValid =
+    !hasAfter || !hasBefore || condition.after !== condition.before;
+
+  return (
+    (hasTime || hasWeekdays) &&
+    weekdaysValid &&
+    timeStringsValid &&
+    timeRangeValid
+  );
+}
+
 function validateUserCondition(condition: UserCondition) {
   return condition.users != null;
 }
 
+function validateLocationCondition(condition: LocationCondition) {
+  return condition.locations != null;
+}
+
 function validateAndCondition(condition: AndCondition) {
+  return condition.conditions != null;
+}
+
+function validateNotCondition(condition: NotCondition) {
   return condition.conditions != null;
 }
 
@@ -251,11 +402,12 @@ function validateOrCondition(condition: OrCondition) {
   return condition.conditions != null;
 }
 
+function validateViewColumnsCondition(condition: ViewColumnsCondition) {
+  return condition.min != null || condition.max != null;
+}
+
 function validateNumericStateCondition(condition: NumericStateCondition) {
-  return (
-    condition.entity != null &&
-    (condition.above != null || condition.below != null)
-  );
+  return condition.above != null || condition.below != null;
 }
 /**
  * Validate the conditions config for the UI
@@ -268,14 +420,22 @@ export function validateConditionalConfig(
   return conditions.every((c) => {
     if ("condition" in c) {
       switch (c.condition) {
+        case "view_columns":
+          return validateViewColumnsCondition(c);
         case "screen":
           return validateScreenCondition(c);
+        case "time":
+          return validateTimeCondition(c);
         case "user":
           return validateUserCondition(c);
+        case "location":
+          return validateLocationCondition(c);
         case "numeric_state":
           return validateNumericStateCondition(c);
         case "and":
           return validateAndCondition(c);
+        case "not":
+          return validateNotCondition(c);
         case "or":
           return validateOrCondition(c);
         default:
@@ -315,32 +475,4 @@ export function addEntityToCondition(
     };
   }
   return condition;
-}
-
-export function extractMediaQueries(conditions: Condition[]): string[] {
-  return conditions.reduce<string[]>((array, c) => {
-    if ("conditions" in c && c.conditions) {
-      array.push(...extractMediaQueries(c.conditions));
-    }
-    if (c.condition === "screen" && c.media_query) {
-      array.push(c.media_query);
-    }
-    return array;
-  }, []);
-}
-
-export function attachConditionMediaQueriesListeners(
-  conditions: Condition[],
-  onChange: (visibility: boolean) => void
-): MediaQueriesListener[] {
-  const mediaQueries = extractMediaQueries(conditions);
-
-  const listeners = mediaQueries.map((query) => {
-    const listener = listenMediaQuery(query, (matches) => {
-      onChange(matches);
-    });
-    return listener;
-  });
-
-  return listeners;
 }
