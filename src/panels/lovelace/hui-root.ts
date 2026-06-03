@@ -250,7 +250,7 @@ class HUIRoot extends LitElement {
         icon: mdiViewDashboard,
         key: "ui.panel.lovelace.editor.menu.manage_dashboards",
         overflowAction: this._handleManageDashboards,
-        visible: false && this._editMode && !__DEMO__, // IoB no dashboards, yet.
+        visible: this._editMode && !__DEMO__,
         overflow: true,
       },
       {
