@@ -263,7 +263,7 @@ class HUIRoot extends LitElement {
       {
         icon: mdiPlus,
         key: "ui.panel.lovelace.menu.add",
-        visible: false, // IoB - hide "add device/automation/area/person" button
+        visible: false, // IoB - hide "add device/automation/area/person" button - was !this._editMode && this.hass.user?.is_admin && !this.hass.kioskMode,
         overflow: this.narrow,
         subItems: [
           {
