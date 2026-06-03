@@ -1196,11 +1196,11 @@ class HUIRoot extends LitElement {
     const lovelace = this.lovelace!;
     const oldIndex = this._curView as number;
     const newIndex = (this._curView as number) - 1;
-    this._curView = newIndex;
     if (!this.config.views[oldIndex].path) {
       this._navigateToView(newIndex, true);
     }
     lovelace.saveConfig(swapView(lovelace.config, oldIndex, newIndex));
+    this._selectView(newIndex);
   }
 
   private _moveViewRight(ev) {
@@ -1211,11 +1211,11 @@ class HUIRoot extends LitElement {
     const lovelace = this.lovelace!;
     const oldIndex = this._curView as number;
     const newIndex = (this._curView as number) + 1;
-    this._curView = newIndex;
     if (!this.config.views[oldIndex].path) {
       this._navigateToView(newIndex, true);
     }
     lovelace.saveConfig(swapView(lovelace.config, oldIndex, newIndex));
+    this._selectView(newIndex);
   }
 
   private _addView() {

@@ -1693,14 +1693,17 @@
           "last_triggered": "Last triggered"
         },
         "add_to": {
-          "title": "Add to",
-          "actions": {
-            "automation_trigger": "Create new automation using {target} as a trigger",
-            "automation_condition": "Create new automation using {target} as a condition",
-            "automation_action": "Create new automation using {target} in an action",
-            "script_action": "Create new script using {target} in an action",
-            "scene": "Create new scene using {target}"
+          "title": "Add {target} to…",
+          "item": "Add to…",
+          "action_options": {
+            "automation_trigger": "Create as a new trigger",
+            "automation_condition": "Create as a new condition",
+            "automation_action": "Create as a new action",
+            "script_action": "Create as a new action",
+            "scene": "Create as a new scene"
           },
+          "automations_heading": "Automations",
+          "scripts_heading": "Scripts",
           "app_actions": "App actions",
           "no_actions": "No actions available",
           "action_failed": "Failed to perform the action {error}"
@@ -10150,6 +10153,7 @@
               },
               "vacuum-commands": {
                 "label": "Vacuum commands",
+                "customize": "Customize commands",
                 "commands": "Commands",
                 "commands_list": {
                   "start_pause": "[%key:ui::dialogs::more_info_control::vacuum::start_pause%]",
@@ -10221,7 +10225,9 @@
               },
               "counter-actions": {
                 "label": "Counter actions",
-                "actions": {
+                "customize": "Customize actions",
+                "actions": "Actions",
+                "actions_list": {
                   "increment": "Increment",
                   "decrement": "Decrement",
                   "reset": "Reset"
@@ -10284,6 +10290,7 @@
               },
               "lawn-mower-commands": {
                 "label": "Lawn mower commands",
+                "customize": "Customize commands",
                 "commands": "Commands",
                 "commands_list": {
                   "start_pause": "Start Pause",

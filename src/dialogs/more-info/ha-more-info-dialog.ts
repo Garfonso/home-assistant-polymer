@@ -23,6 +23,7 @@ import { customElement, property, query, state } from "lit/decorators";
 import { cache } from "lit/directives/cache";
 import { classMap } from "lit/directives/class-map";
 import { keyed } from "lit/directives/keyed";
+import type { RequestSelectedDetail } from "@material/mwc-list/mwc-list-item";
 import { dynamicElement } from "../../common/dom/dynamic-element-directive";
 import type { HASSDomEvent } from "../../common/dom/fire_event";
 import { fireEvent } from "../../common/dom/fire_event";
@@ -518,7 +519,7 @@ export class MoreInfoDialog extends SubscribeMixin(
     await favoritesHandler.copy(favoritesContext);
   }
 
-  private _goToAddEntityTo(ev) {
+  private _goToAddEntityTo(ev: CustomEvent<RequestSelectedDetail>) {
     // Only check for request-selected events (from menu items), not regular clicks (from icon button)
     if (
       ev.type === "request-selected" &&
@@ -591,10 +592,19 @@ export class MoreInfoDialog extends SubscribeMixin(
       (v): v is string => Boolean(v)
     );
     const defaultTitle = breadcrumb.pop() || entityId;
+    const addToTitle = this.hass.localize(
+      "ui.dialogs.more_info_control.add_to.title",
+      { target: defaultTitle }
+    );
+    const addToMenuItem = this.hass.localize(
+      "ui.dialogs.more_info_control.add_to.item"
+    );
     const title =
       this._currView === "details"
         ? this.hass.localize("ui.dialogs.more_info_control.details")
-        : this._childView?.viewTitle || defaultTitle;
+        : this._currView === "add_to"
+          ? addToTitle
+          : this._childView?.viewTitle || defaultTitle;
 
     const favoritesContext =
       this._entry && stateObj
@@ -712,9 +722,7 @@ export class MoreInfoDialog extends SubscribeMixin(
                                 slot="icon"
                                 .path=${mdiPlusBoxMultipleOutline}
                               ></ha-svg-icon>
-                              ${this.hass.localize(
-                                "ui.dialogs.more_info_control.add_to.title"
-                              )}
+                              ${addToMenuItem}
                             </ha-dropdown-item>
 
                             <wa-divider></wa-divider>
@@ -815,9 +823,7 @@ export class MoreInfoDialog extends SubscribeMixin(
                   ? html`
                       <ha-icon-button
                         slot="headerActionItems"
-                        .label=${this.hass.localize(
-                          "ui.dialogs.more_info_control.add_to.title"
-                        )}
+                        .label=${addToMenuItem}
                         .path=${mdiPlusBoxMultipleOutline}
                         @click=${this._goToAddEntityTo}
                       ></ha-icon-button>
@@ -907,7 +913,6 @@ export class MoreInfoDialog extends SubscribeMixin(
                             : this._currView === "add_to"
                               ? html`
                                   <ha-more-info-add-to
-                                    .hass=${this.hass}
                                     .entityId=${entityId}
                                     @add-to-action-selected=${this._goBack}
                                   ></ha-more-info-add-to>

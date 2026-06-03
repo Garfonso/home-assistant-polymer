@@ -5,7 +5,7 @@ import { dynamicElement } from "../../../../../common/dom/dynamic-element-direct
 import { fireEvent } from "../../../../../common/dom/fire_event";
 import { computeDomain } from "../../../../../common/entity/compute_domain";
 import { computeDeviceName } from "../../../../../common/entity/compute_device_name";
-import { navigate } from "../../../../../common/navigate";
+import { navigate, setRefreshUrl } from "../../../../../common/navigate";
 import "../../../../../components/ha-dialog-footer";
 import "../../../../../components/ha-icon-button-arrow-prev";
 import "../../../../../components/ha-button";
@@ -25,6 +25,7 @@ import {
   type ExtEntityRegistryEntry,
 } from "../../../../../data/entity/entity_registry";
 import { showAlertDialog } from "../../../../../dialogs/generic/show-dialog-box";
+import { OVERRIDE_DEVICE_CLASSES } from "../../../entities/entity-registry-settings-editor";
 import "./matter-add-device/matter-add-device-apple-home";
 import "./matter-add-device/matter-add-device-existing";
 import "./matter-add-device/matter-add-device-generic";
@@ -100,6 +101,8 @@ class DialogMatterAddDevice extends LitElement {
   public showDialog(): void {
     this._open = true;
     this._unsub = watchForNewMatterDevice(this.hass, (device) => {
+      // make sure a refresh of the page will navigate to the device page, old iOS apps will refresh the webview when commissioning is done
+      setRefreshUrl(`/config/devices/device/${device.id}`);
       this._newDevice = device;
       this._step = "device_added";
       this._fetchMainEntity();
@@ -137,15 +140,17 @@ class DialogMatterAddDevice extends LitElement {
       entityIds
     );
 
-    const mainEntry = Object.values(entries).find(
-      (e) => e.original_name === null
-    );
-    if (!mainEntry) return;
-
-    const domain = computeDomain(mainEntry.entity_id);
-    if (domain === "cover" || domain === "binary_sensor") {
-      this._mainEntity = mainEntry;
-    }
+    this._mainEntity = Object.values(entries).find((entry) => {
+      if (entry.entity_category) return false;
+      const domain = computeDomain(entry.entity_id);
+      const deviceClasses = OVERRIDE_DEVICE_CLASSES[domain];
+      if (!deviceClasses) return false;
+      const deviceClass = entry.device_class ?? entry.original_device_class;
+      if (!deviceClass) return false;
+      return deviceClasses.some(
+        (classes) => classes.length > 1 && classes.includes(deviceClass)
+      );
+    });
   }
 
   private _dialogClosed(): void {
