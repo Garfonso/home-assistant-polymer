@@ -63,7 +63,13 @@ import {
   updateDashboard,
 } from "../../data/lovelace/dashboard";
 import { fetchLovelaceInfo } from "../../data/lovelace/resource";
-import { getPanelTitle } from "../../data/panel";
+import {
+  DEFAULT_PANEL,
+  getPanelIcon,
+  getPanelTitle,
+  LOVELACE_PANEL,
+  updatePanel,
+} from "../../data/panel";
 import { createPerson } from "../../data/person";
 import { showListItemsDialog } from "../../dialogs/dialog-list-items/show-list-items-dialog";
 import {
@@ -84,6 +90,7 @@ import { showAreaRegistryDetailDialog } from "../config/areas/show-dialog-area-r
 import { showNewAutomationDialog } from "../config/automation/show-dialog-new-automation";
 import { showAddIntegrationDialog } from "../config/integrations/show-add-integration-dialog";
 import { showDashboardDetailDialog } from "../config/lovelace/dashboards/show-dialog-lovelace-dashboard-detail";
+import { showPanelDetailDialog } from "../config/lovelace/dashboards/show-dialog-panel-detail";
 import { showPersonDetailDialog } from "../config/person/show-dialog-person-detail";
 import { swapView } from "./editor/config-util";
 import { showDashboardStrategyEditorDialog } from "./editor/dashboard-strategy-editor/dialogs/show-dialog-dashboard-strategy-editor";
@@ -572,7 +579,7 @@ class HUIRoot extends LitElement {
                         )}
                         .path=${mdiPencil}
                         class="edit-icon"
-                        @click=${this._editDashboard}
+                        @click=${this._editDashboardOrPanel}
                       ></ha-icon-button>
                     </div>
                     <div class="action-items">${this._renderActionItems()}</div>
@@ -688,6 +695,15 @@ class HUIRoot extends LitElement {
     window.addEventListener("location-changed", this._locationChanged);
     // Disable history scroll restoration because it is managed manually here
     window.history.scrollRestoration = "manual";
+
+    // IoB
+    this._unsubNotifications = subscribeNotifications(
+      this.hass!.connection,
+      (notifications) => {
+        this._persistentNotifications = notifications?.length || 0;
+      }
+    );
+    // IoB end
   }
 
   public disconnectedCallback(): void {
@@ -698,6 +714,12 @@ class HUIRoot extends LitElement {
     this.toggleAttribute("scrolled", window.scrollY !== 0);
     // Re-enable history scroll restoration when leaving the page
     window.history.scrollRestoration = "auto";
+
+    // IoB:
+    if (this._unsubNotifications) {
+      this._unsubNotifications();
+    }
+    // IoB end
   }
 
   private _handleUrlChanged() {
@@ -727,41 +749,6 @@ class HUIRoot extends LitElement {
         });
       });
     }
-  }
-
-  public connectedCallback(): void {
-    super.connectedCallback();
-    window.addEventListener("scroll", this._handleWindowScroll, {
-      passive: true,
-    });
-
-    window.addEventListener("popstate", this._handlePopState);
-    // Disable history scroll restoration because it is managed manually here
-    window.history.scrollRestoration = "manual";
-
-    // IoB
-    this._unsubNotifications = subscribeNotifications(
-      this.hass!.connection,
-      (notifications) => {
-        this._persistentNotifications = notifications?.length || 0;
-      }
-    );
-    // IoB end
-  }
-
-  public disconnectedCallback(): void {
-    super.disconnectedCallback();
-    window.removeEventListener("scroll", this._handleWindowScroll);
-    window.removeEventListener("popstate", this._handlePopState);
-    this.toggleAttribute("scrolled", window.scrollY !== 0);
-    // Re-enable history scroll restoration when leaving the page
-    window.history.scrollRestoration = "auto";
-
-    // IoB:
-    if (this._unsubNotifications) {
-      this._unsubNotifications();
-    }
-    // IoB end
   }
 
   protected willUpdate(changedProperties: PropertyValues<this>): void {
@@ -1127,6 +1114,36 @@ class HUIRoot extends LitElement {
   private _editModeDisable(): void {
     this.lovelace!.setEditMode(false);
     this._undoRedoController.reset();
+  }
+
+  // IoB - lovelace panels have no dashboard registry entry, so edit the
+  // panel directly. Other dashboard types still use the dashboard dialog.
+  private _editDashboardOrPanel() {
+    if (this.panel?.component_name === LOVELACE_PANEL) {
+      this._editPanel();
+    } else {
+      this._editDashboard();
+    }
+  }
+
+  // IoB - edit the panel (title, icon, admin, sidebar) directly
+  private _editPanel() {
+    if (!this.panel) {
+      return;
+    }
+    const panel = this.panel;
+    const defaultPanel = this.hass.systemData?.default_panel || DEFAULT_PANEL;
+    showPanelDetailDialog(this, {
+      urlPath: panel.url_path,
+      title: getPanelTitle(this.hass, panel) || panel.url_path,
+      icon: getPanelIcon(panel),
+      requireAdmin: panel.require_admin || false,
+      showInSidebar: panel.show_in_sidebar || false,
+      isDefault: panel.url_path === defaultPanel,
+      updatePanel: async (values) => {
+        await updatePanel(this.hass!, panel.url_path, values);
+      },
+    });
   }
 
   private async _editDashboard() {
