@@ -189,6 +189,16 @@ class HUIRoot extends LitElement {
   );
   // IoB end
 
+  // IoB - read the live panel from hass.panels so the title tracks renames in
+  // real time (the .panel prop is a snapshot threaded through the cached
+  // resolver and is not reliably refreshed on a panels_updated-only change).
+  private get _livePanel(): PanelInfo | undefined {
+    if (!this.panel) {
+      return undefined;
+    }
+    return this.hass.panels?.[this.panel.url_path] ?? this.panel;
+  }
+
   private _renderActionItems(): TemplateResult {
     const result: TemplateResult[] = [];
 
@@ -468,8 +478,8 @@ class HUIRoot extends LitElement {
     const curViewConfig =
       typeof this._curView === "number" ? views[this._curView] : undefined;
 
-    const dashboardTitle = this.panel
-      ? getPanelTitle(this.hass, this.panel)
+    const dashboardTitle = this._livePanel
+      ? getPanelTitle(this.hass, this._livePanel)
       : undefined;
 
     const background = curViewConfig?.background || this.config.background;
@@ -1074,7 +1084,9 @@ class HUIRoot extends LitElement {
 
       showDashboardStrategyEditorDialog(this, {
         config: this.lovelace!.rawConfig,
-        title: this.panel ? getPanelTitle(this.hass, this.panel) : undefined,
+        title: this._livePanel
+          ? getPanelTitle(this.hass, this._livePanel)
+          : undefined,
         saveConfig: this.lovelace!.saveConfig,
         takeControl: () => {
           showSaveDialog(this, {
