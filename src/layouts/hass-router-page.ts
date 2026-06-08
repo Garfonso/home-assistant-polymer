@@ -126,7 +126,9 @@ export class HassRouterPage extends ReactiveElement {
     }
 
     if (this._currentPage === newPage) {
-      if (this.lastChild) {
+      // IoB - during rebuild() the route is transiently undefined; updatePageEl
+      // reads routeTail (route.path) and would throw. Skip until route is back.
+      if (this.lastChild && this.route) {
         this.updatePageEl(this.lastChild, changedProps);
       }
       return;
