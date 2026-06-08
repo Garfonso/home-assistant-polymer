@@ -72,7 +72,7 @@ export class MoreInfoHistory extends LitElement {
                   </div>`
                 : nothing}
             </div>
-            ${true || __DEMO__ // IoB disable this link.. doesn't lead anywhere.
+            ${__DEMO__
               ? nothing
               : html`<a href=${this._showMoreHref}
                   >${this.hass.localize(

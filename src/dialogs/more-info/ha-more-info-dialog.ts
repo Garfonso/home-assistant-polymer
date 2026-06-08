@@ -233,7 +233,6 @@ export class MoreInfoDialog extends SubscribeMixin(
     domain: string,
     stateObj: HassEntity | undefined
   ): boolean {
-    return false; // IoB deactivate entity editor for now.
     if (__DEMO__ || !stateObj) {
       return false;
     }
