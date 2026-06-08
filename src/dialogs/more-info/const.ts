@@ -24,7 +24,7 @@ export const isMoreInfoView = (
 ): value is MoreInfoView =>
   value !== undefined && (MORE_INFO_VIEWS as readonly string[]).includes(value);
 
-export const DOMAINS_NO_INFO = ["camera", "configurator", "weather"]; // IoB add weather here
+export const DOMAINS_NO_INFO = ["camera", "configurator"];
 /**
  * Entity domains that should be editable *if* they have an id present;
  * {@see shouldShowEditIcon}.
@@ -110,7 +110,7 @@ export const DOMAINS_HIDE_DEFAULT_MORE_INFO = [
 ];
 
 /** Domains that should have the history hidden in the more info dialog. */
-export const DOMAINS_MORE_INFO_NO_HISTORY = ["camera", "configurator"]; // IoB add weather here
+export const DOMAINS_MORE_INFO_NO_HISTORY = ["camera", "configurator"];
 
 export const computeShowHistoryComponent = (
   hass: HomeAssistant,
