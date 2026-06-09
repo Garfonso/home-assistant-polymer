@@ -1139,11 +1139,13 @@ class HUIRoot extends LitElement {
   }
 
   // IoB - edit the panel (title, icon, admin, sidebar) directly
-  private _editPanel() {
+  private async _editPanel() {
     if (!this.panel) {
       return;
     }
     const panel = this.panel;
+    // IoB - load config translations so the dialog's buttons (e.g. "update") have text
+    await this.hass.loadFragmentTranslation("config");
     const defaultPanel = this.hass.systemData?.default_panel || DEFAULT_PANEL;
     showPanelDetailDialog(this, {
       urlPath: panel.url_path,
