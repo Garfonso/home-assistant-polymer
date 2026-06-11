@@ -14,7 +14,7 @@ class DeveloperToolsRouter extends HassRouterPage {
     beforeRender: (page) => {
       if (!page || page === "not_found") {
         // If we can, we are going to restore the last visited page.
-        return this._currentPage ? this._currentPage : "yaml";
+        return this._currentPage ? this._currentPage : "state"; // IoB - yaml tab removed, default to states
       }
       return undefined;
     },

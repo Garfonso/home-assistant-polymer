@@ -58,7 +58,7 @@ declare global {
 export const configSections: Record<string, PageNavigation[]> = {
   dashboard: [
     {
-      path: "/config/integrations",
+      path: "/config/devices", // IoB - integrations tab hidden, land on devices
       translationKey: "devices",
       iconPath: mdiDevices,
       iconColor: "#0D47A1",
