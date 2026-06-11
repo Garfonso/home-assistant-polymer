@@ -229,15 +229,16 @@ export const configSections: Record<string, PageNavigation[]> = {
     },
   ],
   devices: [
-    {
-      component: "integrations",
-      path: "/config/integrations",
-      translationKey: "ui.panel.config.integrations.caption",
-      iconPath: mdiPuzzle,
-      iconColor: "#2D338F",
-      core: true,
-      adminOnly: true,
-    },
+    // IoB - integrations tab removed
+    // {
+    //   component: "integrations",
+    //   path: "/config/integrations",
+    //   translationKey: "ui.panel.config.integrations.caption",
+    //   iconPath: mdiPuzzle,
+    //   iconColor: "#2D338F",
+    //   core: true,
+    //   adminOnly: true,
+    // },
     {
       component: "devices",
       path: "/config/devices",
