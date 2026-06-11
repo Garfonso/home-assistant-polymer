@@ -176,6 +176,7 @@ class HaConfigDashboard extends SubscribeMixin(LitElement) {
         "/config/apps",
         "/config/voice-assistants",
         "/config/system",
+        "/config/person",
       ]);
       const iobFilter = (pages: PageNavigation[]) =>
         pages.filter((page) => !iobHidden.has(page.path));
