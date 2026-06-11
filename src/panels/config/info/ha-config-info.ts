@@ -214,6 +214,7 @@ class HaConfigInfo extends LitElement {
                 >
               </ha-md-list-item>
 
+              <!-- IoB - documentation/credits/community/license links removed
               ${PAGES.map(
                 (page) => html`
                   <ha-md-list-item
@@ -238,6 +239,7 @@ class HaConfigInfo extends LitElement {
                   </ha-md-list-item>
                 `
               )}
+              -->
             </ha-md-list>
             ${customUiList.length
               ? html`
