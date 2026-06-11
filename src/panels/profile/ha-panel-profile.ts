@@ -1,6 +1,6 @@
 import { customElement, property } from "lit/decorators";
 
-import { mdiAccount, mdiLock } from "@mdi/js";
+import { mdiAccount } from "@mdi/js"; // IoB - mdiLock removed with security tab
 import type { PropertyValues } from "lit";
 import type { RouterOptions } from "../../layouts/hass-router-page";
 import { HassRouterPage } from "../../layouts/hass-router-page";
@@ -14,11 +14,12 @@ export const profileSections: PageNavigation[] = [
     translationKey: "ui.panel.profile.tabs.general",
     iconPath: mdiAccount,
   },
-  {
-    path: "/profile/security",
-    translationKey: "ui.panel.profile.tabs.security",
-    iconPath: mdiLock,
-  },
+  // IoB - security tab removed
+  // {
+  //   path: "/profile/security",
+  //   translationKey: "ui.panel.profile.tabs.security",
+  //   iconPath: mdiLock,
+  // },
 ];
 
 @customElement("ha-panel-profile")
