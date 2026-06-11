@@ -170,24 +170,35 @@ class HaConfigDashboard extends SubscribeMixin(LitElement) {
         isAppsInfoDismissed && !isHassioLoaded
           ? pages.filter((page) => page.path !== "/config/apps")
           : pages;
+      // IoB - hide settings sections not relevant for iobroker
+      const iobHidden = new Set([
+        "/config/automation",
+        "/config/apps",
+        "/config/voice-assistants",
+        "/config/system",
+      ]);
+      const iobFilter = (pages: PageNavigation[]) =>
+        pages.filter((page) => !iobHidden.has(page.path));
       return [
-        isCloudLoaded
-          ? filterApps([
-              {
-                component: "cloud",
-                path: "/config/cloud",
-                name: "Home Assistant Cloud",
-                info: cloudStatus,
-                iconPath: mdiCloudLock,
-                iconColor: "#3B808E",
-                translationKey: "cloud",
-              },
-              ...configSections.dashboard,
-            ])
-          : filterApps(configSections.dashboard),
+        iobFilter(
+          isCloudLoaded
+            ? filterApps([
+                {
+                  component: "cloud",
+                  path: "/config/cloud",
+                  name: "Home Assistant Cloud",
+                  info: cloudStatus,
+                  iconPath: mdiCloudLock,
+                  iconColor: "#3B808E",
+                  translationKey: "cloud",
+                },
+                ...configSections.dashboard,
+              ])
+            : filterApps(configSections.dashboard)
+        ),
         hasExternalSettings ? configSections.dashboard_external_settings : [],
         configSections.dashboard_2,
-        configSections.dashboard_3,
+        iobFilter(configSections.dashboard_3),
       ];
     }
   );

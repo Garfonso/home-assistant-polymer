@@ -58,11 +58,13 @@ class PanelDeveloperTools extends LitElement {
           </ha-dropdown>
         </div>
         <ha-tab-group @wa-tab-show=${this._handlePageSelected}>
+          <!-- IoB - yaml tab removed
           <ha-tab-group-tab slot="nav" panel="yaml" .active=${page === "yaml"}>
             ${this.hass.localize(
               "ui.panel.config.developer-tools.tabs.yaml.title"
             )}
           </ha-tab-group-tab>
+          -->
           <ha-tab-group-tab
             slot="nav"
             panel="state"
