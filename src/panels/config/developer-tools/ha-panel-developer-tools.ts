@@ -92,6 +92,7 @@ class PanelDeveloperTools extends LitElement {
               "ui.panel.config.developer-tools.tabs.templates.title"
             )}
           </ha-tab-group-tab>
+          <!-- IoB - event tab removed
           <ha-tab-group-tab
             slot="nav"
             panel="event"
@@ -101,6 +102,7 @@ class PanelDeveloperTools extends LitElement {
               "ui.panel.config.developer-tools.tabs.events.title"
             )}
           </ha-tab-group-tab>
+          -->
           <ha-tab-group-tab
             slot="nav"
             panel="statistics"
@@ -110,12 +112,14 @@ class PanelDeveloperTools extends LitElement {
               "ui.panel.config.developer-tools.tabs.statistics.title"
             )}
           </ha-tab-group-tab>
+          <!-- IoB - assist tab removed
           <ha-tab-group-tab
             slot="nav"
             panel="assist"
             .active=${page === "assist"}
             >Assist</ha-tab-group-tab
           >
+          -->
         </ha-tab-group>
       </div>
       <developer-tools-router
