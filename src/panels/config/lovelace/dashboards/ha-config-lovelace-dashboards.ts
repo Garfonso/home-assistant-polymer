@@ -71,12 +71,16 @@ import { showDashboardDetailDialog } from "./show-dialog-lovelace-dashboard-deta
 import { showPanelDetailDialog } from "./show-dialog-panel-detail";
 
 export const PANEL_DASHBOARDS = [
+  "lovelace",
   "home",
   "light",
   "security",
   "climate",
   "energy",
   "maintenance",
+  "logbook",
+  "history",
+  "browser-mod", // IoB - url_path of the browser-mod custom panel (not _panel_custom.name)
 ] as string[];
 
 type DataTableItem = Pick<
