@@ -91,6 +91,8 @@ const randomTip = (openFn: any, hass: HomeAssistant, narrow: boolean) => {
       narrow: true,
     },
   ];
+  // IoB - remove tips:
+  tips = [];
 
   if (hass?.enableShortcuts && !isMobileClient) {
     const localizeParam = {
