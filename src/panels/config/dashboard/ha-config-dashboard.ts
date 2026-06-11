@@ -91,8 +91,6 @@ const randomTip = (openFn: any, hass: HomeAssistant, narrow: boolean) => {
       narrow: true,
     },
   ];
-  // IoB - remove tips:
-  tips = [];
 
   if (hass?.enableShortcuts && !isMobileClient) {
     const localizeParam = {
@@ -368,7 +366,7 @@ class HaConfigDashboard extends SubscribeMixin(LitElement) {
                   </ha-card>
                 `
           )}
-          <ha-tip>${this._tip}</ha-tip>
+          <!-- IoB - remove tip. ha-tip>${this._tip}</ha-tip -->
         </ha-config-section>
       </ha-top-app-bar-fixed>
     `;
