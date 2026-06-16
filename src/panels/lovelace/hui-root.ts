@@ -874,7 +874,6 @@ class HUIRoot extends LitElement {
   // for IoB
   private _renderNotificationButton(): TemplateResult {
     const sidebars = document.body.getElementsByTagName("ha-sidebar");
-    console.log('Got sidebars:', sidebars);
     const isSidebarVisible = sidebars.length > 0;
     if (isSidebarVisible) {
       return html`""`;
